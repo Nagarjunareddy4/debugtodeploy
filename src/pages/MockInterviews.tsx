@@ -72,10 +72,11 @@ const interviewScenarios = [
 type InterviewMode = 'text' | 'audio' | 'video';
 
 export default function MockInterviews() {
-  const [activeTab, setActiveTab] = useState<'browse' | 'session'>('browse');
+  const [activeTab, setActiveTab] = useState<'browse' | 'session' | 'evaluation'>('browse');
   const [selectedScenario, setSelectedScenario] = useState<any>(null);
   const [mode, setMode] = useState<InterviewMode>('text');
   const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [history, setHistory] = useState<Array<{q: string, a: string, f: string, score: number}>>([]);
   const [micActive, setMicActive] = useState(false);
   const [videoActive, setVideoActive] = useState(false);
   const [callActive, setCallActive] = useState(false);
@@ -101,6 +102,22 @@ export default function MockInterviews() {
     });
   }, []);
 
+  const speak = (text: string) => {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    // Use an English voice if available, default rate/pitch
+    utterance.lang = 'en-US';
+    utterance.rate = 1.0;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  useEffect(() => {
+    // Speak the question automatically when it arrives, only if activeTab is session
+    if (activeTab === 'session' && selectedScenario?.questions?.[currentQuestion]) {
+      speak(selectedScenario.questions[currentQuestion]);
+    }
+  }, [currentQuestion, activeTab, selectedScenario]);
+
   const startSession = (scenario: any) => {
     if (isLimitReached('interview', isPro)) {
       alert(getLimitMessage('interview'));
@@ -110,6 +127,7 @@ export default function MockInterviews() {
     setSelectedScenario(scenario);
     setCurrentQuestion(0);
     setCompletedQuestions(new Set());
+    setHistory([]);
     setAiResponse('');
     setUserAnswer('');
     setActiveTab('session');
@@ -190,20 +208,50 @@ export default function MockInterviews() {
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [
-            { role: 'system', content: 'You are a senior DevOps interviewer. Give concise, constructive feedback (3-4 sentences) on the candidate\'s answer. Highlight strengths and areas to improve.' },
+            { role: 'system', content: `You are a senior technical interviewer. Evaluate the candidate's answer.
+If the answer is wrong or incomplete, CLARIFY the accurate knowledge and politely correct them.
+Give specific, concise technical feedback. 
+CRITICAL: You MUST end your entire response perfectly with a score out of 10 in brackets, like this: [8/10]. Do not miss this.` },
             { role: 'user', content: `Question: ${selectedScenario.questions[currentQuestion]}\n\nCandidate answer: ${userAnswer}` },
           ],
-          max_tokens: 300,
+          max_tokens: 400,
         }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error.message);
-      setAiResponse(data.choices?.[0]?.message?.content || 'No feedback generated.');
+      
+      const content = data.choices?.[0]?.message?.content || 'No feedback generated. [0/10]';
+      
+      // Parse score from the response, fallback to 0
+      const scoreMatch = content.match(/\[(\d+)\/10\]/);
+      const score = scoreMatch ? parseInt(scoreMatch[1], 10) : 5;
+      const cleanFeedback = content.replace(/\[\d+\/10\]/, '').trim();
+      
+      setAiResponse(cleanFeedback);
+      speak(cleanFeedback);
+      
+      setHistory(prev => {
+         const newHistory = [...prev];
+         newHistory[currentQuestion] = {
+           q: selectedScenario.questions[currentQuestion],
+           a: userAnswer,
+           f: cleanFeedback,
+           score
+         };
+         return newHistory;
+      });
+      markComplete();
     } catch (err: any) {
       setAiResponse(`Error: ${err.message}`);
     } finally {
       setIsLoadingResponse(false);
     }
+  };
+
+  const finishInterview = () => {
+    window.speechSynthesis.cancel();
+    stopVideoCall();
+    setActiveTab('evaluation');
   };
 
   const totalQuestions = selectedScenario?.questions?.length || 0;
@@ -219,7 +267,9 @@ export default function MockInterviews() {
       </header>
 
       <AnimatePresence mode="wait">
-        {activeTab === 'browse' ? (
+        {(() => {
+          if (activeTab === 'browse') {
+            return (
           <motion.div 
             key="browse"
             initial={{ opacity: 0, y: 20 }}
@@ -254,8 +304,11 @@ export default function MockInterviews() {
               </div>
             ))}
           </motion.div>
-        ) : (
-          <motion.div 
+        );
+      }
+      if (activeTab === 'session') {
+        return (
+              <motion.div 
             key="session"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -266,7 +319,7 @@ export default function MockInterviews() {
             <div className="playful-card p-6 border-none bg-surface shadow-2xl">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-4">
-                  <button onClick={() => { setActiveTab('browse'); stopVideoCall(); }} className="p-2 hover:bg-border rounded-full transition-colors">
+                  <button onClick={() => { setActiveTab('browse'); stopVideoCall(); window.speechSynthesis.cancel(); }} className="p-2 hover:bg-border rounded-full transition-colors">
                     <ArrowLeft className="w-5 h-5" />
                   </button>
                   <div>
@@ -477,7 +530,7 @@ export default function MockInterviews() {
                     )}
                     {isLastQuestion && (
                       <button
-                        onClick={() => { setActiveTab('browse'); stopVideoCall(); }}
+                        onClick={finishInterview}
                         className="flex items-center gap-2 bg-soft-green/80 text-white px-4 py-2 rounded-full font-black text-xs uppercase tracking-widest hover:bg-soft-green transition-all"
                       >
                         Done <CheckCircle2 className="w-4 h-4" />
@@ -585,7 +638,7 @@ export default function MockInterviews() {
                       </button>
                     ) : (
                       <button
-                        onClick={() => setActiveTab('browse')}
+                        onClick={finishInterview}
                         className="flex items-center gap-2 bg-soft-green text-white px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl"
                       >
                         Finish Interview <CheckCircle2 className="w-4 h-4" />
@@ -593,10 +646,93 @@ export default function MockInterviews() {
                     )}
                   </div>
                 </div>
-              </motion.div>
-            )}
-          </motion.div>
-        )}
+                </motion.div>
+              )}
+            </motion.div>
+          );
+        }
+        return (
+          <motion.div
+            key="evaluation"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.05 }}
+            className="space-y-8"
+          >
+            {/* OVERALL PERFORMANCE */}
+            <div className="playful-card bg-surface shadow-2xl border-none space-y-6">
+               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                  <div>
+                    <h3 className="text-3xl font-black italic tracking-tighter">Interview Evaluation</h3>
+                    <p className="font-bold text-text-dim text-sm uppercase tracking-widest">Performance Review for {selectedScenario?.title}</p>
+                  </div>
+                  
+                  {(() => {
+                     const answered = history.filter(Boolean);
+                     const totalScore = answered.reduce((acc, h) => acc + h.score, 0);
+                     const average = answered.length > 0 ? Math.round((totalScore / (totalQuestions * 10)) * 100) : 0;
+                     return (
+                        <div className="flex items-center gap-4 bg-brand-bg border-4 border-border px-8 py-4 rounded-3xl">
+                          <div className="text-center">
+                             <div className="text-[10px] font-black uppercase text-text-dim tracking-widest">Overall Score</div>
+                             <div className={cn("text-4xl font-black", average >= 80 ? 'text-soft-green' : average >= 50 ? 'text-soft-orange' : 'text-red-500')}>
+                               {average}%
+                             </div>
+                          </div>
+                        </div>
+                     );
+                  })()}
+               </div>
+            </div>
+
+            {/* DETAILED REVIEWS */}
+            <div className="space-y-6">
+               {history.map((record, i) => {
+                 if (!record) return null;
+                 return (
+                   <div key={i} className="playful-card border-2 border-border/50 bg-brand-bg shadow-lg flex flex-col gap-4">
+                      <div className="flex items-start justify-between gap-4">
+                         <div className="flex items-start gap-4">
+                            <span className="w-8 h-8 flex items-center justify-center bg-soft-blue/10 text-soft-blue font-black rounded-full shrink-0">
+                               {i + 1}
+                            </span>
+                            <div className="space-y-2">
+                               <p className="font-bold text-lg leading-snug">Q: {record.q}</p>
+                               <div className="bg-surface p-4 rounded-xl border border-border/50 flex gap-3 items-start">
+                                  <User className="w-5 h-5 text-text-dim shrink-0" />
+                                  <p className="text-sm font-bold text-text-dim">"{record.a}"</p>
+                               </div>
+                            </div>
+                         </div>
+                         <div className="bg-surface border-2 border-border px-3 py-1 rounded-full shrink-0">
+                            <span className="text-xs font-black uppercase tracking-widest text-text-main">
+                               {record.score} / 10
+                            </span>
+                         </div>
+                      </div>
+
+                      <div className="bg-soft-blue/5 border-l-4 border-soft-blue p-4 rounded-r-xl ml-12">
+                         <div className="flex items-center gap-2 text-soft-blue font-black uppercase text-[10px] tracking-widest mb-1">
+                            <Brain className="w-3 h-3" /> AI Analysis & Clarification
+                         </div>
+                         <p className="text-sm font-bold text-text-main leading-relaxed">{record.f}</p>
+                      </div>
+                   </div>
+                 );
+               })}
+            </div>
+
+            <div className="flex justify-center pt-8">
+               <button 
+                  onClick={() => setActiveTab('browse')}
+                  className="btn-pill bg-text-main text-surface px-12 py-4 flex items-center gap-3 shadow-xl hover:scale-105 transition-all text-sm uppercase"
+               >
+                  <ArrowLeft className="w-4 h-4" /> Back to Scenarios
+               </button>
+            </div>
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
     </div>
   );

@@ -85,6 +85,7 @@ export default function LabDetail() {
   const [outputs, setOutputs] = useState<any[][]>(labSteps.map(() => []));
   const [successes, setSuccesses] = useState<boolean[]>(labSteps.map(() => false));
   const [isRunning, setIsRunning] = useState(false);
+  const [completing, setCompleting] = useState(false);
 
   const currentStep = labSteps[stepIndex];
   const currentCode = codes[stepIndex];
@@ -132,7 +133,7 @@ export default function LabDetail() {
   };
 
   const completeLab = async () => {
-    navigate('/labs'); // navigate immediately for snappy UX
+    setCompleting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -149,10 +150,16 @@ export default function LabDetail() {
       const newCompleted = Math.max(currentCompleted, labId);
       const xpGain = labId > currentCompleted ? 500 : 0; // Only award XP for new completions
 
-      await supabase.from('profiles').update({
+      // We use upsert here to guarantee the row gets created even if it was somehow skipped during login
+      const { error: profileError } = await supabase.from('profiles').upsert({
+        id: user.id,
         labs_completed: newCompleted,
-        xp: (profile?.xp || 0) + xpGain,
-      }).eq('id', user.id);
+        xp: (profile?.xp || 0) + xpGain
+      }, { onConflict: 'id' });
+
+      if (profileError) {
+        throw new Error(`Profile update failed: ${profileError.message}`);
+      }
 
       if (xpGain > 0) {
         // Log today's activity for real-time graph
@@ -170,16 +177,21 @@ export default function LabDetail() {
             labs_done: (existing.labs_done || 0) + 1,
           }).eq('id', existing.id);
         } else {
-          await supabase.from('activity_log').insert({
+          const { error: insertError } = await supabase.from('activity_log').insert({
             user_id: user.id,
             date: today,
             xp_earned: xpGain,
             labs_done: 1,
           });
+          if (insertError) throw new Error(`Activity log insert failed: ${insertError.message}`);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving lab completion:', err);
+      alert(`Could not save lab progress: ${err.message}. Please check your connection or database schema.`);
+    } finally {
+      setCompleting(false);
+      navigate('/labs'); // navigate AFTER database is fully updated
     }
   };
 
@@ -317,9 +329,11 @@ export default function LabDetail() {
                 <p className="font-black text-xl uppercase tracking-widest mb-12 opacity-80">All {totalSteps} steps finished!</p>
                 <button 
                   onClick={completeLab}
-                  className="bg-white text-soft-green px-12 py-5 rounded-full font-black text-xl shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
+                  disabled={completing}
+                  className="bg-white text-soft-green px-12 py-5 rounded-full font-black text-xl shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Sparkles className="w-6 h-6" /> ONWARD TO NEXT LAB
+                  {completing ? <RefreshCw className="w-6 h-6 animate-spin" /> : <Sparkles className="w-6 h-6" />} 
+                  {completing ? 'SAVING PROGRESS...' : 'ONWARD TO NEXT LAB'}
                 </button>
               </motion.div>
             )}

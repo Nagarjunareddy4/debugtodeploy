@@ -42,7 +42,7 @@ export default function Roadmap() {
               setRoadmap(parsed);
               setHasExistingRoadmap(true);
             }
-          } catch (_) {}
+          } catch (_) { }
         }
       }
     };
@@ -201,22 +201,22 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
           key="config"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="playful-card p-12 bg-surface shadow-2xl border-none space-y-10"
+          className="playful-card p-6 sm:p-12 bg-surface shadow-2xl border-none space-y-10"
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
             <div className="space-y-4">
               <label className="text-[10px] font-black uppercase tracking-[0.3em] text-text-dim flex items-center gap-2">
                 <Target className="w-3 h-3 text-soft-blue" /> Starting Experience
               </label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col sm:flex-row gap-3">
                 {['beginner', 'intermediate', 'advanced'].map((level) => (
                   <button
                     key={level}
                     onClick={() => setExperience(level)}
                     className={cn(
-                      "px-6 py-4 rounded-2xl border-4 transition-all font-black text-sm uppercase tracking-widest",
+                      "flex-1 px-4 py-4 rounded-2xl border-4 transition-all font-black text-xs sm:text-sm uppercase tracking-widest text-center",
                       experience === level
-                        ? "bg-soft-blue/10 border-soft-blue text-soft-blue shadow-lg scale-105"
+                        ? "bg-soft-blue/10 border-soft-blue text-soft-blue shadow-lg sm:scale-105"
                         : "bg-brand-bg border-border text-text-dim hover:border-text-main/10"
                     )}
                   >
@@ -242,19 +242,28 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
           <button
             onClick={handleConstructClick}
             disabled={loading || (!isPro && remaining === 0)}
-            className="btn-pill bg-text-main text-surface w-full py-6 text-xl flex items-center justify-center gap-4 shadow-2xl hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-pill bg-text-main text-surface w-full py-5 sm:py-6 text-sm sm:text-xl flex items-center justify-center gap-3 sm:gap-4 shadow-2xl hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed flex-wrap text-center"
           >
             {loading ? (
-              <div className="flex items-center gap-3">
-                <Loader2 className="w-6 h-6 animate-spin" />
+              <>
+                <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin flex-shrink-0" />
                 <span className="animate-pulse italic">Architecting Growth Path...</span>
-              </div>
+              </>
             ) : !isPro && remaining === 0 ? (
-              <><Lock className="w-6 h-6" /> Daily Limit Reached — Upgrade to Pro</>
+              <>
+                <Lock className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+                <span>Daily Limit Reached — Upgrade to Pro</span>
+              </>
             ) : hasExistingRoadmap ? (
-              <><RefreshCw className="w-6 h-6 text-soft-orange" /> Update Roadmap</>
+              <>
+                <RefreshCw className="w-5 h-5 sm:w-6 sm:h-6 text-soft-orange flex-shrink-0" />
+                <span>Update Roadmap</span>
+              </>
             ) : (
-              <><Sparkles className="w-6 h-6 text-soft-orange" /> Construct Roadmap</>
+              <>
+                <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-soft-orange flex-shrink-0" />
+                <span>Construct Roadmap</span>
+              </>
             )}
           </button>
         </motion.div>

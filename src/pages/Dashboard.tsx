@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Flame, Trophy, Zap, Users, Search, Sparkles, Star, ArrowRight, Brain, Lock } from 'lucide-react';
+import { Flame, Trophy, Zap, Users, Search, Sparkles, Star, ArrowRight, Brain, Lock, Check } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
+import { cn } from '../lib/utils';
 
 interface DailyProgress {
   name: string;
@@ -268,41 +269,45 @@ export default function Dashboard() {
       </AnimatePresence>
 
       {/* Hero banner — dynamic next lab */}
-      <section className="flex flex-col md:flex-row items-center justify-between gap-8 bg-soft-blue rounded-[4rem] p-12 text-white overflow-hidden relative shadow-2xl group">
+      <section className="flex flex-col md:flex-row items-center justify-between gap-8 bg-surface border-4 border-border rounded-[4rem] p-12 text-text-main overflow-hidden relative shadow-2xl group">
+        {/* Ambient glowing orbs to give the panel depth and premium feel */}
+        <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-soft-blue/10 rounded-full blur-3xl -translate-y-1/4 translate-x-1/4 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-soft-purple/10 rounded-full blur-3xl translate-y-1/4 -translate-x-1/4 pointer-events-none" />
+        
         <div className="z-10 space-y-6 max-w-lg">
-          {profileLoading ? (
-            <div className="space-y-4 animate-pulse">
-              <div className="h-8 w-32 bg-white/20 rounded-2xl" />
-              <div className="h-16 w-72 bg-white/20 rounded-2xl" />
-              <div className="h-12 w-48 bg-white/20 rounded-full" />
-            </div>
-          ) : (
-            <>
-              {/* Completion badge */}
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] font-black uppercase tracking-widest bg-white/15 px-4 py-2 rounded-full border border-white/20">
-                  {profile?.labs_completed || 0} / {labsData.length} Labs Complete
-                </span>
-                {nextLab === null && (
-                  <span className="text-[10px] font-black uppercase tracking-widest bg-soft-green/30 text-white px-4 py-2 rounded-full border border-white/20">
-                    🎉 All Done!
-                  </span>
-                )}
-              </div>
-
-              <h1 className="text-5xl font-black tracking-tighter leading-[1.1]">
+           {profileLoading ? (
+             <div className="space-y-4 animate-pulse">
+               <div className="h-8 w-32 bg-border rounded-2xl" />
+               <div className="h-16 w-72 bg-border rounded-2xl" />
+               <div className="h-12 w-48 bg-border rounded-full" />
+             </div>
+           ) : (
+             <>
+               {/* Completion badge */}
+               <div className="flex items-center gap-3">
+                 <span className="text-[10px] font-black uppercase tracking-widest bg-soft-blue/10 text-soft-blue px-4 py-2 rounded-full border border-soft-blue/20">
+                   {profile?.labs_completed || 0} / {labsData.length} Labs Complete
+                 </span>
+                 {nextLab === null && (
+                   <span className="text-[10px] font-black uppercase tracking-widest bg-soft-green/20 text-soft-green px-4 py-2 rounded-full border border-soft-green/30">
+                     🎉 All Done!
+                   </span>
+                 )}
+               </div>
+ 
+               <h1 className="text-5xl font-black tracking-tighter leading-[1.1]">
                 {nextLab === null ? (
-                  <>All Labs<br /><span className="underline decoration-white/30 italic">Complete! 🎉</span></>
+                  <>All Labs<br /><span className="underline decoration-soft-blue/30 italic">Complete! 🎉</span></>
                 ) : (
-                  <>Next up:<br /><span className="underline decoration-white/30 italic">{nextLab.title}</span></>
+                  <>Next up:<br /><span className="underline decoration-soft-blue/30 italic">{nextLab?.title || 'Loading...'}</span></>
                 )}
               </h1>
 
               {/* Mini progress bar */}
               <div className="w-full max-w-xs">
-                <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+                <div className="h-2 bg-border rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-white rounded-full transition-all duration-700"
+                    className="h-full bg-soft-blue rounded-full transition-all duration-700"
                     style={{ width: `${((profile?.labs_completed || 0) / labsData.length) * 100}%` }}
                   />
                 </div>
@@ -312,13 +317,13 @@ export default function Dashboard() {
                 <button
                   onClick={handleStartLab}
                   disabled={nextLab === null}
-                  className="px-10 py-4 bg-white text-soft-blue rounded-full font-black shadow-xl hover:scale-105 transition-all text-base active:scale-95 shadow-soft-blue/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-10 py-4 bg-text-main text-surface rounded-full font-black shadow-xl hover:scale-105 transition-all text-base active:scale-95 shadow-soft-blue/30 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {nextLab === null ? 'Labs Complete ✓' : 'Start Lab'}
                 </button>
                 <button
                   onClick={() => navigate('/roadmap')}
-                  className="px-8 py-4 bg-soft-blue border-2 border-white/40 rounded-full font-black hover:bg-white/10 transition-colors uppercase tracking-widest text-xs"
+                  className="px-8 py-4 bg-transparent border-2 border-border text-text-dim rounded-full font-black hover:bg-border transition-colors uppercase tracking-widest text-xs"
                 >
                   Update Roadmap
                 </button>
@@ -330,12 +335,12 @@ export default function Dashboard() {
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 40, repeat: Infinity, ease: 'linear' }}
-            className="absolute inset-0 border-4 border-dashed border-white/10 rounded-full"
+            className="absolute inset-0 border-4 border-dashed border-border rounded-full"
           />
           {nextLab === null ? (
-            <Trophy className="w-32 h-32 text-white/70 fill-white/10 group-hover:scale-110 transition-transform duration-500" />
+            <Trophy className="w-32 h-32 text-soft-blue/20 group-hover:scale-110 transition-transform duration-500" />
           ) : (
-            <Zap className="w-32 h-32 text-white/50 fill-white/10 group-hover:scale-110 transition-transform duration-500" />
+            <Zap className="w-32 h-32 text-soft-blue/20 group-hover:scale-110 transition-transform duration-500" />
           )}
         </div>
       </section>
@@ -461,19 +466,36 @@ export default function Dashboard() {
           </div>
 
           {/* Streak */}
-          <div className="playful-card bg-text-main text-surface border-none text-center py-12 shadow-2xl group transition-all hover:bg-soft-blue">
+          {/* Streak */}
+          <div className="playful-card border-none text-center py-12 shadow-2xl bg-surface">
             <div className="relative mb-6">
               <Flame className="w-16 h-16 text-soft-orange mx-auto fill-soft-orange animate-pulse relative z-10" />
-              <div className="absolute inset-0 scale-150 bg-soft-orange/20 blur-2xl rounded-full" />
+              <div className="absolute inset-0 scale-150 bg-soft-orange/20 blur-2xl rounded-full pointer-events-none" />
             </div>
-            <h4 className="text-4xl font-black mb-2 italic">{profile?.streak || 0} DAY STREAK</h4>
-            <div className="flex flex-col gap-4 mt-6">
-              <p className="text-surface/60 font-black uppercase tracking-[0.2em] text-[9px] py-2 px-4 border-2 border-surface/20 rounded-full inline-block mx-auto group-hover:border-surface/40 group-hover:text-surface">
+            <h4 className="text-4xl font-black mb-2 italic text-text-main">{profile?.streak || 0} DAY STREAK</h4>
+            <div className="flex flex-col gap-6 mt-6">
+              {/* Day-wise Activity Tracker */}
+              <div className="flex justify-center gap-2 mb-2">
+                {weeklyData.map((day, i) => (
+                  <div key={i} className="flex flex-col items-center gap-2">
+                    <span className="text-[9px] font-black uppercase text-text-dim">{day.name.charAt(0)}</span>
+                    <div className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center font-black transition-all",
+                      day.xp > 0 
+                        ? "bg-soft-orange text-white shadow-lg shadow-soft-orange/30 scale-110" 
+                        : "bg-brand-bg text-text-dim border-2 border-border"
+                    )}>
+                      {day.xp > 0 ? <Check className="w-4 h-4" /> : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-text-dim font-black uppercase tracking-[0.2em] text-[10px] py-2 px-4 border-2 border-border rounded-full inline-block mx-auto bg-brand-bg">
                 {(profile?.streak || 0) >= 7 ? 'Unstoppable Energy ⚡️' : (profile?.streak || 0) >= 3 ? 'On a Roll 🔥' : 'Keep Going 💪'}
               </p>
               <button
                 onClick={() => navigate('/labs')}
-                className="flex items-center justify-center gap-2 font-black text-xs text-white/40 hover:text-white transition-colors group-hover:text-white mt-2 uppercase tracking-widest"
+                className="flex items-center justify-center gap-2 font-black text-xs text-text-dim hover:text-soft-blue transition-colors mt-2 uppercase tracking-widest"
               >
                 View All Labs <ArrowRight className="w-4 h-4" />
               </button>
