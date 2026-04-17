@@ -1,36 +1,104 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { User, Mail, AtSign, Camera, Check, Shield, CreditCard, Key, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, AtSign, Camera, Check, Shield, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 
 export default function Settings() {
+  const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [success, setSuccess] = useState(false);
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [apiKeySaved, setApiKeySaved] = useState(false);
 
   useEffect(() => {
     fetchProfile();
-    // Load saved API key from localStorage
-    const saved = localStorage.getItem('openai_api_key');
-    if (saved) {
-      setApiKey(saved);
-      (window as any).OPENAI_API_KEY = saved;
-    }
   }, []);
 
   const fetchProfile = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data } = await supabase
+    try {
+      const { data: { user }, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !user) { console.warn('Auth error in Settings:', authErr?.message); return; }
+
+      let { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
-      setProfile(data);
+
+      if (error && error.code !== 'PGRST116') {
+        console.warn('Profile fetch error:', error.message);
+      }
+
+      // If profile is missing or full_name is empty, upsert with auth metadata
+      const metaName = user.user_metadata?.full_name || user.user_metadata?.name || '';
+      const metaUsername = user.user_metadata?.username || user.user_metadata?.preferred_username || user.email?.split('@')[0] || '';
+
+      if (!data) {
+        // Create profile from scratch
+        const { data: created, error: insertErr } = await supabase
+          .from('profiles')
+          .upsert({
+            id: user.id,
+            email: user.email,
+            full_name: metaName,
+            username: metaUsername,
+            avatar_url: user.user_metadata?.avatar_url || '',
+            xp: 0, level: 1, streak: 0, labs_completed: 0,
+            readiness_score: 0, subscription_status: 'free',
+          }, { onConflict: 'id' })
+          .select()
+          .single();
+        if (insertErr) console.warn('Profile create error:', insertErr.message);
+        else data = created;
+      } else if (!data.full_name && metaName) {
+        // Patch missing full_name from auth metadata
+        await supabase.from('profiles').update({ full_name: metaName, email: user.email }).eq('id', user.id);
+        data.full_name = metaName;
+      }
+
+      if (data) setProfile(data);
+      else {
+        // Fallback: set minimal profile from auth data so the UI isn't blank
+        setProfile({
+          id: user.id,
+          email: user.email,
+          full_name: metaName,
+          username: metaUsername,
+          subscription_status: 'free',
+        });
+      }
+    } catch (err) {
+      console.error('fetchProfile failed:', err);
+    }
+  };
+
+  const uploadAvatar = async (file: File) => {
+    if (!profile?.id) return;
+    setImageUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `avatars/${profile.id}.${ext}`;
+
+      const { error: upErr } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true, contentType: file.type });
+
+      if (upErr) throw upErr;
+
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
+      const publicUrl = urlData.publicUrl;
+
+      await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', profile.id);
+      setProfile((prev: any) => ({ ...prev, avatar_url: publicUrl }));
+    } catch (err: any) {
+      // If storage bucket doesn't exist, fall back to URL input only
+      console.warn('Avatar upload failed (bucket may not exist):', err.message);
+      alert('Image upload failed. Please ensure the "avatars" storage bucket exists in Supabase Storage, or paste an image URL manually in the Avatar URL field.');
+    } finally {
+      setImageUploading(false);
     }
   };
 
@@ -72,7 +140,21 @@ export default function Settings() {
     setApiKey('');
   };
 
-  if (!profile) return null;
+  if (!profile) return (
+    <div className="max-w-4xl mx-auto space-y-10 animate-pulse">
+      <div className="h-10 w-56 bg-border rounded-2xl" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="space-y-4">
+          <div className="h-64 bg-surface rounded-3xl shadow-sm" />
+          <div className="h-40 bg-surface rounded-3xl shadow-sm" />
+        </div>
+        <div className="md:col-span-2 space-y-4">
+          <div className="h-72 bg-surface rounded-3xl shadow-sm" />
+          <div className="h-48 bg-surface rounded-3xl shadow-sm" />
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="max-w-4xl mx-auto space-y-12">
@@ -105,26 +187,54 @@ export default function Settings() {
                   </div>
                 )}
               </div>
-              <button className="absolute bottom-0 right-0 p-3 bg-text-main text-surface rounded-full shadow-xl hover:scale-110 transition-transform">
-                <Camera className="w-4 h-4" />
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadAvatar(file);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={imageUploading}
+                className="absolute bottom-0 right-0 p-3 bg-text-main text-surface rounded-full shadow-xl hover:scale-110 transition-transform disabled:opacity-60"
+              >
+                {imageUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
               </button>
             </div>
             <div className="text-center">
-              <h3 className="text-xl font-black">{profile.full_name || profile.username || 'Engineer'}</h3>
-              <p className="text-sm font-mono text-soft-blue">@{profile.username}</p>
+              <h3 className="text-xl font-black">{profile.full_name || profile.username || profile.email?.split('@')[0] || 'User'}</h3>
+              <p className="text-sm font-mono text-soft-blue">@{profile.username || profile.email?.split('@')[0]}</p>
+              {imageUploading && <p className="text-[10px] text-text-dim mt-1 font-bold uppercase tracking-widest animate-pulse">Uploading...</p>}
             </div>
           </div>
 
           <div className="playful-card p-6 bg-soft-blue text-white border-none shadow-xl space-y-4">
             <div className="flex items-center justify-between">
               <Shield className="w-8 h-8 opacity-50" />
-              <span className="chip bg-white/20 text-white border-none">PRO STATUS</span>
+              <span className="chip bg-white/20 text-white border-none">
+                {profile.subscription_status === 'pro' ? '⭐ PRO' : 'FREE TIER'}
+              </span>
             </div>
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Current Plan</p>
-              <h4 className="text-2xl font-black leading-tight">Free Tier</h4>
+              <h4 className="text-2xl font-black leading-tight">
+                {profile.subscription_status === 'pro' ? 'Fleet Captain' : 'Free Tier'}
+              </h4>
             </div>
-            <button className="w-full py-3 bg-white text-soft-blue rounded-2xl font-black text-sm hover:scale-[1.02] transition-transform">Upgrade to Fleet Captain</button>
+            {profile.subscription_status !== 'pro' && (
+              <button
+                onClick={() => navigate('/pricing')}
+                className="w-full py-3 bg-white text-soft-blue rounded-2xl font-black text-sm hover:scale-[1.02] transition-transform"
+              >
+                Upgrade to Fleet Captain
+              </button>
+            )}
           </div>
         </div>
 
@@ -191,65 +301,6 @@ export default function Settings() {
             </div>
           </form>
 
-          {/* API Configuration */}
-          <div className="playful-card p-8 bg-surface space-y-6 shadow-2xl border-none">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-black uppercase tracking-widest flex items-center gap-2">
-                <Key className="w-4 h-4 text-soft-orange" /> API Configuration
-              </h3>
-              {apiKeySaved && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="flex items-center gap-1 text-soft-green text-xs font-black uppercase tracking-widest"
-                >
-                  <Check className="w-4 h-4" /> Saved
-                </motion.div>
-              )}
-            </div>
-            <p className="text-text-dim text-xs font-bold">
-              Add your OpenAI API key to power AI search, roadmap generation, and mock interview feedback.
-              Your key is stored locally in your browser only.
-            </p>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-text-dim flex items-center gap-2">
-                <Key className="w-3 h-3" /> OpenAI API Key
-              </label>
-              <div className="relative">
-                <input
-                  type={showApiKey ? 'text' : 'password'}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-..."
-                  className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 font-mono font-bold outline-hidden focus:border-soft-orange transition-colors pr-14"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowApiKey(prev => !prev)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-main transition-colors"
-                >
-                  {showApiKey ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={saveApiKey}
-                disabled={!apiKey.trim()}
-                className="btn-pill bg-soft-orange/90 text-white px-8 py-3 text-xs flex items-center gap-2 disabled:opacity-50 hover:scale-105 transition-all"
-              >
-                <Key className="w-4 h-4" /> Save API Key
-              </button>
-              {apiKey && (
-                <button
-                  onClick={clearApiKey}
-                  className="btn-pill bg-brand-bg text-text-dim px-6 py-3 text-xs hover:bg-red-500/10 hover:text-red-500 transition-all"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-          </div>
         </div>
       </div>
     </div>

@@ -30,12 +30,13 @@ function buildWeeklyData(activityLog: any[]): DailyProgress[] {
 export default function Dashboard() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [weeklyData, setWeeklyData] = useState<DailyProgress[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [activeGraph, setActiveGraph] = useState<'xp' | 'labs'>('xp');
-  const [nextLab, setNextLab] = useState<any>(null);
+  const [nextLab, setNextLab] = useState<any>(undefined); // undefined = still loading
 
   const labsData = [
     { id: '1', title: 'Kubernetes Foundations' },
@@ -46,58 +47,75 @@ export default function Dashboard() {
   ];
 
   const fetchData = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+      const { data: prof, error: profError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-    if (prof) {
-      // Update streak: check if last_active was yesterday, today = continue, else reset
-      const today = new Date().toISOString().split('T')[0];
-      const lastActive = prof.last_active_date;
-      let newStreak = prof.streak || 0;
+      if (profError) console.warn('Profile fetch error:', profError.message);
 
-      if (lastActive !== today) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yStr = yesterday.toISOString().split('T')[0];
-        if (lastActive === yStr) {
-          newStreak = newStreak + 1; // continued streak
-        } else if (lastActive && lastActive < yStr) {
-          newStreak = 1; // broke streak, reset to 1 for today
-        } else {
-          newStreak = 1; // first time
+      if (prof) {
+        // Try to update streak — wrapped so missing columns don't crash
+        try {
+          const today = new Date().toISOString().split('T')[0];
+          const lastActive = prof.last_active_date;
+          let newStreak = prof.streak || 0;
+
+          if (lastActive !== today) {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yStr = yesterday.toISOString().split('T')[0];
+            if (lastActive === yStr) {
+              newStreak = newStreak + 1;
+            } else {
+              newStreak = 1;
+            }
+            await supabase.from('profiles')
+              .update({ streak: newStreak, last_active_date: today })
+              .eq('id', user.id);
+            prof.streak = newStreak;
+            prof.last_active_date = today;
+          }
+        } catch (streakErr) {
+          console.warn('Streak update skipped (columns may not exist yet):', streakErr);
         }
-        await supabase.from('profiles')
-          .update({ streak: newStreak, last_active_date: today })
-          .eq('id', user.id);
-        prof.streak = newStreak;
-        prof.last_active_date = today;
+
+        setProfile(prof);
+
+        // Determine next lab — null = all done, undefined = still loading
+        const completedCount = prof.labs_completed || 0;
+        const next = completedCount < labsData.length ? labsData[completedCount] : null;
+        setNextLab(next);
+      } else {
+        // No profile yet — still show the UI with defaults
+        setNextLab(labsData[0]);
       }
 
-      setProfile(prof);
-
-      // Determine next lab
-      const completedCount = prof.labs_completed || 0;
-      const next = labsData[completedCount] || labsData[labsData.length - 1];
-      setNextLab(next);
+      // Fetch weekly activity (non-critical — silently skip if table missing)
+      try {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+        const { data: activity } = await supabase
+          .from('activity_log')
+          .select('*')
+          .eq('user_id', user?.id)
+          .gte('date', sevenDaysAgo.toISOString().split('T')[0])
+          .order('date', { ascending: true });
+        setWeeklyData(buildWeeklyData(activity || []));
+      } catch (actErr) {
+        console.warn('Activity log fetch skipped (table may not exist yet):', actErr);
+      }
+    } catch (err) {
+      console.error('Dashboard data fetch failed:', err);
+    } finally {
+      // ALWAYS stop the loading skeleton regardless of success or failure
+      setProfileLoading(false);
     }
-
-    // Fetch weekly activity log
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-    const { data: activity } = await supabase
-      .from('activity_log')
-      .select('*')
-      .eq('user_id', user.id)
-      .gte('date', sevenDaysAgo.toISOString().split('T')[0])
-      .order('date', { ascending: true });
-
-    setWeeklyData(buildWeeklyData(activity || []));
   }, []);
 
   useEffect(() => {
@@ -234,33 +252,74 @@ export default function Dashboard() {
 
       {/* Hero banner — dynamic next lab */}
       <section className="flex flex-col md:flex-row items-center justify-between gap-8 bg-soft-blue rounded-[4rem] p-12 text-white overflow-hidden relative shadow-2xl group">
-        <div className="z-10 space-y-8 max-w-lg">
-          <h1 className="text-6xl font-black tracking-tighter leading-[1.1]">
-            Next up: <br /> <span className="underline decoration-white/30 italic">{nextLab?.title || 'All Labs Complete!'}</span>
-          </h1>
-          <div className="flex flex-wrap gap-4">
-            <button
-              onClick={handleStartLab}
-              className="px-12 py-5 bg-white text-soft-blue rounded-full font-black shadow-xl hover:scale-105 transition-all text-lg active:scale-95 shadow-soft-blue/30"
-            >
-              Start Lab
-            </button>
-            <button
-              onClick={() => navigate('/roadmap')}
-              className="px-10 py-5 bg-soft-blue border-2 border-white/40 rounded-full font-black hover:bg-white/10 transition-colors uppercase tracking-widest text-xs"
-            >
-              Update Roadmap
-            </button>
-          </div>
+        <div className="z-10 space-y-6 max-w-lg">
+          {profileLoading ? (
+            <div className="space-y-4 animate-pulse">
+              <div className="h-8 w-32 bg-white/20 rounded-2xl" />
+              <div className="h-16 w-72 bg-white/20 rounded-2xl" />
+              <div className="h-12 w-48 bg-white/20 rounded-full" />
+            </div>
+          ) : (
+            <>
+              {/* Completion badge */}
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-black uppercase tracking-widest bg-white/15 px-4 py-2 rounded-full border border-white/20">
+                  {profile?.labs_completed || 0} / {labsData.length} Labs Complete
+                </span>
+                {nextLab === null && (
+                  <span className="text-[10px] font-black uppercase tracking-widest bg-soft-green/30 text-white px-4 py-2 rounded-full border border-white/20">
+                    🎉 All Done!
+                  </span>
+                )}
+              </div>
+
+              <h1 className="text-5xl font-black tracking-tighter leading-[1.1]">
+                {nextLab === null ? (
+                  <>All Labs<br /><span className="underline decoration-white/30 italic">Complete! 🎉</span></>
+                ) : (
+                  <>Next up:<br /><span className="underline decoration-white/30 italic">{nextLab.title}</span></>
+                )}
+              </h1>
+
+              {/* Mini progress bar */}
+              <div className="w-full max-w-xs">
+                <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-white rounded-full transition-all duration-700"
+                    style={{ width: `${((profile?.labs_completed || 0) / labsData.length) * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-4">
+                <button
+                  onClick={handleStartLab}
+                  disabled={nextLab === null}
+                  className="px-10 py-4 bg-white text-soft-blue rounded-full font-black shadow-xl hover:scale-105 transition-all text-base active:scale-95 shadow-soft-blue/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {nextLab === null ? 'Labs Complete ✓' : 'Start Lab'}
+                </button>
+                <button
+                  onClick={() => navigate('/roadmap')}
+                  className="px-8 py-4 bg-soft-blue border-2 border-white/40 rounded-full font-black hover:bg-white/10 transition-colors uppercase tracking-widest text-xs"
+                >
+                  Update Roadmap
+                </button>
+              </div>
+            </>
+          )}
         </div>
-        <div className="relative w-80 h-80 hidden lg:flex items-center justify-center">
+        <div className="relative w-72 h-72 hidden lg:flex items-center justify-center">
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 40, repeat: Infinity, ease: 'linear' }}
-            className="absolute inset-0 border-6 border-dashed border-white/10 rounded-full"
+            className="absolute inset-0 border-4 border-dashed border-white/10 rounded-full"
           />
-          <Zap className="w-40 h-40 text-white/50 fill-white/10 group-hover:scale-110 transition-transform duration-500" />
-          <Trophy className="absolute bottom-4 right-4 w-12 h-12 text-white/80 animate-bounce" />
+          {nextLab === null ? (
+            <Trophy className="w-32 h-32 text-white/70 fill-white/10 group-hover:scale-110 transition-transform duration-500" />
+          ) : (
+            <Zap className="w-32 h-32 text-white/50 fill-white/10 group-hover:scale-110 transition-transform duration-500" />
+          )}
         </div>
       </section>
 
@@ -340,11 +399,17 @@ export default function Dashboard() {
                 className="absolute inset-0 border-4 border-dashed border-soft-blue rounded-full opacity-40"
               />
             </div>
-            <div className="text-center space-y-2 mb-10">
+            <div className="text-center space-y-2 mb-8">
               <h3 className="text-2xl font-black">{displayName}</h3>
               <p className="text-text-dim font-bold text-[10px] uppercase tracking-[0.3em]">
                 {isPro ? '⭐ Pro Member' : 'Fleet Commander'}
               </p>
+              <button
+                onClick={() => navigate('/settings')}
+                className="mt-2 text-[9px] font-black uppercase tracking-widest text-soft-blue hover:underline transition-all"
+              >
+                Edit Profile →
+              </button>
             </div>
 
             <div className="w-full space-y-6">

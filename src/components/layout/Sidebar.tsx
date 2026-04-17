@@ -1,24 +1,62 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Map, 
-  Terminal, 
-  Settings, 
-  LogOut, 
-  MessageSquare, 
-  Menu, 
+import {
+  LayoutDashboard,
+  Map,
+  Terminal,
+  Settings,
+  LogOut,
+  MessageSquare,
+  Menu,
   X,
   CreditCard,
   User as UserIcon,
   Mail,
   Star,
   Flame,
-  Trophy
+  Trophy,
+  Sun,
+  Moon,
+  Monitor
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { LogoFull } from '../ui/Logo';
+
+type ThemeMode = 'system' | 'light' | 'dark';
+
+function useTheme() {
+  const [mode, setMode] = useState<ThemeMode>(() => {
+    return (localStorage.getItem('theme') as ThemeMode) || 'system';
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (mode === 'system') {
+      root.removeAttribute('data-theme');
+      root.style.colorScheme = '';
+    } else {
+      root.setAttribute('data-theme', mode);
+      root.style.colorScheme = mode;
+    }
+    localStorage.setItem('theme', mode);
+  }, [mode]);
+
+  // Also listen to OS-level changes when in system mode
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = () => {
+      if ((localStorage.getItem('theme') || 'system') === 'system') {
+        // Force re-render by toggling a dummy state (CSS handles the actual change)
+        document.documentElement.removeAttribute('data-theme');
+      }
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  return { mode, setMode };
+}
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
@@ -32,6 +70,7 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [showUserDetails, setShowUserDetails] = useState(false);
+  const { mode, setMode } = useTheme();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -98,7 +137,33 @@ export default function Sidebar() {
           ))}
         </nav>
 
-        <div className="mt-auto space-y-6 relative">
+        <div className="mt-auto space-y-4 relative">
+          {/* Theme Toggle */}
+          <div className="flex items-center justify-between px-2">
+            <span className="text-[9px] font-black uppercase tracking-widest text-text-dim">Theme</span>
+            <div className="flex bg-brand-bg border-2 border-border rounded-full p-1 gap-1">
+              {([
+                { val: 'light' as ThemeMode, icon: Sun },
+                { val: 'system' as ThemeMode, icon: Monitor },
+                { val: 'dark'  as ThemeMode, icon: Moon },
+              ]).map(({ val, icon: Icon }) => (
+                <button
+                  key={val}
+                  title={val}
+                  onClick={() => setMode(val)}
+                  className={cn(
+                    'w-7 h-7 rounded-full flex items-center justify-center transition-all',
+                    mode === val
+                      ? 'bg-text-main text-surface shadow-md scale-110'
+                      : 'text-text-dim hover:text-text-main'
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                </button>
+              ))}
+            </div>
+          </div>
+
           {showUserDetails && profile && (
             <div className="absolute bottom-full mb-3 left-0 right-0 bg-surface border-2 border-border rounded-3xl p-6 shadow-2xl z-50 space-y-4">
               <div className="flex items-center gap-4">

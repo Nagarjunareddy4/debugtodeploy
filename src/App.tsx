@@ -37,34 +37,38 @@ export default function App() {
 
   const syncProfile = async (user: any) => {
     try {
-      // Check if profile exists
-      const { data: profile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+      const metaName = user.user_metadata?.full_name || user.user_metadata?.name || '';
+      const metaUsername = user.user_metadata?.username || user.user_metadata?.preferred_username || user.email?.split('@')[0] || '';
+      const metaAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || '';
 
-      if (fetchError && fetchError.code === 'PGRST116') {
-        // Profile doesn't exist, create it
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            id: user.id,
-            email: user.email,
-            username: user.user_metadata?.username || user.email?.split('@')[0],
-            full_name: user.user_metadata?.full_name || '',
-            avatar_url: user.user_metadata?.avatar_url || '',
-            level: 1,
-            xp: 0,
-            streak: 0,
-            readiness_score: 0,
-            labs_completed: 0,
-            subscription_status: 'free'
-          });
-        
-        if (insertError) console.error('Error creating profile:', insertError.message);
-      } else if (fetchError) {
-        console.error('Error fetching profile:', fetchError.message);
+      // Upsert: creates if missing, ignores if already exists
+      const { error: upsertError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          email: user.email,
+          username: metaUsername,
+          full_name: metaName,
+          avatar_url: metaAvatar,
+          level: 1,
+          xp: 0,
+          streak: 0,
+          readiness_score: 0,
+          labs_completed: 0,
+          subscription_status: 'free',
+        }, { onConflict: 'id', ignoreDuplicates: true });
+
+      if (upsertError) console.error('Profile upsert error:', upsertError.message);
+
+      // If existing profile has no full_name, patch it from auth metadata
+      if (metaName) {
+        const { data: existing } = await supabase.from('profiles').select('full_name, email').eq('id', user.id).single();
+        if (existing && (!existing.full_name || !existing.email)) {
+          await supabase.from('profiles').update({
+            full_name: existing.full_name || metaName,
+            email: existing.email || user.email,
+          }).eq('id', user.id);
+        }
       }
     } catch (err) {
       console.error('Profile sync failed:', err);
@@ -80,7 +84,7 @@ export default function App() {
           <>
             <Sidebar />
             <div className="flex-1 flex flex-col overflow-hidden">
-              <main className="flex-1 p-8 overflow-y-auto">
+              <main className="flex-1 p-8 overflow-y-auto main-content">
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/roadmap" element={<Roadmap />} />

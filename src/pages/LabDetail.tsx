@@ -132,23 +132,29 @@ export default function LabDetail() {
   };
 
   const completeLab = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
+    navigate('/labs'); // navigate immediately for snappy UX
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('labs_completed, xp')
         .eq('id', user.id)
         .single();
 
+      const labId = parseInt(id || '0');
       const currentCompleted = profile?.labs_completed || 0;
-      const xpGain = 500;
+      // Only advance — never go backwards (handles re-runs and NULL columns)
+      const newCompleted = Math.max(currentCompleted, labId);
+      const xpGain = labId > currentCompleted ? 500 : 0; // Only award XP for new completions
 
-      if (parseInt(id || '0') === currentCompleted + 1) {
-        await supabase.from('profiles').update({
-          labs_completed: currentCompleted + 1,
-          xp: (profile?.xp || 0) + xpGain,
-        }).eq('id', user.id);
+      await supabase.from('profiles').update({
+        labs_completed: newCompleted,
+        xp: (profile?.xp || 0) + xpGain,
+      }).eq('id', user.id);
 
+      if (xpGain > 0) {
         // Log today's activity for real-time graph
         const today = new Date().toISOString().split('T')[0];
         const { data: existing } = await supabase
@@ -172,7 +178,8 @@ export default function LabDetail() {
           });
         }
       }
-      navigate('/labs');
+    } catch (err) {
+      console.error('Error saving lab completion:', err);
     }
   };
 
