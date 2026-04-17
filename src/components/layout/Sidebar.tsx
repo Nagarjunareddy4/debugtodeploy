@@ -79,12 +79,30 @@ export default function Sidebar() {
   }, []);
 
   const fetchProfile = async (id: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', id)
-      .single();
-    if (data) setProfile(data);
+    // Get both the profile row AND auth metadata in parallel
+    const [{ data }, { data: { user } }] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', id).single(),
+      supabase.auth.getUser(),
+    ]);
+
+    // Auth Display name fallback
+    const authName =
+      user?.user_metadata?.full_name ||
+      user?.user_metadata?.name ||
+      user?.user_metadata?.display_name ||
+      '';
+
+    if (data) {
+      // Patch the DB if full_name is empty
+      if (!data.full_name && authName) {
+        await supabase.from('profiles').update({ full_name: authName }).eq('id', id);
+        data.full_name = authName;
+      }
+      setProfile(data);
+    } else if (user) {
+      // Fallback: build from auth metadata
+      setProfile({ full_name: authName, email: user.email, subscription_status: 'free' });
+    }
   };
 
   const handleLogout = async () => {

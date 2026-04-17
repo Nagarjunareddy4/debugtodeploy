@@ -60,6 +60,21 @@ export default function Dashboard() {
       if (profError) console.warn('Profile fetch error:', profError.message);
 
       if (prof) {
+        // ── Patch full_name from auth metadata if the profiles row is still empty ──
+        // Supabase Auth "Display name" lives in user.user_metadata.full_name / .name
+        const authName =
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          user.user_metadata?.display_name ||
+          '';
+        if (!prof.full_name && authName) {
+          await supabase.from('profiles')
+            .update({ full_name: authName, email: prof.email || user.email })
+            .eq('id', user.id);
+          prof.full_name = authName;      // patch local object immediately
+          prof.email = prof.email || user.email;
+        }
+
         // Try to update streak — wrapped so missing columns don't crash
         try {
           const today = new Date().toISOString().split('T')[0];
@@ -92,7 +107,9 @@ export default function Dashboard() {
         const next = completedCount < labsData.length ? labsData[completedCount] : null;
         setNextLab(next);
       } else {
-        // No profile yet — still show the UI with defaults
+        // No profile row yet — build minimal display from auth metadata
+        const authName = user.user_metadata?.full_name || user.user_metadata?.name || '';
+        setProfile({ full_name: authName, email: user.email, subscription_status: 'free' });
         setNextLab(labsData[0]);
       }
 
