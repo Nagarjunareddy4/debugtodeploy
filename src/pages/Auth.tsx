@@ -240,6 +240,10 @@ export default function Auth() {
         <p className="mt-4 text-center text-[10px] text-text-dim font-bold tracking-widest uppercase">
           {isLogin ? "Ready to deploy your career?" : "Welcome to the elite devops fleet."}
         </p>
+
+        <p className="mt-6 text-center text-[9px] text-text-dim/50 font-bold tracking-widest">
+          © {new Date().getFullYear()} Nagarjunareddy Annapureddy. All rights reserved.
+        </p>
       </motion.div>
     </div>
   );

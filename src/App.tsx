@@ -79,18 +79,25 @@ export default function App() {
         {session ? (
           <>
             <Sidebar />
-            <main className="flex-1 p-8 overflow-y-auto">
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/roadmap" element={<Roadmap />} />
-                <Route path="/labs" element={<LabList />} />
-                <Route path="/labs/:id" element={<LabDetail />} />
-                <Route path="/interviews" element={<MockInterviews />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="*" element={<Navigate to="/" />} />
-              </Routes>
-            </main>
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <main className="flex-1 p-8 overflow-y-auto">
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/roadmap" element={<Roadmap />} />
+                  <Route path="/labs" element={<LabList />} />
+                  <Route path="/labs/:id" element={<LabDetail />} />
+                  <Route path="/interviews" element={<MockInterviews />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="*" element={<Navigate to="/" />} />
+                </Routes>
+              </main>
+              <footer className="shrink-0 border-t border-border bg-surface/50 backdrop-blur-sm py-3 px-8">
+                <p className="text-center text-[9px] text-text-dim/50 font-bold tracking-widest">
+                  © {new Date().getFullYear()} Nagarjunareddy Annapureddy. All rights reserved.
+                </p>
+              </footer>
+            </div>
           </>
         ) : (
           <Routes>

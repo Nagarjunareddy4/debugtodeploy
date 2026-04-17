@@ -38,7 +38,7 @@ export default function Settings() {
     e.preventDefault();
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (user) {
       const { error } = await supabase
         .from('profiles')
@@ -82,7 +82,7 @@ export default function Settings() {
           <p className="text-text-dim font-bold uppercase tracking-widest text-xs">Profile & Preferences</p>
         </div>
         {success && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex items-center gap-2 bg-soft-green/10 text-soft-green px-4 py-2 rounded-full border-2 border-soft-green/20 text-xs font-black uppercase tracking-widest"
@@ -136,9 +136,9 @@ export default function Settings() {
                 <label className="text-[10px] font-black uppercase tracking-widest text-text-dim flex items-center gap-2">
                   <User className="w-3 h-3" /> Full Name
                 </label>
-                <input 
+                <input
                   value={profile.full_name || ''}
-                  onChange={(e) => setProfile({...profile, full_name: e.target.value})}
+                  onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
                   className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 font-bold outline-hidden focus:border-soft-blue transition-colors"
                 />
               </div>
@@ -146,9 +146,9 @@ export default function Settings() {
                 <label className="text-[10px] font-black uppercase tracking-widest text-text-dim flex items-center gap-2">
                   <AtSign className="w-3 h-3" /> Username
                 </label>
-                <input 
+                <input
                   value={profile.username || ''}
-                  onChange={(e) => setProfile({...profile, username: e.target.value})}
+                  onChange={(e) => setProfile({ ...profile, username: e.target.value })}
                   className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 font-mono font-bold outline-hidden focus:border-soft-green transition-colors"
                 />
               </div>
@@ -158,7 +158,7 @@ export default function Settings() {
               <label className="text-[10px] font-black uppercase tracking-widest text-text-dim flex items-center gap-2">
                 <Mail className="w-3 h-3" /> Email Address
               </label>
-              <input 
+              <input
                 readOnly
                 value={profile.email || ''}
                 className="w-full bg-brand-bg/50 border-2 border-border rounded-2xl px-6 py-4 font-bold text-text-dim cursor-not-allowed"
@@ -169,16 +169,16 @@ export default function Settings() {
               <label className="text-[10px] font-black uppercase tracking-widest text-text-dim flex items-center gap-2">
                 <Camera className="w-3 h-3" /> Avatar URL
               </label>
-              <input 
+              <input
                 value={profile.avatar_url || ''}
-                onChange={(e) => setProfile({...profile, avatar_url: e.target.value})}
+                onChange={(e) => setProfile({ ...profile, avatar_url: e.target.value })}
                 placeholder="https://example.com/photo.jpg"
                 className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 font-bold outline-hidden focus:border-soft-purple transition-colors"
               />
             </div>
 
             <div className="pt-6">
-              <button 
+              <button
                 disabled={loading}
                 className="btn-pill bg-text-main text-surface w-full py-5 text-lg flex items-center justify-center gap-3 shadow-2xl hover:scale-[1.01]"
               >
@@ -198,7 +198,7 @@ export default function Settings() {
                 <Key className="w-4 h-4 text-soft-orange" /> API Configuration
               </h3>
               {apiKeySaved && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className="flex items-center gap-1 text-soft-green text-xs font-black uppercase tracking-widest"
@@ -216,7 +216,7 @@ export default function Settings() {
                 <Key className="w-3 h-3" /> OpenAI API Key
               </label>
               <div className="relative">
-                <input 
+                <input
                   type={showApiKey ? 'text' : 'password'}
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
