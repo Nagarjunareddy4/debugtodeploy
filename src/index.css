@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-bg: light-dark(#F8F9FC, #0F172A);
+  --color-surface: light-dark(#FFFFFF, #1E293B);
+  --color-border: light-dark(#E2E8F0, #334155);
+  
+  --color-soft-blue: #93C5FD;
+  --color-soft-purple: #F0ABFC;
+  --color-soft-orange: #FB923C;
+  --color-soft-green: #86EFAC;
+  
+  --color-text-main: light-dark(#1E293B, #F8FAFC);
+  --color-text-dim: light-dark(#64748B, #94A3B8);
+  
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --radius-3xl: 2.5rem;
+}
+
+@layer base {
+  body {
+    @apply bg-brand-bg text-text-main antialiased transition-colors duration-300;
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .playful-card {
+    @apply bg-surface border border-border rounded-3xl p-6 shadow-sm hover:shadow-md transition-all duration-300;
+  }
+  
+  .btn-pill {
+    @apply px-6 py-3 rounded-full font-bold transition-all duration-200 
+           active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-accent {
+    @apply bg-text-main text-surface hover:opacity-90;
+  }
+
+  .nav-pill {
+    @apply flex items-center gap-3 px-5 py-3 rounded-full text-text-dim font-bold transition-all duration-200 cursor-pointer
+           hover:bg-soft-blue/10 hover:text-text-main;
+  }
+
+  .nav-pill-active {
+    @apply bg-text-main text-surface shadow-lg;
+  }
+
+  .chip {
+    @apply px-3 py-1 rounded-full text-[10px] uppercase font-black tracking-widest;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full;
+}
