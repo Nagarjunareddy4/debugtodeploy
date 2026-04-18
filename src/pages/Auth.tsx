@@ -147,9 +147,11 @@ export default function Auth() {
               <Rocket className="w-8 h-8 text-soft-blue" />
             </motion.div>
 
-            <h2 className="text-6xl font-black tracking-tighter italic mb-8 leading-[0.9]">
-              Deploy Your <br />
-              <span className="text-transparent bg-clip-text bg-linear-to-r from-soft-blue to-soft-purple">Future Self</span>.
+            <h2 className="text-6xl font-black tracking-tighter italic mb-8 leading-tight">
+              Deploy Your
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-soft-blue to-soft-purple mt-1">
+                Future Self.
+              </span>
             </h2>
             <p className="text-white/60 font-bold text-lg max-w-sm leading-relaxed mb-16">
               The only platform that combines <span className="text-white">AI-driven learning paths</span> with real-world cloud sandbox environments.
@@ -358,7 +360,7 @@ export default function Auth() {
         className="fixed bottom-6 text-center space-y-1 z-10 hidden md:block"
       >
         <p className="text-[8px] text-text-dim/30 font-bold tracking-[0.4em] uppercase">
-          SECURE TRANSIT ACTIVE · © {new Date().getFullYear()} Nagarjuna Reddy · DEBUGTODEPLOY V1.0
+          SECURE TRANSIT ACTIVE · © {new Date().getFullYear()} Nagarjuna Reddy Annapureddy · DEBUGTODEPLOY V1.0
         </p>
       </motion.div>
     </div>
