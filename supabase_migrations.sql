@@ -18,7 +18,8 @@ ALTER TABLE profiles
   ADD COLUMN IF NOT EXISTS avatar_url TEXT,
   ADD COLUMN IF NOT EXISTS generated_labs JSONB,
   ADD COLUMN IF NOT EXISTS generated_interviews JSONB,
-  ADD COLUMN IF NOT EXISTS generated_certificates JSONB,
+  ADD COLUMN IF NOT EXISTS generated_docs JSONB,
+  ADD COLUMN IF NOT EXISTS read_docs_ids JSONB DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS completed_roadmap_tasks JSONB DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS interview_scores JSONB DEFAULT '{}'::jsonb;
 

@@ -15,6 +15,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 import { GeneratedLab } from '../lib/generator';
+import { isLimitReached, incrementUsage, getLimitMessage } from '../lib/usageLimit';
 
 // Map string icon names from AI to actual lucide-react components
 const iconMap: Record<string, any> = {
@@ -31,6 +32,7 @@ export default function LabList() {
   const [completedLabsCount, setCompletedLabsCount] = useState(0);
   const [labsData, setLabsData] = useState<GeneratedLab[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isPro, setIsPro] = useState(false);
 
   useEffect(() => {
     fetchUserData();
@@ -39,9 +41,10 @@ export default function LabList() {
   const fetchUserData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data } = await supabase.from('profiles').select('labs_completed, generated_labs').eq('id', user.id).single();
+      const { data } = await supabase.from('profiles').select('labs_completed, generated_labs, subscription_status').eq('id', user.id).single();
       if (data) {
         setCompletedLabsCount(data.labs_completed || 0);
+        setIsPro(data.subscription_status === 'pro');
         if (data.generated_labs) {
           setLabsData(data.generated_labs);
         }
@@ -90,7 +93,15 @@ export default function LabList() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: index * 0.1 }}
-                onClick={() => !isLocked && navigate(`/labs/${lab.id}`)}
+                onClick={() => {
+                  if (isLocked) return;
+                  if (isLimitReached('lab', isPro)) {
+                    alert(getLimitMessage('lab'));
+                    return;
+                  }
+                  incrementUsage('lab');
+                  navigate(`/labs/${lab.id}`);
+                }}
                 className={cn(
                   "playful-card group border-none shadow-2xl relative transition-all",
                   isLocked ? "bg-brand-bg opacity-40 grayscale cursor-not-allowed" : "bg-surface cursor-pointer hover:scale-[1.03]",

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Award, Cloud, ShieldCheck, Zap, Terminal, ExternalLink, Loader2, Sparkles, AlertCircle } from 'lucide-react';
+import { Award, Cloud, ShieldCheck, Zap, Terminal, ExternalLink, Loader2, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { generateUserCertificates, GeneratedCertificate } from '../lib/generator';
 import { cn } from '../lib/utils';
+import { isLimitReached, incrementUsage, getLimitMessage } from '../lib/usageLimit';
 
 const iconMap: Record<string, any> = {
   Cloud,
@@ -47,6 +48,14 @@ export default function Certificates() {
   }, []);
 
   const generateCertificates = async (userId: string, roadmapData: any) => {
+    // Check limits
+    const { data: prof } = await supabase.from('profiles').select('subscription_status').eq('id', userId).single();
+    if (isLimitReached('certificates', prof?.subscription_status === 'pro')) {
+      alert(getLimitMessage('certificates'));
+      setLoading(false);
+      return;
+    }
+
     setGenerating(true);
     try {
       const apiKey = (window as any).OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
@@ -70,6 +79,7 @@ export default function Certificates() {
       const generated = await generateUserCertificates(apiKey, userId, roadmapGoal, experienceLevel);
       if (generated) {
         setCertificates(generated);
+        incrementUsage('certificates');
       } else {
         throw new Error("Failed to generate certificates.");
       }
@@ -196,23 +206,4 @@ export default function Certificates() {
   );
 }
 
-// Temporary polyfill if RefreshCw is not imported at top
-function RefreshCw(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-      <path d="M3 3v5h5" />
-    </svg>
-  );
-}
+

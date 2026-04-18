@@ -6,6 +6,8 @@ const FREE_LIMITS: Record<string, number> = {
   search: 2,    // 2 AI searches per day
   lab: 3,       // 3 labs per day
   interview: 2, // 2 interviews per day
+  docs: 1,      // 1 learning path generation per day
+  certificates: 1, // 1 certificate recommendation per day
 };
 
 function todayKey(action: string): string {
@@ -39,10 +41,12 @@ export function getRemainingUsage(action: string, isPro: boolean): number {
 export function getLimitMessage(action: string): string {
   const limit = FREE_LIMITS[action];
   const messages: Record<string, string> = {
-    roadmap: `Free plan allows ${limit} roadmap generation per day. Upgrade to Pro for unlimited access.`,
-    search: `Free plan allows ${limit} AI searches per day. Upgrade to Pro for unlimited access.`,
-    lab: `Free plan allows ${limit} labs per day. Upgrade to Pro for unlimited access.`,
-    interview: `Free plan allows ${limit} mock interviews per day. Upgrade to Pro for unlimited access.`,
+    roadmap: `Daily limit of ${limit} roadmap generation reached for Beta.`,
+    search: `Daily limit of ${limit} AI searches reached for Beta.`,
+    lab: `Daily limit of ${limit} labs reached for Beta.`,
+    interview: `Daily limit of ${limit} mock interviews reached for Beta.`,
+    docs: `Daily limit of ${limit} AI learning path generation reached for Beta.`,
+    certificates: `Daily limit of ${limit} certificate recommendations reached for Beta.`,
   };
-  return messages[action] || 'Daily limit reached. Please upgrade to Pro.';
+  return messages[action] || 'Daily limit reached.';
 }

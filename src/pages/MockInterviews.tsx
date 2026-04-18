@@ -379,144 +379,127 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
             {/* VIDEO MODE */}
             {mode === 'video' && (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="playful-card p-0 border-none bg-text-main shadow-2xl overflow-hidden"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="playful-card min-h-[500px] sm:min-h-[600px] flex flex-col p-0 border-none bg-surface shadow-2xl relative overflow-hidden"
               >
-                {/* Main video area */}
-                <div className="relative bg-black rounded-t-[2rem] overflow-hidden" style={{ aspectRatio: '16/9', maxHeight: '420px' }}>
-                  {/* Interviewer placeholder */}
-                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
+                {/* Main Video Area */}
+                <div className="relative flex-1 bg-gray-900 overflow-hidden flex flex-col">
+                  {/* AI Interviewer Placeholder / Stream */}
+                  <div className="flex-1 flex items-center justify-center relative">
                     <div className="text-center space-y-4">
-                      <div className="w-24 h-24 rounded-full bg-soft-blue/20 flex items-center justify-center mx-auto border-4 border-soft-blue/30">
-                        <Brain className="w-12 h-12 text-soft-blue" />
+                      <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto border-2 border-white/10">
+                        <User className="w-10 h-10 text-white/20" />
                       </div>
-                      <p className="text-white/60 font-black text-xs uppercase tracking-widest">AI Interviewer</p>
+                      <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Interviewer Stream</p>
                     </div>
                   </div>
 
-                  {/* Question overlay */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-                    <p className="text-white font-bold text-sm leading-relaxed">
+                  {/* Question Overlay - Bottom of video area */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6 pt-12">
+                    <p className="text-white font-bold text-sm sm:text-lg leading-relaxed max-w-3xl mx-auto text-center">
                       "{selectedScenario?.questions?.[currentQuestion]}"
                     </p>
                   </div>
 
-                  {/* User camera (picture-in-picture) */}
-                  <div className="absolute top-4 right-4 w-36 h-24 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl bg-gray-900">
-                    {videoActive ? (
-                      <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        {profile?.avatar_url ? (
-                          <img src={profile.avatar_url} alt="You" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="flex flex-col items-center gap-1">
-                            <User className="w-8 h-8 text-white/40" />
-                            <span className="text-[9px] text-white/40 font-black uppercase">You</span>
+                  {/* Top Overlays */}
+                  <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start pointer-events-none">
+                    {/* Live Score Overlay */}
+                    <div className="bg-black/60 backdrop-blur-md rounded-2xl p-3 sm:p-4 min-w-[120px] sm:min-w-[160px] pointer-events-auto">
+                      <p className="text-white/60 text-[8px] sm:text-[9px] font-black uppercase tracking-widest mb-2 sm:mb-3">Live Score</p>
+                      {[
+                        { label: 'Presentation', val: 72, color: '#f97316' },
+                        { label: 'Clarity', val: 65, color: '#22d3ee' },
+                        { label: 'Confidence', val: 80, color: '#4ade80' },
+                      ].map(item => (
+                        <div key={item.label} className="mb-1.5 sm:mb-2">
+                          <div className="flex justify-between text-[8px] sm:text-[9px] font-black text-white/70 mb-0.5">
+                            <span className="hidden sm:inline">{item.label}</span>
+                            <span className="sm:hidden">{item.label.charAt(0)}</span>
+                            <span>{item.val}%</span>
                           </div>
-                        )}
-                      </div>
-                    )}
-                    {!micActive && callActive && (
-                      <div className="absolute bottom-1 left-1 bg-red-500 rounded-full p-0.5">
-                        <MicOff className="w-2.5 h-2.5 text-white" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Work Score overlay - left side */}
-                  <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm rounded-2xl p-4 min-w-[160px]">
-                    <p className="text-white/60 text-[9px] font-black uppercase tracking-widest mb-3">Live Score</p>
-                    {[
-                      { label: 'Presentation', val: 72, color: '#f97316' },
-                      { label: 'Clarity', val: 65, color: '#22d3ee' },
-                      { label: 'Confidence', val: 80, color: '#4ade80' },
-                    ].map(item => (
-                      <div key={item.label} className="mb-2">
-                        <div className="flex justify-between text-[9px] font-black text-white/70 mb-1">
-                          <span>{item.label}</span><span>{item.val}%</span>
-                        </div>
-                        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${item.val}%`, background: item.color }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Question List overlay - right side */}
-                  <div className="absolute top-4 right-48 bg-black/60 backdrop-blur-sm rounded-2xl p-4 max-w-[200px] hidden lg:block">
-                    <p className="text-white/60 text-[9px] font-black uppercase tracking-widest mb-3">Questions</p>
-                    <div className="space-y-2">
-                      {selectedScenario?.questions?.slice(0, 4).map((q: string, idx: number) => (
-                        <div key={idx} className={cn(
-                          "text-[9px] font-bold flex items-start gap-2 cursor-pointer",
-                          idx === currentQuestion ? "text-soft-blue" : 
-                          completedQuestions.has(idx) ? "text-soft-green" : "text-white/40"
-                        )} onClick={() => { setCurrentQuestion(idx); setAiResponse(''); setUserAnswer(''); }}>
-                          <span className={cn(
-                            "w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center text-[8px] font-black",
-                            idx === currentQuestion ? "bg-soft-blue text-white" :
-                            completedQuestions.has(idx) ? "bg-soft-green text-white" : "bg-white/10 text-white/40"
-                          )}>{completedQuestions.has(idx) ? '✓' : idx + 1}</span>
-                          <span className="line-clamp-2 leading-tight">{q.substring(0, 40)}...</span>
+                          <div className="h-1 sm:h-1.5 bg-white/10 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${item.val}%`, background: item.color }} />
+                          </div>
                         </div>
                       ))}
+                    </div>
+
+                    {/* User camera / PIP */}
+                    <div className="w-28 h-20 sm:w-36 sm:h-24 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl bg-gray-950 pointer-events-auto relative">
+                      {videoActive ? (
+                        <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          {profile?.avatar_url ? (
+                            <img src={`${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}`} alt="You" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="flex flex-col items-center gap-1">
+                              <User className="w-6 h-6 sm:w-8 sm:h-8 text-white/40" />
+                              <span className="text-[8px] text-white/40 font-black uppercase">You</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {!micActive && callActive && (
+                        <div className="absolute bottom-1 left-1 bg-red-500 rounded-full p-0.5">
+                          <MicOff className="w-2.5 h-2.5 text-white" />
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   {/* Recording badge */}
                   {callActive && (
-                    <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-                      <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                      <span className="text-white text-[10px] font-black uppercase">Recording</span>
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-1 rounded-full">
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                      <span className="text-white text-[8px] sm:text-[10px] font-black uppercase">Live</span>
                     </div>
                   )}
                 </div>
 
                 {/* Video Controls bar */}
-                <div className="p-6 flex items-center justify-between bg-text-main rounded-b-[2rem]">
-                  {/* Left: reaction / note icons */}
-                  <div className="flex items-center gap-3">
+                <div className="p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-text-main rounded-b-[2rem]">
+                  {/* Reaction icons (hidden on small mobile) */}
+                  <div className="hidden sm:flex items-center gap-3">
                     <button className="w-10 h-10 bg-white/10 text-white rounded-full flex items-center justify-center hover:bg-white/20 transition-all text-sm">💬</button>
                     <button className="w-10 h-10 bg-white/10 text-white rounded-full flex items-center justify-center hover:bg-white/20 transition-all text-sm">❤️</button>
-                    <button className="w-10 h-10 bg-white/10 text-white rounded-full flex items-center justify-center hover:bg-white/20 transition-all text-sm">⭐</button>
                   </div>
 
                   {/* Center: main controls */}
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 sm:gap-6">
                     <button
                       onClick={toggleVideo}
                       className={cn(
-                        "w-12 h-12 rounded-full flex items-center justify-center transition-all",
+                        "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all",
                         videoActive ? "bg-white/20 text-white hover:bg-white/30" : "bg-white/10 text-white/40 hover:bg-white/20"
                       )}
                     >
-                      {videoActive ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+                      {videoActive ? <Video className="w-4 h-4 sm:w-5 sm:h-5" /> : <VideoOff className="w-4 h-4 sm:w-5 sm:h-5" />}
                     </button>
                     <button
                       onClick={toggleMic}
                       className={cn(
-                        "w-12 h-12 rounded-full flex items-center justify-center transition-all",
+                        "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all",
                         micActive ? "bg-white/20 text-white hover:bg-white/30" : "bg-white/10 text-white/40 hover:bg-white/20"
                       )}
                     >
-                      {micActive ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+                      {micActive ? <Mic className="w-4 h-4 sm:w-5 sm:h-5" /> : <MicOff className="w-4 h-4 sm:w-5 sm:h-5" />}
                     </button>
 
                     {!callActive ? (
                       <button
                         onClick={startVideoCall}
-                        className="w-16 h-16 bg-soft-green rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all"
+                        className="w-14 h-14 sm:w-16 sm:h-16 bg-soft-green rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all"
                       >
-                        <Phone className="w-7 h-7 text-white" />
+                        <Phone className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
                       </button>
                     ) : (
                       <button
                         onClick={stopVideoCall}
-                        className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all"
+                        className="w-14 h-14 sm:w-16 sm:h-16 bg-red-500 rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all"
                       >
-                        <PhoneOff className="w-7 h-7 text-white" />
+                        <PhoneOff className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
                       </button>
                     )}
                   </div>
@@ -526,15 +509,15 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
                     {!isLastQuestion && (
                       <button
                         onClick={goToNextQuestion}
-                        className="flex items-center gap-2 bg-white/10 text-white px-4 py-2 rounded-full font-black text-xs uppercase tracking-widest hover:bg-white/20 transition-all"
+                        className="flex items-center gap-2 bg-white/10 text-white px-4 py-2 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest hover:bg-white/20 transition-all"
                       >
-                        Next Q <SkipForward className="w-4 h-4" />
+                        <span className="hidden sm:inline">Next Q</span> <SkipForward className="w-4 h-4" />
                       </button>
                     )}
                     {isLastQuestion && (
                       <button
                         onClick={finishInterview}
-                        className="flex items-center gap-2 bg-soft-green/80 text-white px-4 py-2 rounded-full font-black text-xs uppercase tracking-widest hover:bg-soft-green transition-all"
+                        className="flex items-center gap-2 bg-soft-green/80 text-white px-4 py-2 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest hover:bg-soft-green transition-all"
                       >
                         Done <CheckCircle2 className="w-4 h-4" />
                       </button>

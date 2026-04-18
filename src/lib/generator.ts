@@ -38,9 +38,75 @@ export interface GeneratedCertificate {
   color: string;
 }
 
+export interface GeneratedDoc {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+  category: string;
+  icon: string;
+  color: string;
+}
+
 export interface Curriculum {
   labs: GeneratedLab[];
   interviews: GeneratedInterview[];
+}
+
+export async function generateUserDocs(apiKey: string, userId: string, roadmapGoal: string): Promise<GeneratedDoc[] | null> {
+  try {
+    const prompt = `Based on the user's career goal of "${roadmapGoal}", provide exactly 6 essential official documentation links or deep-dive learning resources (like Kubernetes Docs, Terraform Registry, AWS Whitepapers, etc.).
+Return ONLY a JSON object with a key "docs" containing an array.
+
+For each resource, provide:
+- "id": a unique string
+- "title": string (e.g. "Kubernetes Network Policies")
+- "description": string (short 1-sentence summary of what they will learn)
+- "url": string (the exact official website URL)
+- "category": string (e.g. "Networking", "Security", "IaC")
+- "icon": string (choose from: "Book", "Link", "Globe", "FileText", "Compass")
+- "color": string (choose from: "soft-blue", "soft-green", "soft-purple", "soft-orange", "soft-red")`;
+
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Authorization': `Bearer ${apiKey}` 
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You are a technical documentation curator. Output only strict JSON matching the requested structure.' },
+          { role: 'user', content: prompt },
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 2000,
+        temperature: 0.7,
+      }),
+    });
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    
+    const content = data.choices[0].message.content;
+    const result = JSON.parse(content);
+    const docs: GeneratedDoc[] = result.docs;
+
+    // Save to supabase
+    const { error } = await supabase.from('profiles').update({
+      generated_docs: docs
+    }).eq('id', userId);
+
+    if (error) {
+      console.error('Failed to save generated docs:', error);
+      throw new Error(error.message);
+    }
+
+    return docs;
+  } catch (error) {
+    console.error('Error generating docs:', error);
+    return null;
+  }
 }
 
 export async function generateUserCurriculum(apiKey: string, userId: string): Promise<Curriculum | null> {
