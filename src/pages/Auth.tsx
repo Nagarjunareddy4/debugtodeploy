@@ -131,7 +131,7 @@ export default function Auth() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 w-full max-w-[calc(100vw-2rem)] xl:max-w-[90rem] min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-8 lg:gap-0 bg-surface/40 backdrop-blur-2xl border-2 border-white/5 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)] rounded-[2rem] sm:rounded-[3rem] overflow-auto my-4 md:my-8"
+        className="relative z-10 w-full max-w-[calc(100vw-2rem)] xl:max-w-[70rem] min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-8 lg:gap-0 bg-white/90 dark:bg-[#0D172A]/70 backdrop-blur-2xl border border-slate-200/60 dark:border-white/10 shadow-[0_32px_128px_-16px_rgba(15,23,42,0.22)] rounded-[2rem] sm:rounded-[3rem] overflow-auto my-4 md:my-8"
       >
         {/* Left Side: Branding & Features (Hidden on mobile or integrated) */}
         <div className="hidden lg:flex flex-col justify-between p-16 bg-[#0B0F1A] text-white relative overflow-hidden">
