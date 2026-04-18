@@ -18,7 +18,8 @@ import {
   Sun,
   Moon,
   Monitor,
-  Award
+  Award,
+  Book
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
@@ -63,9 +64,9 @@ const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: Map, label: 'AI Roadmap', path: '/roadmap' },
   { icon: Terminal, label: 'Cloud Labs', path: '/labs' },
+  { icon: Book, label: 'Learning', path: '/learning' },
   { icon: MessageSquare, label: 'Interviews', path: '/interviews' },
   { icon: Award, label: 'Certificates', path: '/certificates' },
-  { icon: CreditCard, label: 'Pro Access', path: '/pricing' },
 ];
 
 export default function Sidebar() {
@@ -78,6 +79,16 @@ export default function Sidebar() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) fetchProfile(session.user.id);
     });
+
+    // Real-time subscription to profile changes
+    const channel = supabase
+      .channel('sidebar-profile')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload) => {
+        if (payload.new) setProfile(payload.new);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const fetchProfile = async (id: string) => {
@@ -189,7 +200,7 @@ export default function Sidebar() {
               <div className="flex items-center gap-4">
                 {profile.avatar_url ? (
                   <img 
-                    src={profile.avatar_url} 
+                    src={`${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}`} 
                     alt="Profile" 
                     className="w-14 h-14 rounded-full object-cover border-2 border-soft-blue" 
                     referrerPolicy="no-referrer" 
@@ -243,7 +254,7 @@ export default function Sidebar() {
           >
             {profile?.avatar_url ? (
               <img 
-                src={profile.avatar_url} 
+                src={`${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}`} 
                 alt="Profile" 
                 className="w-7 h-7 rounded-full object-cover border-2 border-surface shadow-sm" 
                 referrerPolicy="no-referrer" 

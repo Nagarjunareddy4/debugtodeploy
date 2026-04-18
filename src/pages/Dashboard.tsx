@@ -179,7 +179,10 @@ export default function Dashboard() {
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [
-            { role: 'system', content: 'You are a DevOps expert. Answer queries concisely and practically.' },
+            { 
+              role: 'system', 
+              content: 'You are a strict DevOps and SRE expert. ONLY answer queries related to Cloud, DevOps, SRE, Infrastructure, CI/CD, and related technologies. If the user asks something unrelated, politely inform them that you are a DevOps assistant.' 
+            },
             { role: 'user', content: searchQuery }
           ],
           max_tokens: 400,
@@ -204,6 +207,7 @@ export default function Dashboard() {
       alert(getLimitMessage('lab'));
       return;
     }
+    incrementUsage('lab');
     if (nextLab) {
       // If it's a dynamic lab, its ID might be a string (e.g., 'lab-0')
       navigate(`/labs/${nextLab.id}`);
@@ -239,13 +243,18 @@ export default function Dashboard() {
   const firstName = displayName.split(' ')[0];
   const isPro = profile?.subscription_status === 'pro';
   const searchesLeft = getRemainingUsage('search', isPro);
+  const isNewUser = !profile?.roadmap_data || profile.roadmap_data === '{}' || profile.roadmap_data === '{"stages":[]}';
 
   return (
     <div className="max-w-7xl mx-auto space-y-12 pb-24">
       <div className="flex flex-col lg:flex-row gap-8 items-start justify-between">
         <header className="space-y-2">
           <h2 className="text-5xl font-black tracking-tighter">
-            Glad you're back, <span className="text-soft-blue">{firstName}</span>!
+            {isNewUser ? (
+              <>Welcome, <span className="text-soft-blue">{displayName}</span>!</>
+            ) : (
+              <>Glad you're back, <span className="text-soft-blue">{firstName}</span>!</>
+            )}
           </h2>
           <p className="text-text-dim font-bold uppercase tracking-widest text-xs flex items-center gap-2">
             <Star className="w-4 h-4 text-soft-orange fill-soft-orange" /> Profile readiness: {profile?.readiness_score || 0}%

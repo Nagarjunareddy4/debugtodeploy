@@ -13,6 +13,7 @@ import Auth from './pages/Auth';
 import Pricing from './pages/Pricing';
 import Settings from './pages/Settings';
 import Certificates from './pages/Certificates';
+import Learning from './pages/Learning';
 import { supabase } from './lib/supabase';
 import { generateUserCurriculum } from './lib/generator';
 
@@ -156,7 +157,7 @@ export default function App() {
 
   return (
     <Router>
-      <div className="flex h-screen overflow-hidden">
+      <div className="flex min-h-screen">
         {session ? (
           <>
             <Sidebar />
@@ -169,6 +170,7 @@ export default function App() {
                   <Route path="/labs/:id" element={<LabDetail />} />
                   <Route path="/interviews" element={<MockInterviews />} />
                   <Route path="/certificates" element={<Certificates />} />
+                  <Route path="/learning" element={<Learning />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="*" element={<Navigate to="/" />} />
