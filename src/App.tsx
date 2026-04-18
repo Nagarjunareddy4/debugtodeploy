@@ -157,7 +157,7 @@ export default function App() {
 
   return (
     <Router>
-      <div className="flex h-screen overflow-hidden">
+      <div className="flex min-h-screen">
         {session ? (
           <>
             <Sidebar />

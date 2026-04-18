@@ -104,26 +104,26 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-brand-bg relative overflow-y-auto overflow-x-hidden p-4 sm:p-8">
+    <div className="min-h-screen w-full flex items-start justify-center bg-brand-bg relative overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8 py-10">
       {/* Premium Ambient Background */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <motion.div 
-          animate={{ 
+        <motion.div
+          animate={{
             scale: [1, 1.2, 1],
             x: [0, 50, 0],
             y: [0, 30, 0]
           }}
           transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-soft-blue/10 rounded-full blur-[120px]" 
+          className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-soft-blue/10 rounded-full blur-[120px]"
         />
-        <motion.div 
-          animate={{ 
+        <motion.div
+          animate={{
             scale: [1, 1.3, 1],
             x: [0, -40, 0],
             y: [0, -50, 0]
           }}
           transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-          className="absolute -bottom-[10%] -right-[10%] w-[60%] h-[60%] bg-soft-purple/10 rounded-full blur-[120px]" 
+          className="absolute -bottom-[10%] -right-[10%] w-[60%] h-[60%] bg-soft-purple/10 rounded-full blur-[120px]"
         />
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.03]" />
       </div>
@@ -131,14 +131,14 @@ export default function Auth() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-0 bg-surface/40 backdrop-blur-2xl border-2 border-white/5 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)] rounded-[3rem] overflow-hidden"
+        className="relative z-10 w-full max-w-[calc(100vw-2rem)] xl:max-w-[90rem] min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-8 lg:gap-0 bg-surface/40 backdrop-blur-2xl border-2 border-white/5 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)] rounded-[2rem] sm:rounded-[3rem] overflow-auto my-4 md:my-8"
       >
         {/* Left Side: Branding & Features (Hidden on mobile or integrated) */}
         <div className="hidden lg:flex flex-col justify-between p-16 bg-[#0B0F1A] text-white relative overflow-hidden">
           {/* Decorative elements for left panel */}
           <div className="absolute top-0 right-0 w-80 h-80 bg-soft-blue/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
           <div className="absolute bottom-0 left-0 w-80 h-80 bg-soft-purple/20 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
-          
+
           <div className="relative z-10">
             <motion.div
               whileHover={{ rotate: 10, scale: 1.1 }}
@@ -146,7 +146,7 @@ export default function Auth() {
             >
               <Rocket className="w-8 h-8 text-soft-blue" />
             </motion.div>
-            
+
             <h2 className="text-6xl font-black tracking-tighter italic mb-8 leading-[0.9]">
               Deploy Your <br />
               <span className="text-transparent bg-clip-text bg-linear-to-r from-soft-blue to-soft-purple">Future Self</span>.
@@ -162,7 +162,7 @@ export default function Auth() {
                 { icon: ShieldCheck, text: "Automated Mock Interviews", color: "text-soft-green", bg: "bg-soft-green/10" },
                 { icon: Sparkles, text: "Real-time Skill Readiness Scoring", color: "text-soft-purple", bg: "bg-soft-purple/10" }
               ].map((feature, i) => (
-                <motion.div 
+                <motion.div
                   key={i}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -179,30 +179,30 @@ export default function Auth() {
           </div>
 
           <div className="relative z-10 pt-12 border-t border-white/5">
-             <div className="flex items-center gap-4">
-                <div className="flex -space-x-3">
-                   {[1,2,3,4].map(i => (
-                     <div key={i} className="w-8 h-8 rounded-full border-2 border-[#0B0F1A] bg-gray-800 flex items-center justify-center text-[8px] font-black">
-                        U{i}
-                     </div>
-                   ))}
-                </div>
-                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">
-                  Join 5,000+ DevOps Engineers
-                </p>
-             </div>
+            <div className="flex items-center gap-4">
+              <div className="flex -space-x-3">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="w-8 h-8 rounded-full border-2 border-[#0B0F1A] bg-gray-800 flex items-center justify-center text-[8px] font-black">
+                    U{i}
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">
+                Join 5,000+ DevOps Engineers
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Right Side: Auth Form */}
-        <div className="p-8 sm:p-12 lg:p-16 flex flex-col justify-center">
+        <div className="p-6 sm:p-10 lg:p-16 flex flex-col justify-center">
           {/* Mobile Logo Only */}
-          <div className="lg:hidden flex flex-col items-center mb-8">
-            <Rocket className="w-12 h-12 text-soft-blue mb-4" />
-            <h1 className="text-3xl font-black tracking-tighter italic">DebugToDeploy</h1>
+          <div className="lg:hidden flex flex-col items-center mb-6">
+            <Rocket className="w-10 h-10 text-soft-blue mb-3" />
+            <h1 className="text-2xl font-black tracking-tighter italic">DebugToDeploy</h1>
           </div>
 
-          <div className="mb-10 text-center lg:text-left">
+          <div className="mb-8 text-center lg:text-left">
             <h2 className="text-3xl font-black tracking-tight mb-2">
               {isLogin ? "Welcome Back" : "Start Journey"}
             </h2>
@@ -212,7 +212,7 @@ export default function Auth() {
           </div>
 
           {/* Social Logins */}
-          <div className="grid grid-cols-2 gap-4 mb-10">
+          <div className="grid grid-cols-2 gap-4 mb-8">
             <motion.button
               whileHover={{ y: -4, backgroundColor: "rgba(255,255,255,0.05)" }}
               whileTap={{ scale: 0.98 }}
@@ -233,7 +233,7 @@ export default function Auth() {
             </motion.button>
           </div>
 
-          <div className="relative mb-10">
+          <div className="relative mb-8">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t-2 border-white/5"></div>
             </div>
@@ -305,7 +305,7 @@ export default function Auth() {
             </div>
 
             {error && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 className="flex items-center gap-3 p-5 bg-soft-red/10 border-2 border-soft-red/20 rounded-[2rem] text-soft-red font-bold text-xs"
@@ -333,7 +333,7 @@ export default function Auth() {
           </form>
 
           {/* Footer Toggle */}
-          <div className="mt-10 pt-8 border-t border-white/5 text-center lg:text-left space-y-4">
+          <div className="mt-8 pt-6 border-t border-white/5 text-center lg:text-left space-y-4">
             <p className="text-xs font-bold">
               <span className="text-text-dim">
                 {isLogin ? "New to the fleet?" : "Already an architect?"}
@@ -351,7 +351,7 @@ export default function Auth() {
       </motion.div>
 
       {/* Bottom Credits */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
@@ -364,5 +364,3 @@ export default function Auth() {
     </div>
   );
 }
-
-
