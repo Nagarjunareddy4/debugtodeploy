@@ -4,6 +4,7 @@ import { Compass, Sparkles, CheckCircle2, Loader2, ChevronRight, Zap, Target, Bo
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
+import { updateReadinessScore } from '../lib/readiness';
 
 interface RoadmapStage {
   id: string;
@@ -27,6 +28,7 @@ export default function Roadmap() {
   const [showUpdateConfirm, setShowUpdateConfirm] = useState(false);
   const [hasExistingRoadmap, setHasExistingRoadmap] = useState(false);
   const [limitError, setLimitError] = useState<string | null>(null);
+  const [completedTasks, setCompletedTasks] = useState<string[]>([]);
 
   useEffect(() => {
     const init = async () => {
@@ -43,6 +45,9 @@ export default function Roadmap() {
               setHasExistingRoadmap(true);
             }
           } catch (_) { }
+        }
+        if (prof.completed_roadmap_tasks) {
+          setCompletedTasks(prof.completed_roadmap_tasks);
         }
       }
     };
@@ -134,6 +139,23 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
     }
   };
 
+  const toggleTask = async (stageId: string, taskIdx: number) => {
+    const taskId = `${stageId}-task-${taskIdx}`;
+    let newCompleted: string[];
+    if (completedTasks.includes(taskId)) {
+      newCompleted = completedTasks.filter(id => id !== taskId);
+    } else {
+      newCompleted = [...completedTasks, taskId];
+    }
+    setCompletedTasks(newCompleted);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('profiles').update({ completed_roadmap_tasks: newCompleted }).eq('id', user.id);
+      await updateReadinessScore(user.id);
+    }
+  };
+
   const remaining = getRemainingUsage('roadmap', isPro);
 
   return (
@@ -195,7 +217,7 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
         </div>
       )}
 
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         {/* Config panel — always visible so user can change params */}
         <motion.div
           key="config"
@@ -268,7 +290,7 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
           </button>
         </motion.div>
 
-        {/* Roadmap display */}
+        {/* Roadmap display — always shown when data exists */}
         {roadmap && (
           <motion.div
             key="roadmap"
@@ -310,12 +332,23 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
                     <p className="text-text-dim font-bold leading-relaxed">{stage.description}</p>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                      {stage.tasks.map((task, tidx) => (
-                        <div key={tidx} className="flex items-center gap-4 p-5 rounded-[1.5rem] bg-brand-bg/50 border-2 border-border/30 text-xs font-black uppercase tracking-tight group/item hover:border-soft-blue transition-colors">
-                          <CheckCircle2 className="w-5 h-5 text-soft-green opacity-50 group-hover/item:opacity-100 transition-opacity" />
-                          <span className="group-hover/item:text-soft-blue transition-colors">{task}</span>
-                        </div>
-                      ))}
+                      {stage.tasks.map((task, tidx) => {
+                        const taskId = `${stage.id}-task-${tidx}`;
+                        const isCompleted = completedTasks.includes(taskId);
+                        return (
+                          <div 
+                            key={tidx} 
+                            onClick={() => toggleTask(stage.id, tidx)}
+                            className={cn(
+                              "flex items-center gap-4 p-5 rounded-[1.5rem] bg-brand-bg/50 border-2 border-border/30 text-xs font-black uppercase tracking-tight group/item hover:border-soft-blue transition-colors cursor-pointer",
+                              isCompleted && "border-soft-green bg-soft-green/5"
+                            )}
+                          >
+                            <CheckCircle2 className={cn("w-5 h-5 transition-opacity", isCompleted ? "text-soft-green opacity-100" : "text-soft-green opacity-50 group-hover/item:opacity-100")} />
+                            <span className={cn("transition-colors", isCompleted ? "text-soft-green" : "group-hover/item:text-soft-blue")}>{task}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </motion.div>

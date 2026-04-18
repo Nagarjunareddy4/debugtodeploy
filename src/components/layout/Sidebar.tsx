@@ -17,7 +17,8 @@ import {
   Trophy,
   Sun,
   Moon,
-  Monitor
+  Monitor,
+  Award
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
@@ -63,6 +64,7 @@ const navItems = [
   { icon: Map, label: 'AI Roadmap', path: '/roadmap' },
   { icon: Terminal, label: 'Cloud Labs', path: '/labs' },
   { icon: MessageSquare, label: 'Interviews', path: '/interviews' },
+  { icon: Award, label: 'Certificates', path: '/certificates' },
   { icon: CreditCard, label: 'Pro Access', path: '/pricing' },
 ];
 

@@ -14,66 +14,28 @@ import {
   CheckCircle2,
   Phone,
   PhoneOff,
-  User
+  User,
+  Cloud
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { isLimitReached, incrementUsage, getLimitMessage } from '../lib/usageLimit';
+import { GeneratedInterview } from '../lib/generator';
+import { updateReadinessScore } from '../lib/readiness';
 
-const interviewScenarios = [
-  {
-    id: '1',
-    title: 'Kubernetes Networking & Core',
-    level: 'Hard',
-    questions: [
-      'Explain the difference between a ReplicaSet and a Deployment in Kubernetes. When would you use one over the other?',
-      'How does Kubernetes networking work? Explain the CNI plugin model.',
-      'What is a Service in Kubernetes and what are the different Service types?',
-      'Explain how Kubernetes handles pod scheduling and what factors influence it.',
-      'What is etcd and what role does it play in a Kubernetes cluster?',
-      'How would you debug a pod stuck in CrashLoopBackOff?',
-    ],
-    duration: '25m',
-    icon: Zap,
-    color: 'soft-blue',
-  },
-  {
-    id: '2',
-    title: 'Terraform & Infrastructure as Code',
-    level: 'Medium',
-    questions: [
-      'What is Terraform state and why is it important?',
-      'Explain the difference between terraform plan and terraform apply.',
-      'How do you manage secrets in Terraform?',
-      'What are Terraform modules and when would you use them?',
-      'How do you handle Terraform state in a team environment?',
-    ],
-    duration: '15m',
-    icon: Brain,
-    color: 'soft-purple',
-  },
-  {
-    id: '3',
-    title: 'CI/CD & GitHub Actions',
-    level: 'Easy',
-    questions: [
-      'What is the difference between continuous integration and continuous deployment?',
-      'How would you structure a GitHub Actions workflow for a Node.js app?',
-      'How do you handle secrets in GitHub Actions?',
-      'What are self-hosted runners and when would you use them?',
-      'How do you implement rollback in a CI/CD pipeline?',
-    ],
-    duration: '10m',
-    icon: Sparkles,
-    color: 'soft-green',
-  },
-];
+// Map string icon names from AI to actual lucide-react components
+const iconMap: Record<string, any> = {
+  'Zap': Zap,
+  'Brain': Brain,
+  'Sparkles': Sparkles,
+  'Cloud': Cloud,
+};
 
 type InterviewMode = 'text' | 'audio' | 'video';
 
 export default function MockInterviews() {
   const [activeTab, setActiveTab] = useState<'browse' | 'session' | 'evaluation'>('browse');
-  const [selectedScenario, setSelectedScenario] = useState<any>(null);
+  const [selectedScenario, setSelectedScenario] = useState<GeneratedInterview | null>(null);
   const [mode, setMode] = useState<InterviewMode>('text');
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [history, setHistory] = useState<Array<{q: string, a: string, f: string, score: number}>>([]);
@@ -84,8 +46,13 @@ export default function MockInterviews() {
   const [aiResponse, setAiResponse] = useState('');
   const [isLoadingResponse, setIsLoadingResponse] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
+  
   const [profile, setProfile] = useState<any>(null);
   const [isPro, setIsPro] = useState(false);
+  const [interviewScenarios, setInterviewScenarios] = useState<GeneratedInterview[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [interviewScores, setInterviewScores] = useState<Record<string, number>>({});
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -96,8 +63,17 @@ export default function MockInterviews() {
           if (data) {
             setProfile(data);
             setIsPro(data.subscription_status === 'pro');
+            if (data.generated_interviews) {
+              setInterviewScenarios(data.generated_interviews);
+            }
+            if (data.interview_scores) {
+              setInterviewScores(data.interview_scores);
+            }
           }
+          setLoading(false);
         });
+      } else {
+        setLoading(false);
       }
     });
   }, []);
@@ -105,20 +81,18 @@ export default function MockInterviews() {
   const speak = (text: string) => {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    // Use an English voice if available, default rate/pitch
     utterance.lang = 'en-US';
     utterance.rate = 1.0;
     window.speechSynthesis.speak(utterance);
   };
 
   useEffect(() => {
-    // Speak the question automatically when it arrives, only if activeTab is session
     if (activeTab === 'session' && selectedScenario?.questions?.[currentQuestion]) {
       speak(selectedScenario.questions[currentQuestion]);
     }
   }, [currentQuestion, activeTab, selectedScenario]);
 
-  const startSession = (scenario: any) => {
+  const startSession = (scenario: GeneratedInterview) => {
     if (isLimitReached('interview', isPro)) {
       alert(getLimitMessage('interview'));
       return;
@@ -141,7 +115,6 @@ export default function MockInterviews() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       streamRef.current = stream;
-      // Assign stream immediately before React state update
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play().catch(() => {});
@@ -212,7 +185,7 @@ export default function MockInterviews() {
 If the answer is wrong or incomplete, CLARIFY the accurate knowledge and politely correct them.
 Give specific, concise technical feedback. 
 CRITICAL: You MUST end your entire response perfectly with a score out of 10 in brackets, like this: [8/10]. Do not miss this.` },
-            { role: 'user', content: `Question: ${selectedScenario.questions[currentQuestion]}\n\nCandidate answer: ${userAnswer}` },
+            { role: 'user', content: `Question: ${selectedScenario?.questions[currentQuestion]}\n\nCandidate answer: ${userAnswer}` },
           ],
           max_tokens: 400,
         }),
@@ -222,7 +195,6 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
       
       const content = data.choices?.[0]?.message?.content || 'No feedback generated. [0/10]';
       
-      // Parse score from the response, fallback to 0
       const scoreMatch = content.match(/\[(\d+)\/10\]/);
       const score = scoreMatch ? parseInt(scoreMatch[1], 10) : 5;
       const cleanFeedback = content.replace(/\[\d+\/10\]/, '').trim();
@@ -233,7 +205,7 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
       setHistory(prev => {
          const newHistory = [...prev];
          newHistory[currentQuestion] = {
-           q: selectedScenario.questions[currentQuestion],
+           q: selectedScenario?.questions[currentQuestion] || '',
            a: userAnswer,
            f: cleanFeedback,
            score
@@ -248,19 +220,40 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
     }
   };
 
-  const finishInterview = () => {
+  const finishInterview = async () => {
     window.speechSynthesis.cancel();
     stopVideoCall();
+    
+    // Calculate average score for the session
+    const answered = history.filter(Boolean);
+    const totalScore = answered.reduce((acc, h) => acc + h.score, 0);
+    // Since each question is out of 10, the total percentage for this interview is:
+    // Actually, we want to store the total score out of 10. Let's store the average out of 10.
+    const averageScore = answered.length > 0 ? (totalScore / answered.length) : 0;
+    
+    if (selectedScenario?.id) {
+      const newScores = { ...interviewScores, [selectedScenario.id]: averageScore };
+      setInterviewScores(newScores);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('profiles').update({ interview_scores: newScores }).eq('id', user.id);
+        await updateReadinessScore(user.id);
+      }
+    }
+    
     setActiveTab('evaluation');
   };
 
   const totalQuestions = selectedScenario?.questions?.length || 0;
   const isLastQuestion = currentQuestion === totalQuestions - 1;
 
+  if (loading) return null;
+
   return (
-    <div className="max-w-6xl mx-auto space-y-12 pb-24">
+    <div className="max-w-6xl mx-auto space-y-8 pb-24 px-2 sm:px-0">
       <header className="space-y-4">
-        <h2 className="text-5xl font-black tracking-tighter">AI Mock Interviews</h2>
+        <h2 className="text-3xl sm:text-5xl font-black tracking-tighter">AI Mock Interviews</h2>
         <p className="text-text-dim font-bold uppercase tracking-widest text-sm flex items-center gap-2">
            <Zap className="w-4 h-4 text-soft-orange" /> Sharpen your technical edge with real-time feedback
         </p>
@@ -275,34 +268,43 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
           >
-            {interviewScenarios.map((scenario) => (
-              <div 
-                key={scenario.id}
-                className="playful-card flex flex-col group hover:scale-[1.02] transition-all cursor-pointer"
-                onClick={() => startSession(scenario)}
-              >
-                <div className={cn("w-16 h-16 rounded-3xl flex items-center justify-center mb-6 shadow-xl", `bg-${scenario.color} text-white`)}>
-                  <scenario.icon className="w-8 h-8" />
-                </div>
-                <h3 className="text-2xl font-black tracking-tight mb-2">{scenario.title}</h3>
-                <div className="flex gap-4 mb-8">
-                  <div className="flex items-center gap-1 text-[10px] font-black uppercase text-text-dim">
-                    <Clock className="w-3 h-3" /> {scenario.duration}
+            {interviewScenarios.length === 0 ? (
+               <div className="col-span-3 text-center p-12 text-text-dim font-bold">
+                 No scenarios found. Please re-login to generate your personalized curriculum.
+               </div>
+            ) : (
+              interviewScenarios.map((scenario) => {
+                const IconComponent = iconMap[scenario.icon] || Brain;
+                return (
+                  <div 
+                    key={scenario.id}
+                    className="playful-card flex flex-col group hover:scale-[1.02] transition-all cursor-pointer"
+                    onClick={() => startSession(scenario)}
+                  >
+                    <div className={cn("w-16 h-16 rounded-3xl flex items-center justify-center mb-6 shadow-xl", `bg-${scenario.color} text-white`)}>
+                      <IconComponent className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-2xl font-black tracking-tight mb-2">{scenario.title}</h3>
+                    <div className="flex gap-4 mb-8">
+                      <div className="flex items-center gap-1 text-[10px] font-black uppercase text-text-dim">
+                        <Clock className="w-3 h-3" /> {scenario.duration}
+                      </div>
+                      <div className="flex items-center gap-1 text-[10px] font-black uppercase text-text-dim">
+                        <MessageSquare className="w-3 h-3" /> {scenario.questions.length} Qs
+                      </div>
+                    </div>
+                    <div className="mt-auto pt-6 border-t border-border/50 flex items-center justify-between">
+                      <span className={cn("text-[10px] font-black uppercase tracking-widest", `text-${scenario.color}`)}>{scenario.level}</span>
+                      <button className="flex items-center gap-1 font-black text-sm group-hover:gap-2 transition-all">
+                        START <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-[10px] font-black uppercase text-text-dim">
-                    <MessageSquare className="w-3 h-3" /> {scenario.questions.length} Qs
-                  </div>
-                </div>
-                <div className="mt-auto pt-6 border-t border-border/50 flex items-center justify-between">
-                  <span className={cn("text-[10px] font-black uppercase tracking-widest", `text-${scenario.color}`)}>{scenario.level}</span>
-                  <button className="flex items-center gap-1 font-black text-sm group-hover:gap-2 transition-all">
-                    START <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
+                );
+              })
+            )}
           </motion.div>
         );
       }
@@ -316,22 +318,22 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
             className="space-y-6"
           >
             {/* Mode selector + header */}
-            <div className="playful-card p-6 border-none bg-surface shadow-2xl">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-4">
-                  <button onClick={() => { setActiveTab('browse'); stopVideoCall(); window.speechSynthesis.cancel(); }} className="p-2 hover:bg-border rounded-full transition-colors">
+            <div className="playful-card p-4 sm:p-6 border-none bg-surface shadow-2xl">
+              <div className="flex flex-wrap justify-between items-start gap-3">
+                <div className="flex items-center gap-3">
+                  <button onClick={() => { setActiveTab('browse'); stopVideoCall(); window.speechSynthesis.cancel(); }} className="p-2 hover:bg-border rounded-full transition-colors shrink-0">
                     <ArrowLeft className="w-5 h-5" />
                   </button>
                   <div>
-                    <h3 className="font-black text-xl">{selectedScenario?.title}</h3>
+                    <h3 className="font-black text-base sm:text-xl">{selectedScenario?.title}</h3>
                     <div className="flex items-center gap-2 mt-1">
                       <div className="w-2 h-2 rounded-full bg-soft-green animate-pulse" />
                       <span className="text-[10px] font-black uppercase text-text-dim">AI Interviewer Active</span>
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-black text-soft-blue uppercase tracking-widest bg-soft-blue/10 px-4 py-2 rounded-full border-2 border-soft-blue/20">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black text-soft-blue uppercase tracking-widest bg-soft-blue/10 px-3 py-1.5 rounded-full border-2 border-soft-blue/20">
                     Q {currentQuestion + 1} / {totalQuestions}
                   </span>
                   {/* Mode Switcher */}
@@ -341,11 +343,12 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
                         key={m}
                         onClick={() => { setMode(m); if (m !== 'video') stopVideoCall(); }}
                         className={cn(
-                          "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                          "px-2 sm:px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
                           mode === m ? "bg-text-main text-surface shadow-md" : "text-text-dim hover:text-text-main"
                         )}
                       >
-                        {m === 'text' ? '💬 Text' : m === 'audio' ? '🎙️ Audio' : '📹 Video'}
+                        {m === 'text' ? '💬' : m === 'audio' ? '🎙️' : '📹'}
+                        <span className="hidden sm:inline ml-1">{m === 'text' ? 'Text' : m === 'audio' ? 'Audio' : 'Video'}</span>
                       </button>
                     ))}
                   </div>

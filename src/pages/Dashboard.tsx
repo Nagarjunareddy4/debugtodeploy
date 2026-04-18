@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Flame, Trophy, Zap, Users, Search, Sparkles, Star, ArrowRight, Brain, Lock, Check } from 'lucide-react';
+import { Flame, Trophy, Zap, Users, Search, Sparkles, Star, ArrowRight, Brain, Lock, Check, RefreshCw } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
@@ -38,8 +38,11 @@ export default function Dashboard() {
   const [isSearching, setIsSearching] = useState(false);
   const [activeGraph, setActiveGraph] = useState<'xp' | 'labs'>('xp');
   const [nextLab, setNextLab] = useState<any>(undefined); // undefined = still loading
+  const [quickGoal, setQuickGoal] = useState('');
+  const [isUpdatingGoal, setIsUpdatingGoal] = useState(false);
 
-  const labsData = [
+  // Default fallback labs if generated_labs doesn't exist yet
+  const defaultLabs = [
     { id: '1', title: 'Kubernetes Foundations' },
     { id: '2', title: 'Pod Debugging Strategy' },
     { id: '3', title: 'Network Policy Lockdown' },
@@ -103,15 +106,16 @@ export default function Dashboard() {
 
         setProfile(prof);
 
-        // Determine next lab — null = all done, undefined = still loading
+        // Determine next lab from generated_labs or fallback
+        const userLabs = prof.generated_labs || defaultLabs;
         const completedCount = prof.labs_completed || 0;
-        const next = completedCount < labsData.length ? labsData[completedCount] : null;
+        const next = completedCount < userLabs.length ? userLabs[completedCount] : null;
         setNextLab(next);
       } else {
         // No profile row yet — build minimal display from auth metadata
         const authName = user.user_metadata?.full_name || user.user_metadata?.name || '';
         setProfile({ full_name: authName, email: user.email, subscription_status: 'free' });
-        setNextLab(labsData[0]);
+        setNextLab(defaultLabs[0]);
       }
 
       // Fetch weekly activity (non-critical — silently skip if table missing)
@@ -200,8 +204,35 @@ export default function Dashboard() {
       alert(getLimitMessage('lab'));
       return;
     }
-    if (nextLab) navigate(`/labs/${nextLab.id}`);
-    else navigate('/labs');
+    if (nextLab) {
+      // If it's a dynamic lab, its ID might be a string (e.g., 'lab-0')
+      navigate(`/labs/${nextLab.id}`);
+    } else {
+      navigate('/labs');
+    }
+  };
+
+  const handleQuickGoalUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickGoal.trim() || !profile?.id) return;
+    
+    setIsUpdatingGoal(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ roadmap_data: JSON.stringify({ ...JSON.parse(profile.roadmap_data || '{}'), goal: quickGoal }) })
+        .eq('id', profile.id);
+      
+      if (!error) {
+        setProfile((prev: any) => ({ ...prev, roadmap_data: JSON.stringify({ ...JSON.parse(prev.roadmap_data || '{}'), goal: quickGoal }) }));
+        alert('Goal updated! Refresh the roadmap to see changes.');
+        setQuickGoal('');
+      }
+    } catch (err) {
+      console.error('Goal update failed:', err);
+    } finally {
+      setIsUpdatingGoal(false);
+    }
   };
 
   const displayName = profile?.full_name || profile?.username || profile?.email?.split('@')[0] || 'Engineer';
@@ -286,7 +317,7 @@ export default function Dashboard() {
                {/* Completion badge */}
                <div className="flex items-center gap-3">
                  <span className="text-[10px] font-black uppercase tracking-widest bg-soft-blue/10 text-soft-blue px-4 py-2 rounded-full border border-soft-blue/20">
-                   {profile?.labs_completed || 0} / {labsData.length} Labs Complete
+                   {profile?.labs_completed || 0} / {(profile?.generated_labs || defaultLabs).length} Labs Complete
                  </span>
                  {nextLab === null && (
                    <span className="text-[10px] font-black uppercase tracking-widest bg-soft-green/20 text-soft-green px-4 py-2 rounded-full border border-soft-green/30">
@@ -308,12 +339,12 @@ export default function Dashboard() {
                 <div className="h-2 bg-border rounded-full overflow-hidden">
                   <div
                     className="h-full bg-soft-blue rounded-full transition-all duration-700"
-                    style={{ width: `${((profile?.labs_completed || 0) / labsData.length) * 100}%` }}
+                    style={{ width: `${((profile?.labs_completed || 0) / (profile?.generated_labs || defaultLabs).length) * 100}%` }}
                   />
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-4">
+              <div className="flex flex-wrap gap-4 items-center">
                 <button
                   onClick={handleStartLab}
                   disabled={nextLab === null}
@@ -321,12 +352,21 @@ export default function Dashboard() {
                 >
                   {nextLab === null ? 'Labs Complete ✓' : 'Start Lab'}
                 </button>
-                <button
-                  onClick={() => navigate('/roadmap')}
-                  className="px-8 py-4 bg-transparent border-2 border-border text-text-dim rounded-full font-black hover:bg-border transition-colors uppercase tracking-widest text-xs"
-                >
-                  Update Roadmap
-                </button>
+                <div className="flex items-center gap-2 bg-brand-bg/50 border-2 border-border p-1 rounded-full pl-6">
+                  <input 
+                    value={quickGoal}
+                    onChange={(e) => setQuickGoal(e.target.value)}
+                    placeholder="New Goal? (e.g. SRE)"
+                    className="bg-transparent border-none font-bold text-xs outline-hidden w-32"
+                  />
+                  <button
+                    onClick={handleQuickGoalUpdate}
+                    disabled={isUpdatingGoal || !quickGoal.trim()}
+                    className="p-3 bg-soft-blue text-white rounded-full hover:scale-110 transition-transform disabled:opacity-50"
+                  >
+                    {isUpdatingGoal ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
             </>
           )}
@@ -407,19 +447,43 @@ export default function Dashboard() {
             <div className="absolute top-4 left-4">
               <Star className="w-8 h-8 text-soft-orange fill-soft-orange opacity-20" />
             </div>
-            <div className="w-36 h-36 rounded-full border-4 border-soft-blue/20 p-2 mb-8 relative">
-              <div className="w-full h-full bg-soft-blue/10 rounded-full flex items-center justify-center text-soft-blue relative z-10 shadow-inner">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} className="w-full h-full rounded-full object-cover" />
-                ) : (
-                  <Users className="w-16 h-16" />
-                )}
-              </div>
+            <div className="w-36 h-36 relative flex items-center justify-center mb-8">
+              {/* Animated Progress Ring based on Readiness Score */}
+              <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+                <circle
+                  cx="50" cy="50" r="46"
+                  fill="transparent"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  className="text-border"
+                />
+                <motion.circle
+                  cx="50" cy="50" r="46"
+                  fill="transparent"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  strokeDasharray="289"
+                  initial={{ strokeDashoffset: 289 }}
+                  animate={{ strokeDashoffset: 289 - (289 * (profile?.readiness_score || 0)) / 100 }}
+                  transition={{ duration: 1.5, ease: "easeOut" }}
+                  strokeLinecap="round"
+                  className="text-soft-blue"
+                />
+              </svg>
               <motion.div
                 animate={{ rotate: 360 }}
-                transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
-                className="absolute inset-0 border-4 border-dashed border-soft-blue rounded-full opacity-40"
+                transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+                className="absolute inset-0 border-2 border-dashed border-soft-blue/20 rounded-full scale-[0.9]"
               />
+              <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-soft-blue p-0.5 bg-brand-bg relative z-10 shadow-xl">
+                <div className="w-full h-full bg-soft-blue/10 rounded-full flex items-center justify-center text-soft-blue">
+                  {profile?.avatar_url ? (
+                    <img src={`${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}`} className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    <Users className="w-16 h-16" />
+                  )}
+                </div>
+              </div>
             </div>
             <div className="text-center space-y-2 mb-8">
               <h3 className="text-2xl font-black">{displayName}</h3>
@@ -437,12 +501,12 @@ export default function Dashboard() {
             <div className="w-full space-y-6">
               <div className="flex justify-between text-xs font-black tracking-widest uppercase">
                 <span className="text-text-dim italic">Labs Completed</span>
-                <span>{profile?.labs_completed || 0} / {labsData.length}</span>
+                <span>{profile?.labs_completed || 0} / {(profile?.generated_labs || defaultLabs).length}</span>
               </div>
               <div className="h-5 w-full bg-border rounded-full p-1 shadow-inner">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${((profile?.labs_completed || 0) / labsData.length) * 100}%` }}
+                  animate={{ width: `${((profile?.labs_completed || 0) / (profile?.generated_labs || defaultLabs).length) * 100}%` }}
                   transition={{ duration: 0.8, ease: 'easeOut' }}
                   className="h-full bg-linear-to-r from-soft-blue to-soft-green rounded-full shadow-lg relative"
                 >

@@ -19,80 +19,54 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
-
-interface LabStep {
-  title: string;
-  description: string;
-  defaultCode: string;
-  bugToken: string; // text that should NOT be present when fixed
-  fixHint: string;
-}
-
-const labSteps: LabStep[] = [
-  {
-    title: 'Fix ImagePullBackOff',
-    description: 'The pod has a typo in the image name. Fix it to use the correct nginx image.',
-    defaultCode: `apiVersion: v1
-kind: Pod
-metadata:
-  name: debug-pod
-spec:
-  containers:
-  - name: nginx
-    image: nignx:latest # Typo in image name!`,
-    bugToken: 'nignx',
-    fixHint: 'Change "nignx" to "nginx"',
-  },
-  {
-    title: 'Fix Missing Resource Limits',
-    description: 'Best practice: all containers should have resource limits defined. Add CPU and memory limits.',
-    defaultCode: `apiVersion: v1
-kind: Pod
-metadata:
-  name: resource-pod
-spec:
-  containers:
-  - name: app
-    image: nginx:latest
-    # Missing resource limits!`,
-    bugToken: '# Missing resource limits!',
-    fixHint: 'Add resources.limits with cpu and memory fields',
-  },
-  {
-    title: 'Fix Incorrect Port Mapping',
-    description: 'The Service is targeting the wrong port on the pod. Fix the targetPort to match the container port.',
-    defaultCode: `apiVersion: v1
-kind: Service
-metadata:
-  name: my-service
-spec:
-  selector:
-    app: my-app
-  ports:
-  - port: 80
-    targetPort: 9999  # Wrong port - container listens on 8080`,
-    bugToken: '9999',
-    fixHint: 'Change targetPort from 9999 to 8080',
-  },
-];
+import { GeneratedLab, GeneratedLabStep } from '../lib/generator';
+import { updateReadinessScore } from '../lib/readiness';
 
 export default function LabDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   
+  const [lab, setLab] = useState<GeneratedLab | null>(null);
+  const [loading, setLoading] = useState(true);
+  
   const [stepIndex, setStepIndex] = useState(0);
-  const [codes, setCodes] = useState<string[]>(labSteps.map(s => s.defaultCode));
-  const [outputs, setOutputs] = useState<any[][]>(labSteps.map(() => []));
-  const [successes, setSuccesses] = useState<boolean[]>(labSteps.map(() => false));
+  const [codes, setCodes] = useState<string[]>([]);
+  const [outputs, setOutputs] = useState<any[][]>([]);
+  const [successes, setSuccesses] = useState<boolean[]>([]);
+  
   const [isRunning, setIsRunning] = useState(false);
   const [completing, setCompleting] = useState(false);
 
-  const currentStep = labSteps[stepIndex];
+  useEffect(() => {
+    fetchLab();
+  }, [id]);
+
+  const fetchLab = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data } = await supabase.from('profiles').select('generated_labs').eq('id', user.id).single();
+      if (data?.generated_labs) {
+        const foundLab = (data.generated_labs as GeneratedLab[]).find(l => l.id === id);
+        if (foundLab) {
+          setLab(foundLab);
+          setCodes(foundLab.steps.map(s => s.defaultCode));
+          setOutputs(foundLab.steps.map(() => []));
+          setSuccesses(foundLab.steps.map(() => false));
+        }
+      }
+    }
+    setLoading(false);
+  };
+
+  if (loading) return <div className="p-8">Loading lab details...</div>;
+  if (!lab) return <div className="p-8">Lab not found.</div>;
+
+  const currentStep = lab.steps[stepIndex];
   const currentCode = codes[stepIndex];
   const currentOutput = outputs[stepIndex];
   const currentSuccess = successes[stepIndex];
-  const totalSteps = labSteps.length;
-  const allDone = successes.every(Boolean);
+  const totalSteps = lab.steps.length;
+  const allDone = successes.length > 0 && successes.every(Boolean);
 
   const setCurrentCode = (val: string) => {
     setCodes(prev => prev.map((c, i) => i === stepIndex ? val : c));
@@ -146,11 +120,9 @@ export default function LabDetail() {
 
       const labId = parseInt(id || '0');
       const currentCompleted = profile?.labs_completed || 0;
-      // Only advance — never go backwards (handles re-runs and NULL columns)
       const newCompleted = Math.max(currentCompleted, labId);
-      const xpGain = labId > currentCompleted ? 500 : 0; // Only award XP for new completions
+      const xpGain = labId > currentCompleted ? lab.xp : 0;
 
-      // We use upsert here to guarantee the row gets created even if it was somehow skipped during login
       const { error: profileError } = await supabase.from('profiles').upsert({
         id: user.id,
         labs_completed: newCompleted,
@@ -162,7 +134,6 @@ export default function LabDetail() {
       }
 
       if (xpGain > 0) {
-        // Log today's activity for real-time graph
         const today = new Date().toISOString().split('T')[0];
         const { data: existing } = await supabase
           .from('activity_log')
@@ -186,39 +157,42 @@ export default function LabDetail() {
           if (insertError) throw new Error(`Activity log insert failed: ${insertError.message}`);
         }
       }
+
+      await updateReadinessScore(user.id);
     } catch (err: any) {
       console.error('Error saving lab completion:', err);
       alert(`Could not save lab progress: ${err.message}. Please check your connection or database schema.`);
     } finally {
       setCompleting(false);
-      navigate('/labs'); // navigate AFTER database is fully updated
+      navigate('/labs');
     }
   };
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col gap-6 max-w-[1600px] mx-auto overflow-hidden">
-      <header className="flex justify-between items-center px-4">
-        <div className="flex items-center gap-6">
-          <button onClick={() => navigate('/labs')} className="p-3 hover:bg-surface rounded-2xl border-2 border-transparent hover:border-border transition-all">
+    <div className="flex flex-col gap-4 max-w-[1600px] mx-auto pb-8">
+      <header className="flex flex-wrap justify-between items-center gap-3 px-2">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/labs')} className="p-2.5 hover:bg-surface rounded-2xl border-2 border-transparent hover:border-border transition-all shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
-            <h2 className="text-2xl font-black">{currentStep.title}</h2>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black uppercase text-soft-blue bg-soft-blue/10 px-2 py-0.5 rounded-full">Easy</span>
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-2xl font-black truncate max-w-[220px] sm:max-w-none">{currentStep.title}</h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={cn("text-[10px] font-black uppercase px-2 py-0.5 rounded-full", `text-${lab.color} bg-${lab.color}/10`)}>
+                 {lab.difficulty}
+              </span>
               <span className="text-[10px] font-black uppercase text-text-dim">Step {stepIndex + 1} of {totalSteps}</span>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          {/* Step pills */}
-          <div className="flex gap-2">
-            {labSteps.map((s, i) => (
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex gap-1.5">
+            {lab.steps.map((s, i) => (
               <button
                 key={i}
                 onClick={() => setStepIndex(i)}
                 className={cn(
-                  "w-8 h-8 rounded-full text-xs font-black border-2 transition-all",
+                  "w-7 h-7 rounded-full text-xs font-black border-2 transition-all",
                   successes[i] ? "bg-soft-green text-white border-soft-green" :
                   i === stepIndex ? "bg-text-main text-surface border-text-main scale-110" :
                   "bg-brand-bg border-border text-text-dim hover:border-soft-blue"
@@ -231,7 +205,7 @@ export default function LabDetail() {
           <button 
             onClick={runCode}
             disabled={isRunning || currentSuccess}
-            className="btn-pill bg-text-main text-surface flex items-center gap-2 px-8 py-3 disabled:opacity-50"
+            className="btn-pill bg-text-main text-surface flex items-center gap-2 px-5 py-2.5 text-sm disabled:opacity-50"
           >
             {isRunning ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
             RUN LAB
@@ -239,16 +213,14 @@ export default function LabDetail() {
         </div>
       </header>
 
-      {/* Step description */}
-      <div className="px-4">
-        <div className="bg-soft-blue/10 border-2 border-soft-blue/20 rounded-2xl px-6 py-3">
-          <p className="text-sm font-bold text-soft-blue">{currentStep.description}</p>
+      <div className="px-2">
+        <div className={cn("bg-brand-bg/50 border-2 border-border rounded-2xl px-4 py-3")}>
+          <p className="text-sm font-bold text-text-main">{currentStep.description}</p>
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
-        {/* Editor Side */}
-        <div className="playful-card flex flex-col p-0 border-none bg-surface shadow-2xl relative">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-0" style={{ minHeight: '60vh' }}>
+        <div className="playful-card flex flex-col p-0 border-none bg-surface shadow-2xl relative" style={{ minHeight: '300px' }}>
           <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-border bg-brand-bg/20">
             <Code2 className="w-4 h-4 text-text-dim" />
             <span className="text-[10px] font-black uppercase tracking-widest text-text-dim">manifest.yaml</span>
@@ -266,8 +238,7 @@ export default function LabDetail() {
           </div>
         </div>
 
-        {/* Console Side */}
-        <div className="playful-card flex flex-col p-0 border-none bg-text-main text-surface shadow-2xl overflow-hidden relative">
+        <div className="playful-card flex flex-col p-0 border-none bg-text-main text-surface shadow-2xl overflow-hidden relative" style={{ minHeight: '300px' }}>
           <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-surface/10 bg-surface/5">
             <TerminalIcon className="w-4 h-4" />
             <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Execution Output</span>
@@ -288,7 +259,6 @@ export default function LabDetail() {
             ))}
           </div>
 
-          {/* Step success overlay */}
           <AnimatePresence>
             {currentSuccess && !allDone && (
               <motion.div 
@@ -341,8 +311,7 @@ export default function LabDetail() {
         </div>
       </div>
 
-      {/* Bottom nav between steps */}
-      <div className="px-4 flex justify-between items-center">
+      <div className="px-2 flex justify-between items-center py-1">
         <button
           onClick={goPrev}
           disabled={stepIndex === 0}

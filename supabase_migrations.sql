@@ -5,6 +5,8 @@
 
 -- 1. Add new columns to profiles table (safe to run multiple times)
 ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS email TEXT,
+  ADD COLUMN IF NOT EXISTS username TEXT,
   ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0,
   ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1,
   ADD COLUMN IF NOT EXISTS streak INTEGER DEFAULT 0,
@@ -13,7 +15,12 @@ ALTER TABLE profiles
   ADD COLUMN IF NOT EXISTS readiness_score INTEGER DEFAULT 0,
   ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'free',
   ADD COLUMN IF NOT EXISTS roadmap_data TEXT,
-  ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+  ADD COLUMN IF NOT EXISTS avatar_url TEXT,
+  ADD COLUMN IF NOT EXISTS generated_labs JSONB,
+  ADD COLUMN IF NOT EXISTS generated_interviews JSONB,
+  ADD COLUMN IF NOT EXISTS generated_certificates JSONB,
+  ADD COLUMN IF NOT EXISTS completed_roadmap_tasks JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS interview_scores JSONB DEFAULT '{}'::jsonb;
 
 -- 2. Create activity_log table for real-time progress graphs
 CREATE TABLE IF NOT EXISTS activity_log (
@@ -64,3 +71,32 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE activity_log;
   END IF;
 END $$;
+
+-- ================================================================
+-- 7. Storage Bucket & Policies for Avatars
+-- ================================================================
+
+-- Create the avatars bucket if it doesn't exist (must be public)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('avatars', 'avatars', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- Drop existing storage policies just in case to avoid duplicates
+DROP POLICY IF EXISTS "Avatar images are publicly accessible." ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload their own avatar." ON storage.objects;
+DROP POLICY IF EXISTS "Users can update their own avatar." ON storage.objects;
+
+-- Create policies to allow public read and authenticated insert/update
+CREATE POLICY "Avatar images are publicly accessible."
+  ON storage.objects FOR SELECT
+  USING ( bucket_id = 'avatars' );
+
+CREATE POLICY "Users can upload their own avatar."
+  ON storage.objects FOR INSERT
+  TO authenticated
+  WITH CHECK ( bucket_id = 'avatars' );
+
+CREATE POLICY "Users can update their own avatar."
+  ON storage.objects FOR UPDATE
+  TO authenticated
+  USING ( bucket_id = 'avatars' );

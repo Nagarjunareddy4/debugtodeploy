@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
-import { User, Mail, AtSign, Camera, Check, Shield, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { User, Mail, AtSign, Camera, Check, Shield, Loader2, X, Eye, Trash2, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '../lib/cropImage';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -12,6 +14,17 @@ export default function Settings() {
   const [imageUploading, setImageUploading] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [success, setSuccess] = useState(false);
+
+  // Cropper states
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const [originalFileExt, setOriginalFileExt] = useState<string>('jpeg');
+
+  // Avatar action menu
+  const [showAvatarMenu, setShowAvatarMenu] = useState(false);
+  const [viewingAvatar, setViewingAvatar] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -37,10 +50,10 @@ export default function Settings() {
       const metaUsername = user.user_metadata?.username || user.user_metadata?.preferred_username || user.email?.split('@')[0] || '';
 
       if (!data) {
-        // Create profile from scratch
+        // First time — create profile using INSERT (not upsert) so it can't overwrite
         const { data: created, error: insertErr } = await supabase
           .from('profiles')
-          .upsert({
+          .insert({
             id: user.id,
             email: user.email,
             full_name: metaName,
@@ -48,15 +61,20 @@ export default function Settings() {
             avatar_url: user.user_metadata?.avatar_url || '',
             xp: 0, level: 1, streak: 0, labs_completed: 0,
             readiness_score: 0, subscription_status: 'free',
-          }, { onConflict: 'id' })
+          })
           .select()
           .single();
         if (insertErr) console.warn('Profile create error:', insertErr.message);
         else data = created;
-      } else if (!data.full_name && metaName) {
-        // Patch missing full_name from auth metadata
-        await supabase.from('profiles').update({ full_name: metaName, email: user.email }).eq('id', user.id);
-        data.full_name = metaName;
+      } else {
+        // Patch only fields that are missing — NEVER overwrite avatar_url the user set
+        const patches: Record<string, any> = {};
+        if (!data.full_name && metaName) patches.full_name = metaName;
+        if (!data.email) patches.email = user.email;
+        if (Object.keys(patches).length > 0) {
+          await supabase.from('profiles').update(patches).eq('id', user.id);
+          Object.assign(data, patches);
+        }
       }
 
       if (data) setProfile(data);
@@ -75,28 +93,47 @@ export default function Settings() {
     }
   };
 
-  const uploadAvatar = async (file: File) => {
-    if (!profile?.id) return;
+  const onCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setOriginalFileExt(file.name.split('.').pop() || 'jpeg');
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        setImageSrc(reader.result?.toString() || null);
+      });
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadCroppedImage = async () => {
+    if (!profile?.id || !imageSrc || !croppedAreaPixels) return;
+    
     setImageUploading(true);
     try {
-      const ext = file.name.split('.').pop();
-      const path = `avatars/${profile.id}.${ext}`;
+      const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
+      if (!croppedBlob) throw new Error("Failed to generate cropped image");
+
+      const path = `avatars/${profile.id}.${originalFileExt}`;
 
       const { error: upErr } = await supabase.storage
         .from('avatars')
-        .upload(path, file, { upsert: true, contentType: file.type });
+        .upload(path, croppedBlob, { upsert: true, contentType: croppedBlob.type });
 
       if (upErr) throw upErr;
 
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
-      const publicUrl = urlData.publicUrl;
+      const publicUrl = urlData.publicUrl; // Save clean URL
 
       await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', profile.id);
       setProfile((prev: any) => ({ ...prev, avatar_url: publicUrl }));
+      setImageSrc(null);
     } catch (err: any) {
-      // If storage bucket doesn't exist, fall back to URL input only
       console.warn('Avatar upload failed (bucket may not exist):', err.message);
-      alert('Image upload failed. Please ensure the "avatars" storage bucket exists in Supabase Storage, or paste an image URL manually in the Avatar URL field.');
+      alert('Image upload failed. Please ensure the "avatars" storage bucket exists in Supabase Storage.');
     } finally {
       setImageUploading(false);
     }
@@ -113,7 +150,6 @@ export default function Settings() {
         .update({
           full_name: profile.full_name,
           username: profile.username,
-          avatar_url: profile.avatar_url,
         })
         .eq('id', user.id);
 
@@ -123,6 +159,21 @@ export default function Settings() {
       }
     }
     setLoading(false);
+  };
+
+  const removeAvatar = async () => {
+    if (!profile?.id) return;
+    setShowAvatarMenu(false);
+    const { error } = await supabase.from('profiles').update({ avatar_url: null }).eq('id', profile.id);
+    if (!error) {
+      setProfile((prev: any) => ({ ...prev, avatar_url: null }));
+
+      // Also try to delete from storage
+      const exts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+      for (const ext of exts) {
+        await supabase.storage.from('avatars').remove([`avatars/${profile.id}.${ext}`]);
+      }
+    }
   };
 
   const saveApiKey = () => {
@@ -157,7 +208,70 @@ export default function Settings() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto space-y-12">
+    <div className="max-w-4xl mx-auto space-y-12 pb-24">
+      {/* Cropper Modal */}
+      {imageSrc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+          <div className="bg-surface rounded-3xl overflow-hidden w-full max-w-lg shadow-2xl border border-border flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h3 className="font-black text-lg">Adjust Avatar</h3>
+              <button onClick={() => setImageSrc(null)} className="p-2 hover:bg-brand-bg rounded-full transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="relative w-full h-[400px] bg-brand-bg">
+              <Cropper
+                image={imageSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                cropShape="round"
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+            
+            <div className="p-6 space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-text-dim flex justify-between">
+                  <span>Zoom</span>
+                  <span>{Math.round(zoom * 100)}%</span>
+                </label>
+                <input
+                  type="range"
+                  value={zoom}
+                  min={1}
+                  max={3}
+                  step={0.1}
+                  aria-labelledby="Zoom"
+                  onChange={(e) => setZoom(Number(e.target.value))}
+                  className="w-full accent-soft-blue h-2 bg-border rounded-lg appearance-none cursor-pointer"
+                />
+              </div>
+              
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setImageSrc(null)}
+                  className="flex-1 py-3 border-2 border-border rounded-full font-black text-sm hover:bg-border transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={uploadCroppedImage}
+                  disabled={imageUploading}
+                  className="flex-1 py-3 bg-text-main text-surface rounded-full font-black text-sm flex items-center justify-center gap-2 hover:bg-soft-blue transition-colors disabled:opacity-50"
+                >
+                  {imageUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+                  {imageUploading ? 'Uploading...' : 'Save Avatar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="flex justify-between items-end">
         <div className="space-y-2">
           <h2 className="text-4xl font-black tracking-tight">System Configuration</h2>
@@ -178,34 +292,79 @@ export default function Settings() {
         <div className="md:col-span-1 space-y-6">
           <div className="playful-card flex flex-col items-center p-8 gap-6 border-none bg-surface shadow-2xl">
             <div className="relative group">
-              <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-soft-blue p-1">
-                {profile.avatar_url ? (
-                  <img src={profile.avatar_url} alt="Profile" className="w-full h-full rounded-full object-cover" referrerPolicy="no-referrer" />
-                ) : (
-                  <div className="w-full h-full bg-brand-bg rounded-full flex items-center justify-center">
-                    <User className="w-12 h-12 text-text-dim" />
-                  </div>
-                )}
+              {/* Spinning animated ring */}
+              <div className="w-32 h-32 relative flex items-center justify-center">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+                  className="absolute inset-0 rounded-full border-4 border-dashed border-soft-blue/40"
+                />
+                <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-soft-blue p-0.5 bg-brand-bg">
+                  {profile.avatar_url ? (
+                    <img src={`${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}`} alt="Profile" className="w-full h-full rounded-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="w-full h-full bg-brand-bg rounded-full flex items-center justify-center">
+                      <User className="w-12 h-12 text-text-dim" />
+                    </div>
+                  )}
+                </div>
               </div>
+
               {/* Hidden file input */}
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) uploadAvatar(file);
-                }}
+                onChange={handleFileChange}
               />
+
+              {/* Camera button — shows menu if avatar exists, else opens picker directly */}
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  if (profile.avatar_url) {
+                    setShowAvatarMenu(prev => !prev);
+                  } else {
+                    fileInputRef.current?.click();
+                  }
+                }}
                 disabled={imageUploading}
-                className="absolute bottom-0 right-0 p-3 bg-text-main text-surface rounded-full shadow-xl hover:scale-110 transition-transform disabled:opacity-60"
+                className="absolute bottom-0 right-0 p-2.5 bg-text-main text-surface rounded-full shadow-xl hover:scale-110 transition-transform disabled:opacity-60 z-10"
               >
                 {imageUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
               </button>
+
+              {/* Avatar action menu */}
+              <AnimatePresence>
+                {showAvatarMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                    className="absolute top-0 left-36 bg-surface border-2 border-border rounded-2xl shadow-2xl overflow-hidden z-20 min-w-[160px]"
+                  >
+                    <button
+                      onClick={() => { setViewingAvatar(true); setShowAvatarMenu(false); }}
+                      className="flex items-center gap-3 w-full px-4 py-3 hover:bg-brand-bg text-sm font-black uppercase tracking-widest transition-colors"
+                    >
+                      <Eye className="w-4 h-4 text-soft-blue" /> View
+                    </button>
+                    <button
+                      onClick={() => { setShowAvatarMenu(false); fileInputRef.current?.click(); }}
+                      className="flex items-center gap-3 w-full px-4 py-3 hover:bg-brand-bg text-sm font-black uppercase tracking-widest transition-colors"
+                    >
+                      <RefreshCw className="w-4 h-4 text-soft-green" /> Change
+                    </button>
+                    <button
+                      onClick={removeAvatar}
+                      className="flex items-center gap-3 w-full px-4 py-3 hover:bg-red-500/10 text-red-400 text-sm font-black uppercase tracking-widest transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" /> Remove
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
             <div className="text-center">
               <h3 className="text-xl font-black">{profile.full_name || profile.username || profile.email?.split('@')[0] || 'User'}</h3>
@@ -213,6 +372,34 @@ export default function Settings() {
               {imageUploading && <p className="text-[10px] text-text-dim mt-1 font-bold uppercase tracking-widest animate-pulse">Uploading...</p>}
             </div>
           </div>
+
+          {/* View avatar full-screen overlay */}
+          <AnimatePresence>
+            {viewingAvatar && profile.avatar_url && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-6"
+                onClick={() => setViewingAvatar(false)}
+              >
+                <div className="relative" onClick={e => e.stopPropagation()}>
+                  <button
+                    onClick={() => setViewingAvatar(false)}
+                    className="absolute -top-3 -right-3 z-10 p-2 bg-surface border-2 border-border rounded-full shadow-xl hover:scale-110 transition-transform"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  <img
+                    src={`${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}`}
+                    alt="Profile"
+                    className="w-72 h-72 rounded-full object-cover border-4 border-soft-blue shadow-2xl"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div className="playful-card p-6 bg-soft-blue text-white border-none shadow-xl space-y-4">
             <div className="flex items-center justify-between">
@@ -275,17 +462,7 @@ export default function Settings() {
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-text-dim flex items-center gap-2">
-                <Camera className="w-3 h-3" /> Avatar URL
-              </label>
-              <input
-                value={profile.avatar_url || ''}
-                onChange={(e) => setProfile({ ...profile, avatar_url: e.target.value })}
-                placeholder="https://example.com/photo.jpg"
-                className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 font-bold outline-hidden focus:border-soft-purple transition-colors"
-              />
-            </div>
+
 
             <div className="pt-6">
               <button
