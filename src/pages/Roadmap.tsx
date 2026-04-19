@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Compass, Sparkles, CheckCircle2, Loader2, ChevronRight, Zap, Target, BookOpen, RefreshCw, Lock } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, getObjectHash } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
 import { updateReadinessScore } from '../lib/readiness';
+import { generateUserDocs, generateUserCertificates, generateUserCurriculum } from '../lib/generator';
 
 interface RoadmapStage {
   id: string;
@@ -15,6 +16,8 @@ interface RoadmapStage {
 
 interface RoadmapData {
   title: string;
+  goal: string;
+  experience: string;
   description: string;
   stages: RoadmapStage[];
 }
@@ -29,12 +32,13 @@ export default function Roadmap() {
   const [hasExistingRoadmap, setHasExistingRoadmap] = useState(false);
   const [limitError, setLimitError] = useState<string | null>(null);
   const [completedTasks, setCompletedTasks] = useState<string[]>([]);
+  const [serverLimitBlocked, setServerLimitBlocked] = useState(false);
 
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: prof } = await supabase.from('profiles').select('subscription_status, roadmap_data').eq('id', user.id).single();
+      const { data: prof } = await supabase.from('profiles').select('subscription_status, roadmap_data, completed_roadmap_tasks, last_roadmap_generated_at').eq('id', user.id).single();
       if (prof) {
         setIsPro(prof.subscription_status === 'pro');
         if (prof.roadmap_data) {
@@ -43,21 +47,60 @@ export default function Roadmap() {
             if (parsed?.stages?.length > 0) {
               setRoadmap(parsed);
               setHasExistingRoadmap(true);
+              setGoal(parsed.goal || parsed.title || goal);
+              setExperience(parsed.experience || experience);
             }
           } catch (_) { }
         }
         if (prof.completed_roadmap_tasks) {
           setCompletedTasks(prof.completed_roadmap_tasks);
         }
+        if (prof.last_roadmap_generated_at) {
+          const lastGen = new Date(prof.last_roadmap_generated_at);
+          const now = new Date();
+          const diffDays = (now.getTime() - lastGen.getTime()) / (1000 * 60 * 60 * 24);
+          if (diffDays < 7) {
+            setServerLimitBlocked(true);
+          }
+        }
       }
     };
     init();
   }, []);
 
-  const saveRoadmapToProfile = async (data: RoadmapData) => {
+  const saveRoadmapToProfile = async (data: RoadmapData, roadmapHash?: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from('profiles').update({ roadmap_data: JSON.stringify(data) }).eq('id', user.id);
+    const updatePayload: Record<string, any> = {
+      roadmap_data: JSON.stringify(data),
+    };
+    if (roadmapHash) {
+      updatePayload.roadmap_hash = roadmapHash;
+      updatePayload.roadmap_version = roadmapHash;
+    }
+    const { error } = await supabase.from('profiles').update(updatePayload).eq('id', user.id);
+    if (error) {
+      console.error('Failed to save roadmap to profile:', error);
+      alert('Failed to save roadmap to database. Please make sure you have run the required SQL migrations in Supabase.');
+    }
+  };
+
+  const regenerateDependentRecommendations = async (roadmapData: RoadmapData, roadmapHash?: string) => {
+    const apiKey = (window as any).OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
+    if (!apiKey) return;
+
+    const roadmapGoal = roadmapData.goal || roadmapData.title;
+    const experienceLevel = roadmapData.experience || 'intermediate';
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) return;
+
+    await Promise.all([
+      generateUserDocs(apiKey, user.id, roadmapGoal, roadmapHash),
+      generateUserCertificates(apiKey, user.id, roadmapGoal, experienceLevel, roadmapHash),
+      generateUserCurriculum(apiKey, user.id, roadmapGoal, experienceLevel, roadmapHash),
+    ]).catch((error) => {
+      console.error('Failed to regenerate dependent recommendations:', error);
+    });
   };
 
   const generateRoadmap = async () => {
@@ -95,6 +138,8 @@ export default function Roadmap() {
 Return a JSON object exactly like this:
 {
   "title": "string",
+  "goal": "string",
+  "experience": "string",
   "description": "string",
   "stages": [
     {
@@ -119,10 +164,25 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
       const text = data.choices?.[0]?.message?.content || '{}';
       const clean = text.replace(/```json|```/g, '').trim();
       const parsed: RoadmapData = JSON.parse(clean);
-      setRoadmap(parsed);
+      const finalRoadmap: RoadmapData = {
+        goal,
+        experience,
+        title: parsed.title || goal,
+        description: parsed.description || `Personalized ${experience} roadmap to become ${goal}.`,
+        stages: parsed.stages || [],
+      };
+      const roadmapHash = await getObjectHash(finalRoadmap);
+      setRoadmap(finalRoadmap);
       setHasExistingRoadmap(true);
       incrementUsage('roadmap');
-      await saveRoadmapToProfile(parsed);
+      await saveRoadmapToProfile(finalRoadmap, roadmapHash);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('profiles')
+          .update({ last_roadmap_generated_at: new Date().toISOString() })
+          .eq('id', user.id);
+      }
+      await regenerateDependentRecommendations(finalRoadmap, roadmapHash);
     } catch (error: any) {
       console.error(error);
       alert(`Failed to generate roadmap: ${error.message || 'Verify your OpenAI API key.'}`);
@@ -157,6 +217,7 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
   };
 
   const remaining = getRemainingUsage('roadmap', isPro);
+  const isBlocked = !isPro && (remaining === 0 || serverLimitBlocked);
 
   return (
     <div className="max-w-5xl mx-auto space-y-12 pb-24">
@@ -168,7 +229,7 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
         {!roadmap && <Compass className="w-16 h-16 text-soft-blue opacity-20 animate-spin-slow" />}
         {!isPro && (
           <div className="text-[10px] font-black uppercase tracking-widest text-soft-orange bg-soft-orange/10 px-4 py-2 rounded-full border border-soft-orange/20">
-            {remaining > 0 ? `${remaining} generation${remaining !== 1 ? 's' : ''} left today` : '🔒 Daily limit reached'}
+            {isBlocked ? '🔒 Weekly limit reached' : `${remaining} generation${remaining !== 1 ? 's' : ''} left this week`}
           </div>
         )}
       </header>
@@ -189,7 +250,7 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
               <h3 className="text-2xl font-black">Update Your Roadmap?</h3>
               <p className="text-text-dim font-bold text-sm leading-relaxed">
                 You already have a roadmap. Generating a new one will replace it.
-                {!isPro && ` This uses your daily generation (${remaining} left today).`}
+                {!isPro && ` This uses your weekly generation (${isBlocked ? 0 : remaining} left this week).`}
               </p>
               <div className="flex gap-4">
                 <button
@@ -202,7 +263,7 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
                   onClick={generateRoadmap}
                   className="flex-1 py-3 bg-text-main text-surface rounded-full font-black text-sm hover:bg-soft-orange transition-colors"
                 >
-                  {remaining === 0 && !isPro ? '🔒 Locked' : 'Generate New'}
+                  {isBlocked ? '🔒 Locked' : 'Generate New'}
                 </button>
               </div>
             </div>
@@ -263,7 +324,7 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
 
           <button
             onClick={handleConstructClick}
-            disabled={loading || (!isPro && remaining === 0)}
+            disabled={loading || isBlocked}
             className="btn-pill bg-text-main text-surface w-full py-5 sm:py-6 text-sm sm:text-xl flex items-center justify-center gap-3 sm:gap-4 shadow-2xl hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed flex-wrap text-center"
           >
             {loading ? (
@@ -271,10 +332,10 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
                 <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin flex-shrink-0" />
                 <span className="animate-pulse italic">Architecting Growth Path...</span>
               </>
-            ) : !isPro && remaining === 0 ? (
+            ) : isBlocked ? (
               <>
                 <Lock className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
-                <span>Daily Limit Reached — Upgrade to Pro</span>
+                <span>Weekly Limit Reached — Upgrade to Pro</span>
               </>
             ) : hasExistingRoadmap ? (
               <>

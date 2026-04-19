@@ -53,7 +53,7 @@ export interface Curriculum {
   interviews: GeneratedInterview[];
 }
 
-export async function generateUserDocs(apiKey: string, userId: string, roadmapGoal: string): Promise<GeneratedDoc[] | null> {
+export async function generateUserDocs(apiKey: string, userId: string, roadmapGoal: string, roadmapHash?: string): Promise<GeneratedDoc[] | null> {
   try {
     const prompt = `Based on the user's career goal of "${roadmapGoal}", provide exactly 6 essential official documentation links or deep-dive learning resources (like Kubernetes Docs, Terraform Registry, AWS Whitepapers, etc.).
 Return ONLY a JSON object with a key "docs" containing an array.
@@ -93,9 +93,14 @@ For each resource, provide:
     const docs: GeneratedDoc[] = result.docs;
 
     // Save to supabase
-    const { error } = await supabase.from('profiles').update({
-      generated_docs: docs
-    }).eq('id', userId);
+    const updatePayload: Record<string, any> = {
+      generated_docs: docs,
+    };
+    if (roadmapHash) {
+      updatePayload.roadmap_hash = roadmapHash;
+      updatePayload.roadmap_version = roadmapHash;
+    }
+    const { error } = await supabase.from('profiles').update(updatePayload).eq('id', userId);
 
     if (error) {
       console.error('Failed to save generated docs:', error);
@@ -109,11 +114,11 @@ For each resource, provide:
   }
 }
 
-export async function generateUserCurriculum(apiKey: string, userId: string): Promise<Curriculum | null> {
+export async function generateUserCurriculum(apiKey: string, userId: string, roadmapGoal: string = 'DevOps Engineering', experienceLevel: string = 'intermediate', roadmapHash?: string): Promise<Curriculum | null> {
   try {
-    const prompt = `Generate a structured curriculum for a DevOps/SRE learning platform.
+    const prompt = `Generate a structured curriculum for a DevOps/SRE learning platform that matches a user whose roadmap goal is "${roadmapGoal}" and experience level is "${experienceLevel}".
 Return a JSON object with two arrays: "labs" (5 items) and "interviews" (3 items).
-The concepts should sequence from beginner to advanced.
+The concepts MUST strictly match the user's experience level (${experienceLevel}) and be directly aligned with their career goal (${roadmapGoal}). Do NOT include basic or beginner concepts if the user's experience level is intermediate or advanced. Ensure the difficulty of the labs and interviews appropriately reflects their ${experienceLevel} expertise.
 
 For each "lab", provide:
 - "id": a string from "1" to "5"
@@ -163,10 +168,15 @@ For each "interview", provide:
     const curriculum: Curriculum = JSON.parse(content);
 
     // Save to supabase
-    const { error } = await supabase.from('profiles').update({
+    const updatePayload: Record<string, any> = {
       generated_labs: curriculum.labs,
-      generated_interviews: curriculum.interviews
-    }).eq('id', userId);
+      generated_interviews: curriculum.interviews,
+    };
+    if (roadmapHash) {
+      updatePayload.roadmap_hash = roadmapHash;
+      updatePayload.roadmap_version = roadmapHash;
+    }
+    const { error } = await supabase.from('profiles').update(updatePayload).eq('id', userId);
 
     if (error) {
       console.error('Failed to save generated curriculum:', error);
@@ -180,7 +190,7 @@ For each "interview", provide:
   }
 }
 
-export async function generateUserCertificates(apiKey: string, userId: string, roadmapGoal: string, experienceLevel: string): Promise<GeneratedCertificate[] | null> {
+export async function generateUserCertificates(apiKey: string, userId: string, roadmapGoal: string, experienceLevel: string, roadmapHash?: string): Promise<GeneratedCertificate[] | null> {
   try {
     const prompt = `Based on the user's career goal of "${roadmapGoal}" and current experience level of "${experienceLevel}", recommend exactly 3-4 highly relevant official DevOps/Cloud certifications.
 Return ONLY a JSON object with a key "certificates" containing an array.
@@ -220,9 +230,14 @@ For each certificate, provide:
     const certificates: GeneratedCertificate[] = result.certificates;
 
     // Save to supabase
-    const { error } = await supabase.from('profiles').update({
-      generated_certificates: certificates
-    }).eq('id', userId);
+    const updatePayload: Record<string, any> = {
+      generated_certificates: certificates,
+    };
+    if (roadmapHash) {
+      updatePayload.roadmap_hash = roadmapHash;
+      updatePayload.roadmap_version = roadmapHash;
+    }
+    const { error } = await supabase.from('profiles').update(updatePayload).eq('id', userId);
 
     if (error) {
       console.error('Failed to save generated certificates:', error);
@@ -234,4 +249,18 @@ For each certificate, provide:
     console.error('Error generating certificates:', error);
     return null;
   }
+}
+
+export function isCurriculumStale(profile: any, currentRoadmapVersion: string): boolean {
+  if (!profile.generated_labs || !profile.generated_interviews) return true;
+  if (!profile.roadmap_version) return true; // never been versioned
+  return profile.roadmap_version !== currentRoadmapVersion;
+}
+
+export function isAllContentStale(profile: any, currentRoadmapVersion: string): boolean {
+  return (
+    isCurriculumStale(profile, currentRoadmapVersion) ||
+    !profile.generated_certificates ||
+    !profile.generated_docs
+  );
 }

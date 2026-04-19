@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Award, Cloud, ShieldCheck, Zap, Terminal, ExternalLink, Loader2, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { generateUserCertificates, GeneratedCertificate } from '../lib/generator';
-import { cn } from '../lib/utils';
+import { cn, getObjectHash } from '../lib/utils';
 import { isLimitReached, incrementUsage, getLimitMessage } from '../lib/usageLimit';
 
 const iconMap: Record<string, any> = {
@@ -30,7 +30,7 @@ export default function Certificates() {
       }
       setUser(user);
 
-      const { data: profile } = await supabase.from('profiles').select('roadmap_data, generated_certificates').eq('id', user.id).single();
+      const { data: profile } = await supabase.from('profiles').select('roadmap_data, generated_certificates, roadmap_hash').eq('id', user.id).single();
       
       if (profile) {
         if (profile.generated_certificates && profile.generated_certificates.length > 0) {
@@ -38,7 +38,7 @@ export default function Certificates() {
           setLoading(false);
         } else {
           // Trigger generation
-          generateCertificates(user.id, profile.roadmap_data);
+          generateCertificates(user.id, profile.roadmap_data, profile);
         }
       } else {
         setLoading(false);
@@ -47,7 +47,7 @@ export default function Certificates() {
     init();
   }, []);
 
-  const generateCertificates = async (userId: string, roadmapData: any) => {
+  const generateCertificates = async (userId: string, roadmapData: any, profileData?: any) => {
     // Check limits
     const { data: prof } = await supabase.from('profiles').select('subscription_status').eq('id', userId).single();
     if (isLimitReached('certificates', prof?.subscription_status === 'pro')) {
@@ -69,14 +69,15 @@ export default function Certificates() {
       if (roadmapData) {
         try {
           const parsed = typeof roadmapData === 'string' ? JSON.parse(roadmapData) : roadmapData;
-          roadmapGoal = parsed.title || roadmapGoal;
-          experienceLevel = parsed.description?.toLowerCase().includes('beginner') ? 'beginner' : 'advanced';
+          roadmapGoal = parsed.goal || parsed.title || roadmapGoal;
+          experienceLevel = parsed.experience || (typeof parsed.description === 'string' && parsed.description.toLowerCase().includes('beginner') ? 'beginner' : 'advanced');
         } catch (e) {
           // ignore parsing error
         }
       }
 
-      const generated = await generateUserCertificates(apiKey, userId, roadmapGoal, experienceLevel);
+      const roadmapHash = profileData?.roadmap_hash || (roadmapData ? await getObjectHash(typeof roadmapData === 'string' ? JSON.parse(roadmapData) : roadmapData) : undefined);
+      const generated = await generateUserCertificates(apiKey, userId, roadmapGoal, experienceLevel, roadmapHash);
       if (generated) {
         setCertificates(generated);
         incrementUsage('certificates');
@@ -93,10 +94,9 @@ export default function Certificates() {
 
   const handleManualRegenerate = () => {
     if (user) {
-      // In a real app we might fetch the latest roadmap data again, but here we just pass null to fall back to defaults or we can refetch.
-      // Refetching roadmap data:
-      supabase.from('profiles').select('roadmap_data').eq('id', user.id).single().then(({ data }) => {
-        generateCertificates(user.id, data?.roadmap_data);
+      // Refetching roadmap data and profile:
+      supabase.from('profiles').select('roadmap_data, roadmap_hash').eq('id', user.id).single().then(({ data }) => {
+        generateCertificates(user.id, data?.roadmap_data, data);
       });
     }
   };

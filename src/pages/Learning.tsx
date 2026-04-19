@@ -13,7 +13,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { cn } from '../lib/utils';
+import { cn, getObjectHash } from '../lib/utils';
 import { GeneratedDoc, generateUserDocs } from '../lib/generator';
 import { updateReadinessScore } from '../lib/readiness';
 import { isLimitReached, incrementUsage, getLimitMessage } from '../lib/usageLimit';
@@ -64,10 +64,12 @@ export default function Learning() {
 
     // Get roadmap goal from JSON or string
     const roadmap = profile.roadmap_data ? JSON.parse(profile.roadmap_data) : {};
-    const goal = roadmap.goal || 'DevOps Engineering';
+    const goal = roadmap.goal || roadmap.title || 'DevOps Engineering';
+    const experience = roadmap.experience || 'intermediate';
 
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    const newDocs = await generateUserDocs(apiKey, profile.id, goal);
+    const apiKey = (window as any).OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
+    const roadmapHash = profile.roadmap_hash || await getObjectHash(roadmap);
+    const newDocs = await generateUserDocs(apiKey, profile.id, goal, roadmapHash);
 
     if (newDocs) {
       setDocs(newDocs);

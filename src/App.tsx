@@ -15,8 +15,8 @@ import Settings from './pages/Settings';
 import Certificates from './pages/Certificates';
 import Learning from './pages/Learning';
 import { supabase } from './lib/supabase';
-import { generateUserCurriculum } from './lib/generator';
-
+import { getObjectHash } from './lib/utils';
+import { generateUserCurriculum, generateUserDocs, generateUserCertificates, isAllContentStale } from './lib/generator';
 // Map icon strings to components for loading animation
 const iconMap: Record<string, any> = {
   Cloud: Brain,
@@ -100,15 +100,40 @@ export default function App() {
       }
 
       // Re-fetch latest profile to check curriculum
-      const { data: latestProfile } = await supabase.from('profiles').select('generated_labs, generated_interviews').eq('id', user.id).single();
+      const { data: latestProfile } = await supabase.from('profiles').select('roadmap_data, roadmap_version, generated_labs, generated_interviews, generated_certificates, generated_docs').eq('id', user.id).single();
 
       // Check if we need to generate dynamic curriculum
-      if (latestProfile && (!latestProfile.generated_labs || !latestProfile.generated_interviews)) {
+      if (latestProfile) {
         const apiKey = (window as any).OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
         if (apiKey) {
-          setIsGenerating(true);
-          await generateUserCurriculum(apiKey, user.id);
-          setIsGenerating(false);
+          let roadmapGoal = 'DevOps Engineering';
+          let experienceLevel = 'intermediate';
+          let currentVersion: string | undefined;
+
+          if (latestProfile.roadmap_data) {
+            try {
+              const parsedRoadmap = typeof latestProfile.roadmap_data === 'string'
+                ? JSON.parse(latestProfile.roadmap_data)
+                : latestProfile.roadmap_data;
+              roadmapGoal = parsedRoadmap.goal || parsedRoadmap.title || roadmapGoal;
+              experienceLevel = parsedRoadmap.experience || (typeof parsedRoadmap.description === 'string' && parsedRoadmap.description.toLowerCase().includes('beginner') ? 'beginner' : 'advanced');
+              currentVersion = await getObjectHash(parsedRoadmap);
+            } catch {
+              // ignore parse errors and continue with defaults
+            }
+          }
+
+          const isStale = isAllContentStale(latestProfile, currentVersion || '');
+
+          if (isStale) {
+            setIsGenerating(true);
+            await Promise.all([
+              generateUserCurriculum(apiKey, user.id, roadmapGoal, experienceLevel, currentVersion),
+              generateUserCertificates(apiKey, user.id, roadmapGoal, experienceLevel, currentVersion),
+              generateUserDocs(apiKey, user.id, roadmapGoal, currentVersion),
+            ]);
+            setIsGenerating(false);
+          }
         } else {
           console.warn('No OpenAI API Key found. Skipping curriculum generation.');
         }

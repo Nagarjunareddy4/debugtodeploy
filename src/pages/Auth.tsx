@@ -68,7 +68,7 @@ export default function Auth() {
         }
 
         if (data.session) {
-          await supabase.auth.signOut();
+          await supabase.auth.signOut({ scope: 'global' });
         }
 
         alert('Account created successfully! Please sign in.');
@@ -89,11 +89,16 @@ export default function Auth() {
     const timeout = setTimeout(() => setLoading(false), 5000);
 
     try {
+      // Clear any cached sessions to force fresh login
+      await supabase.auth.signOut({ scope: 'global' });
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: window.location.origin,
-        },
+          prompt: 'login',
+          skipBrowserRedirect: false,
+        } as any,
       });
       if (error) throw error;
     } catch (err: any) {
