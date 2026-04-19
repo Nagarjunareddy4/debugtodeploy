@@ -105,7 +105,7 @@ export default function Roadmap() {
 
   const generateRoadmap = async () => {
     if (isLimitReached('roadmap', isPro)) {
-      setLimitError(getLimitMessage('roadmap'));
+      setLimitError(getLimitMessage('roadmap', isPro));
       return;
     }
 
@@ -174,7 +174,7 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
       const roadmapHash = await getObjectHash(finalRoadmap);
       setRoadmap(finalRoadmap);
       setHasExistingRoadmap(true);
-      incrementUsage('roadmap');
+      incrementUsage('roadmap', isPro);
       await saveRoadmapToProfile(finalRoadmap, roadmapHash);
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -217,7 +217,7 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
   };
 
   const remaining = getRemainingUsage('roadmap', isPro);
-  const isBlocked = !isPro && (remaining === 0 || serverLimitBlocked);
+  const isBlocked = remaining === 0 || (!isPro && serverLimitBlocked);
 
   return (
     <div className="max-w-5xl mx-auto space-y-12 pb-24">
@@ -227,11 +227,18 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
           <p className="text-text-dim font-bold uppercase tracking-[0.2em] text-xs">Custom logic for your engineering growth</p>
         </div>
         {!roadmap && <Compass className="w-16 h-16 text-soft-blue opacity-20 animate-spin-slow" />}
-        {!isPro && (
-          <div className="text-[10px] font-black uppercase tracking-widest text-soft-orange bg-soft-orange/10 px-4 py-2 rounded-full border border-soft-orange/20">
-            {isBlocked ? '🔒 Weekly limit reached' : `${remaining} generation${remaining !== 1 ? 's' : ''} left this week`}
-          </div>
-        )}
+        <div className="flex flex-col items-end gap-2">
+          {!isPro && (
+            <div className="text-[10px] font-black uppercase tracking-widest text-soft-orange bg-soft-orange/10 px-4 py-2 rounded-full border border-soft-orange/20">
+              {isBlocked ? '🔒 Weekly limit reached' : `${remaining} generation${remaining !== 1 ? 's' : ''} left this week`}
+            </div>
+          )}
+          {isPro && (
+            <div className="text-[10px] font-black uppercase tracking-widest text-soft-blue bg-soft-blue/10 px-4 py-2 rounded-full border border-soft-blue/20">
+              {remaining === 0 ? '🔒 Monthly limit reached' : `${remaining} generation${remaining !== 1 ? 's' : ''} left this month`}
+            </div>
+          )}
+        </div>
       </header>
 
       {/* Update confirmation modal */}
@@ -250,7 +257,7 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
               <h3 className="text-2xl font-black">Update Your Roadmap?</h3>
               <p className="text-text-dim font-bold text-sm leading-relaxed">
                 You already have a roadmap. Generating a new one will replace it.
-                {!isPro && ` This uses your weekly generation (${isBlocked ? 0 : remaining} left this week).`}
+                {` This uses your ${isPro ? 'monthly' : 'weekly'} generation (${isBlocked ? 0 : remaining} left).`}
               </p>
               <div className="flex gap-4">
                 <button
@@ -335,7 +342,7 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
             ) : isBlocked ? (
               <>
                 <Lock className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
-                <span>Weekly Limit Reached — Upgrade to Pro</span>
+                <span>{isPro ? 'Monthly Limit Reached' : 'Weekly Limit Reached — Upgrade to Pro'}</span>
               </>
             ) : hasExistingRoadmap ? (
               <>

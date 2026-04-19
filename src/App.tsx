@@ -11,6 +11,7 @@ import MockInterviews from './pages/MockInterviews';
 import Landing from './pages/Landing';
 import Auth from './pages/Auth';
 import Pricing from './pages/Pricing';
+import Checkout from './pages/Checkout';
 import Settings from './pages/Settings';
 import Certificates from './pages/Certificates';
 import Learning from './pages/Learning';
@@ -198,6 +199,7 @@ export default function App() {
                   <Route path="/learning" element={<Learning />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/checkout" element={<Checkout />} />
                   <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
               </main>

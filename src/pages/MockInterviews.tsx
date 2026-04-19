@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
-import { isLimitReached, incrementUsage, getLimitMessage } from '../lib/usageLimit';
+import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
 import { GeneratedInterview } from '../lib/generator';
 import { updateReadinessScore } from '../lib/readiness';
 
@@ -125,10 +125,7 @@ export default function MockInterviews() {
   };
 
   useEffect(() => {
-    if (activeTab === 'session' && sessionQuestions[currentQuestion]) {
-      const questionText = sessionQuestions[currentQuestion];
-      speak(`Based on your roadmap goal of ${roadmapGoal}, here is your next question: ${questionText}`);
-    }
+    // Question speaking removed as requested
   }, [currentQuestion, activeTab, sessionQuestions, roadmapGoal]);
 
 
@@ -138,7 +135,7 @@ export default function MockInterviews() {
     console.log('isPro:', isPro);
     console.log('isLimitReached check:', isLimitReached('interview', isPro));
     if (isLimitReached('interview', isPro)) {
-      const message = getLimitMessage('interview');
+      const message = getLimitMessage('interview', isPro);
       console.log('Limit reached, showing message:', message);
       alert(message);
       return;
@@ -448,7 +445,7 @@ Be specific, constructive, and encouraging.`;
       business: Math.min(100, prev.business + 4),
       closing: Math.min(100, prev.closing + 5),
     }));
-    incrementUsage('interview');
+    incrementUsage('interview', isPro);
     setActiveTab('evaluation');
   };
 
@@ -461,9 +458,16 @@ Be specific, constructive, and encouraging.`;
     <div className="max-w-6xl mx-auto space-y-8 pb-24 px-2 sm:px-0">
       <header className="space-y-4">
         <h2 className="text-3xl sm:text-5xl font-black tracking-tighter">AI Mock Interviews</h2>
-        <p className="text-text-dim font-bold uppercase tracking-widest text-sm flex items-center gap-2">
-           <Zap className="w-4 h-4 text-soft-orange" /> Sharpen your technical edge with real-time feedback
-        </p>
+        <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
+          <p className="text-text-dim font-bold uppercase tracking-widest text-sm flex items-center gap-2">
+             <Zap className="w-4 h-4 text-soft-orange" /> Sharpen your technical edge with real-time feedback
+          </p>
+          {!isPro && (
+            <div className="text-[10px] font-black uppercase tracking-widest text-soft-orange bg-soft-orange/10 px-4 py-2 rounded-full border border-soft-orange/20">
+              {getRemainingUsage('interview', isPro)} interview left this week
+            </div>
+          )}
+        </div>
       </header>
 
       <AnimatePresence mode="wait">
@@ -573,7 +577,14 @@ Be specific, constructive, and encouraging.`;
                     {(['text', 'audio'] as InterviewMode[]).map((m) => (
                       <button
                         key={m}
-                        onClick={() => setMode(m)}
+                        onClick={() => {
+                          if (mode !== m) {
+                            setMode(m);
+                            setAiResponse('');
+                            setUserAnswer('');
+                            setAudioTranscript('');
+                          }
+                        }}
                         className={cn(
                           "px-2 sm:px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
                           mode === m ? "bg-text-main text-surface shadow-md" : "text-text-dim hover:text-text-main"

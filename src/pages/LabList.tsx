@@ -15,7 +15,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 import { GeneratedLab } from '../lib/generator';
-import { isLimitReached, incrementUsage, getLimitMessage } from '../lib/usageLimit';
+import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
 
 // Map string icon names from AI to actual lucide-react components
 const iconMap: Record<string, any> = {
@@ -62,7 +62,7 @@ export default function LabList() {
           <h2 className="text-5xl font-black tracking-tighter italic">Cloud Sandbox</h2>
           <p className="text-text-dim font-bold uppercase tracking-[0.2em] text-xs">Scenario-based hands-on learning</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-col md:flex-row items-center gap-4">
           <div className="playful-card py-4 px-8 bg-surface border-none shadow-xl flex items-center gap-4">
              <div className="w-10 h-10 bg-soft-blue/20 rounded-full flex items-center justify-center text-soft-blue">
                 <CheckCircle2 className="w-6 h-6" />
@@ -72,6 +72,11 @@ export default function LabList() {
                 <p className="text-xl font-black">{completedLabsCount} / {labsData.length}</p>
              </div>
           </div>
+          {!isPro && (
+            <div className="text-[10px] font-black uppercase tracking-widest text-soft-orange bg-soft-orange/10 px-4 py-2 rounded-full border border-soft-orange/20">
+              {getRemainingUsage('lab', isPro)} lab generations left this week
+            </div>
+          )}
         </div>
       </header>
 
@@ -96,10 +101,10 @@ export default function LabList() {
                 onClick={() => {
                   if (isLocked) return;
                   if (isLimitReached('lab', isPro)) {
-                    alert(getLimitMessage('lab'));
+                    alert(getLimitMessage('lab', isPro));
                     return;
                   }
-                  incrementUsage('lab');
+                  incrementUsage('lab', isPro);
                   navigate(`/labs/${lab.id}`);
                 }}
                 className={cn(

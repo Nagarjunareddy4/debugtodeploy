@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Flame, Trophy, Zap, Users, Search, Sparkles, Star, ArrowRight, Brain, Lock, Check, RefreshCw } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -30,8 +30,10 @@ function buildWeeklyData(activityLog: any[]): DailyProgress[] {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [profile, setProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [showSuccess, setShowSuccess] = useState(location.state?.paymentSuccess || false);
   const [weeklyData, setWeeklyData] = useState<DailyProgress[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [aiResponse, setAiResponse] = useState<string | null>(null);
@@ -172,7 +174,7 @@ export default function Dashboard() {
 
     const isPro = profile?.subscription_status === 'pro';
     if (isLimitReached('search', isPro)) {
-      setAiResponse(`🔒 ${getLimitMessage('search')}`);
+      setAiResponse(`🔒 ${getLimitMessage('search', isPro)}`);
       return;
     }
 
@@ -204,9 +206,9 @@ export default function Dashboard() {
       });
       const data = await response.json();
       if (data.error) throw new Error(data.error.message);
-      incrementUsage('search');
+      incrementUsage('search', isPro);
       const remaining = getRemainingUsage('search', isPro);
-      const note = isPro ? '' : ` (${remaining} search${remaining !== 1 ? 'es' : ''} left today)`;
+      const note = (isPro && remaining === Infinity) ? '' : ` (${remaining} search${remaining !== 1 ? 'es' : ''} left today)`;
       setAiResponse((data.choices?.[0]?.message?.content || 'No response generated.') + note);
     } catch (err: any) {
       setAiResponse(`Search failed: ${err.message || 'Verify your OpenAI API key in Settings.'}`);
@@ -218,10 +220,10 @@ export default function Dashboard() {
   const handleStartLab = () => {
     const isPro = profile?.subscription_status === 'pro';
     if (isLimitReached('lab', isPro)) {
-      alert(getLimitMessage('lab'));
+      alert(getLimitMessage('lab', isPro));
       return;
     }
-    incrementUsage('lab');
+    incrementUsage('lab', isPro);
     if (nextLab) {
       // If it's a dynamic lab, its ID might be a string (e.g., 'lab-0')
       navigate(`/labs/${nextLab.id}`);
@@ -261,6 +263,33 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-12 pb-24">
+      <AnimatePresence>
+        {showSuccess && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="playful-card bg-soft-green text-white border-none shadow-2xl relative overflow-hidden mb-8"
+          >
+            <div className="absolute top-0 right-0 p-8 opacity-20">
+              <Trophy className="w-24 h-24" />
+            </div>
+            <div className="relative z-10 flex items-center justify-between">
+              <div className="space-y-1">
+                <h3 className="text-2xl font-black italic">Welcome to the Pro Fleet! 🚀</h3>
+                <p className="text-xs font-bold uppercase tracking-widest opacity-80">Your payment was successful and your limits have been lifted.</p>
+              </div>
+              <button 
+                onClick={() => setShowSuccess(false)}
+                className="bg-white/20 hover:bg-white/30 p-2 rounded-full transition-colors"
+              >
+                <RefreshCw className="w-4 h-4 rotate-45" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex flex-col lg:flex-row gap-8 items-start justify-between">
         <header className="space-y-2">
           <h2 className="text-5xl font-black tracking-tighter">
@@ -272,9 +301,13 @@ export default function Dashboard() {
           </h2>
           <p className="text-text-dim font-bold uppercase tracking-widest text-xs flex items-center gap-2">
             <Star className="w-4 h-4 text-soft-orange fill-soft-orange" /> Profile readiness: {profile?.readiness_score || 0}%
-            {!isPro && (
+            {!isPro ? (
               <span className="ml-2 text-soft-orange bg-soft-orange/10 px-2 py-0.5 rounded-full text-[9px]">
                 FREE · {searchesLeft} AI search{searchesLeft !== 1 ? 'es' : ''} left today
+              </span>
+            ) : (
+              <span className="ml-2 text-soft-blue bg-soft-blue/10 px-2 py-0.5 rounded-full text-[9px]">
+                PRO · Unlimited searches
               </span>
             )}
           </p>
