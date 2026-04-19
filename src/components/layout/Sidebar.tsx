@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { motion } from 'motion/react';
 import {
   LayoutDashboard,
   Map,
@@ -19,7 +20,9 @@ import {
   Moon,
   Monitor,
   Award,
-  Book
+  Book,
+  Facebook,
+  Instagram
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
@@ -119,7 +122,7 @@ export default function Sidebar() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'global' });
   };
 
   const displayName = profile?.full_name || profile?.username || profile?.email?.split('@')[0] || 'Engineer';
@@ -142,33 +145,66 @@ export default function Sidebar() {
       )}
 
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-40 w-72 bg-surface border-r border-border p-8 flex flex-col gap-12 transition-all duration-300 ease-in-out",
+        "fixed inset-y-0 left-0 z-40 w-72 bg-surface border-r border-border flex flex-col transition-all duration-300 ease-in-out overflow-hidden",
         !isOpen && "-translate-x-full lg:translate-x-0 shadow-none",
         isOpen && "translate-x-0 shadow-2xl lg:shadow-none",
         "lg:sticky lg:h-screen"
       )}>
-        <LogoFull />
+        {/* Header - Logo (Fixed) */}
+        <div className="flex-shrink-0 p-8 pb-4">
+          <LogoFull />
+        </div>
 
-        <nav className="flex flex-col gap-3">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              onClick={() => setIsOpen(false)}
-              className={({ isActive }) =>
-                cn(
-                  "nav-pill group",
-                  isActive && "nav-pill-active"
-                )
-              }
-            >
-              <item.icon className={cn("w-5 h-5", "group-hover:scale-110 transition-transform")} />
-              <span className="font-black text-sm uppercase tracking-widest">{item.label}</span>
-            </NavLink>
-          ))}
-        </nav>
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto min-h-0 px-8">
+          <div className="space-y-12 pb-8">
+            <nav className="flex flex-col gap-3">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setIsOpen(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      "nav-pill group",
+                      isActive && "nav-pill-active"
+                    )
+                  }
+                >
+                  <item.icon className={cn("w-5 h-5", "group-hover:scale-110 transition-transform")} />
+                  <span className="font-black text-sm uppercase tracking-widest">{item.label}</span>
+                </NavLink>
+              ))}
+            </nav>
 
-        <div className="mt-auto space-y-4 relative">
+            {/* Social Media Links */}
+            <div className="flex items-center justify-center gap-6 py-4">
+              <motion.a
+                href="https://www.facebook.com/share/1G3YuZmJdG/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-text-dim/70 hover:text-blue-500 transition-colors duration-300"
+                whileHover={{ scale: 1.2, rotate: 5 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <Facebook className="w-6 h-6" />
+              </motion.a>
+              <motion.a
+                href="https://www.instagram.com/debugtodeploy?igsh=MTlxcmoyNG9obWN1OA=="
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-text-dim/70 hover:text-pink-500 transition-colors duration-300"
+                whileHover={{ scale: 1.2, rotate: -5 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <Instagram className="w-6 h-6" />
+              </motion.a>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer - User Controls (Fixed) */}
+        <div className="flex-shrink-0 p-8 pt-4 border-t border-border space-y-4 relative">
           {/* Theme Toggle */}
           <div className="flex items-center justify-between px-2">
             <span className="text-[9px] font-black uppercase tracking-widest text-text-dim">Theme</span>

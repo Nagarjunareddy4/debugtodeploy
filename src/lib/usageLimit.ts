@@ -1,13 +1,13 @@
 // Usage limit tracker for free-tier users
-// Limits are stored in localStorage, keyed by action + date (YYYY-MM-DD)
+// Limits are stored in localStorage, keyed by action + date or week id.
 
 const FREE_LIMITS: Record<string, number> = {
-  roadmap: 1,   // 1 roadmap generation per day
-  search: 2,    // 2 AI searches per day
-  lab: 3,       // 3 labs per day
-  interview: 2, // 2 interviews per day
-  docs: 1,      // 1 learning path generation per day
-  certificates: 1, // 1 certificate recommendation per day
+  roadmap: 1,    // 1 roadmap generation per week
+  search: 2,     // 2 AI searches per day
+  lab: 2,        // 2 labs per week
+  interview: 1,  // 1 interview per week
+  docs: Infinity, // Unlimited
+  certificates: Infinity, // Unlimited
 };
 
 function todayKey(action: string): string {
@@ -15,13 +15,28 @@ function todayKey(action: string): string {
   return `usage_${action}_${today}`;
 }
 
+function weekKey(action: string): string {
+  const now = new Date();
+  const firstDayOfYear = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+  const pastDaysOfYear = Math.floor((now.getTime() - firstDayOfYear.getTime()) / 86400000);
+  const weekNumber = Math.ceil((pastDaysOfYear + firstDayOfYear.getUTCDay() + 1) / 7);
+  return `usage_${action}_week_${now.getUTCFullYear()}-${weekNumber}`;
+}
+
+function usageKey(action: string): string {
+  if (['roadmap', 'lab', 'interview'].includes(action)) {
+    return weekKey(action);
+  }
+  return todayKey(action);
+}
+
 export function getUsageCount(action: string): number {
-  const key = todayKey(action);
+  const key = usageKey(action);
   return parseInt(localStorage.getItem(key) || '0', 10);
 }
 
 export function incrementUsage(action: string): void {
-  const key = todayKey(action);
+  const key = usageKey(action);
   const current = getUsageCount(action);
   localStorage.setItem(key, String(current + 1));
 }
@@ -39,14 +54,13 @@ export function getRemainingUsage(action: string, isPro: boolean): number {
 }
 
 export function getLimitMessage(action: string): string {
-  const limit = FREE_LIMITS[action];
   const messages: Record<string, string> = {
-    roadmap: `Daily limit of ${limit} roadmap generation reached for Beta.`,
-    search: `Daily limit of ${limit} AI searches reached for Beta.`,
-    lab: `Daily limit of ${limit} labs reached for Beta.`,
-    interview: `Daily limit of ${limit} mock interviews reached for Beta.`,
-    docs: `Daily limit of ${limit} AI learning path generation reached for Beta.`,
-    certificates: `Daily limit of ${limit} certificate recommendations reached for Beta.`,
+    roadmap: `Weekly limit of 1 AI Roadmap generation reached. Upgrade to Pro for unlimited access.`,
+    search: `Daily limit of 2 AI Assistant searches reached. Come back tomorrow or Upgrade to Pro.`,
+    lab: `Weekly limit of 2 Cloud Labs reached. Upgrade to Pro to unlock unlimited practical environments.`,
+    interview: `Weekly limit of 1 Mock Interview reached. Upgrade to Pro for unlimited interview practice.`,
+    docs: `Unlimited`,
+    certificates: `Unlimited`,
   };
-  return messages[action] || 'Daily limit reached.';
+  return messages[action] || 'Limit reached.';
 }

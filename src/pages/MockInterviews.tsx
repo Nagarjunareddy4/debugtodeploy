@@ -15,7 +15,8 @@ import {
   Phone,
   PhoneOff,
   User,
-  Cloud
+  Cloud,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
@@ -45,14 +46,29 @@ export default function MockInterviews() {
   const [completedQuestions, setCompletedQuestions] = useState<Set<number>>(new Set());
   const [aiResponse, setAiResponse] = useState('');
   const [isLoadingResponse, setIsLoadingResponse] = useState(false);
-  const [userAnswer, setUserAnswer] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [audioTranscript, setAudioTranscript] = useState('');
+  const [liveScores, setLiveScores] = useState({
+    presentation: 72,
+    clarity: 65,
+    confidence: 80,
+    business: 85,
+    closing: 40,
+  });
   
   const [profile, setProfile] = useState<any>(null);
+  const [roadmapGoal, setRoadmapGoal] = useState('AI roadmap');
+  const [sessionQuestions, setSessionQuestions] = useState<string[]>([]);
   const [isPro, setIsPro] = useState(false);
   const [interviewScenarios, setInterviewScenarios] = useState<GeneratedInterview[]>([]);
   const [loading, setLoading] = useState(true);
   const [interviewScores, setInterviewScores] = useState<Record<string, number>>({});
+  const [userAnswer, setUserAnswer] = useState('');
 
+  // Refs for MediaRecorder-based recording
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -63,11 +79,24 @@ export default function MockInterviews() {
           if (data) {
             setProfile(data);
             setIsPro(data.subscription_status === 'pro');
+            console.log('Profile data:', data);
+            console.log('Subscription status:', data.subscription_status);
+            console.log('isPro set to:', data.subscription_status === 'pro');
+            console.log('Generated interviews:', data.generated_interviews);
             if (data.generated_interviews) {
               setInterviewScenarios(data.generated_interviews);
+              console.log('Setting interview scenarios:', data.generated_interviews);
             }
             if (data.interview_scores) {
               setInterviewScores(data.interview_scores);
+            }
+            if (data.roadmap_data) {
+              try {
+                const roadmap = typeof data.roadmap_data === 'string' ? JSON.parse(data.roadmap_data) : data.roadmap_data;
+                setRoadmapGoal(roadmap.goal || roadmap.title || 'AI roadmap');
+              } catch {
+                setRoadmapGoal('AI roadmap');
+              }
             }
           }
           setLoading(false);
@@ -86,29 +115,72 @@ export default function MockInterviews() {
     window.speechSynthesis.speak(utterance);
   };
 
-  useEffect(() => {
-    if (activeTab === 'session' && selectedScenario?.questions?.[currentQuestion]) {
-      speak(selectedScenario.questions[currentQuestion]);
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const copy = [...array];
+    for (let i = copy.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
     }
-  }, [currentQuestion, activeTab, selectedScenario]);
+    return copy;
+  };
+
+  useEffect(() => {
+    if (activeTab === 'session' && sessionQuestions[currentQuestion]) {
+      const questionText = sessionQuestions[currentQuestion];
+      speak(`Based on your roadmap goal of ${roadmapGoal}, here is your next question: ${questionText}`);
+    }
+  }, [currentQuestion, activeTab, sessionQuestions, roadmapGoal]);
+
+
 
   const startSession = (scenario: GeneratedInterview) => {
+    console.log('Starting session with scenario:', scenario);
+    console.log('isPro:', isPro);
+    console.log('isLimitReached check:', isLimitReached('interview', isPro));
     if (isLimitReached('interview', isPro)) {
-      alert(getLimitMessage('interview'));
+      const message = getLimitMessage('interview');
+      console.log('Limit reached, showing message:', message);
+      alert(message);
       return;
     }
-    incrementUsage('interview');
+    console.log('Incrementing usage deferred to finishInterview...');
+    console.log('Setting selected scenario...');
     setSelectedScenario(scenario);
+    const randomized = shuffleArray(scenario.questions);
+    console.log('Randomized questions:', randomized);
+    setSessionQuestions(randomized);
     setCurrentQuestion(0);
     setCompletedQuestions(new Set());
     setHistory([]);
     setAiResponse('');
     setUserAnswer('');
+    setLiveScores({
+      presentation: 58,
+      clarity: 52,
+      confidence: 45,
+      business: 60,
+      closing: 38,
+    });
+    console.log('Switching to session tab...');
     setActiveTab('session');
     setMode('text');
     setCallActive(false);
     setMicActive(false);
     setVideoActive(false);
+    console.log('Session started successfully');
+  };
+
+  const generateRealtimeLiveScores = (score: number) => {
+    const rand = (min: number, max: number) => Math.max(0, Math.min(100, Math.round(min + Math.random() * (max - min))));
+    const base = Math.min(10, Math.max(0, score));
+
+    return {
+      presentation: Math.min(100, base * 9 + rand(-12, 12)),
+      clarity: Math.min(100, base * 8 + rand(-10, 15)),
+      confidence: Math.min(100, base * 8 + rand(-8, 18)),
+      business: Math.min(100, base * 8 + rand(-14, 12)),
+      closing: Math.min(100, base * 7 + rand(-16, 18)),
+    };
   };
 
   const startVideoCall = async () => {
@@ -151,13 +223,94 @@ export default function MockInterviews() {
     setVideoActive(prev => !prev);
   };
 
-  const goToNextQuestion = () => {
-    const total = selectedScenario?.questions?.length || 0;
-    if (currentQuestion < total - 1) {
-      setCompletedQuestions(prev => new Set([...prev, currentQuestion]));
-      setCurrentQuestion(prev => prev + 1);
-      setAiResponse('');
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Reset state for fresh recording
+      audioChunksRef.current = [];
+      setAudioTranscript('');
       setUserAnswer('');
+      setAiResponse('');
+      setIsRecording(true);
+
+      // Pick the best supported format
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : 'audio/mp4';
+
+      const recorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        // Stop all mic tracks
+        stream.getTracks().forEach(t => t.stop());
+
+        const blob = new Blob(audioChunksRef.current, { type: mimeType });
+        if (blob.size < 1000) {
+          // Recording too short / empty
+          setIsTranscribing(false);
+          return;
+        }
+
+        const apiKey = (window as any).OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
+        if (!apiKey) {
+          setAiResponse('OpenAI API key not configured. Please add it in Settings.');
+          setIsTranscribing(false);
+          return;
+        }
+
+        try {
+          // ── Step 1: Transcribe with Whisper ──────────────────────────
+          const formData = new FormData();
+          const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+          formData.append('file', blob, `recording.${extension}`);
+          formData.append('model', 'whisper-1');
+          formData.append('language', 'en');
+
+          const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${apiKey}` },
+            body: formData,
+          });
+          const whisperData = await whisperRes.json();
+          const transcript = (whisperData.text || '').trim();
+
+          if (!transcript) {
+            setAiResponse('No speech detected. Please try recording again.');
+            setIsTranscribing(false);
+            return;
+          }
+
+          setAudioTranscript(transcript);
+          setUserAnswer(transcript);
+          setIsTranscribing(false);
+
+          // ── Step 2: Get GPT feedback ──────────────────────────────────
+          getAiFeedback(transcript);
+        } catch (err: any) {
+          setAiResponse(`Transcription error: ${err.message}`);
+          setIsTranscribing(false);
+        }
+      };
+
+      recorder.start();
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      alert('Microphone access denied. Please allow microphone permissions.');
+    }
+  };
+
+  const stopRecording = () => {
+    setIsRecording(false);
+    setIsTranscribing(true); // show transcribing state immediately
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop(); // triggers onstop → Whisper → GPT
     }
   };
 
@@ -165,8 +318,16 @@ export default function MockInterviews() {
     setCompletedQuestions(prev => new Set([...prev, currentQuestion]));
   };
 
-  const getAiFeedback = async () => {
-    if (!userAnswer.trim()) return;
+  const goToNextQuestion = () => {
+    setCurrentQuestion(prev => prev + 1);
+    setAiResponse('');
+    setUserAnswer('');
+    setAudioTranscript('');
+  };
+
+  const getAiFeedback = async (overrideAnswer?: string) => {
+    const answerToEvaluate = (overrideAnswer ?? userAnswer).trim();
+    if (!answerToEvaluate) return;
     setIsLoadingResponse(true);
     setAiResponse('');
     try {
@@ -175,19 +336,57 @@ export default function MockInterviews() {
         setAiResponse('OpenAI API key not configured. Please add it in Settings.');
         return;
       }
+
+      const audioSystemPrompt = `You are an expert technical interviewer and career coach. A candidate just answered a question verbally. Evaluate their spoken answer and give detailed, actionable feedback.
+
+Return your response using EXACTLY this format — do not skip any section:
+
+• **What You Said Well:** [1-2 specific things they got right — be concrete, quote parts of their answer]
+• **Areas to Improve:** [1-2 specific weaknesses — content gaps, unclear logic, or missing key points]
+• **Technical Accuracy:** [Score X/10 — explain what was technically correct vs incorrect]
+• **Communication & Delivery:** [Score X/10 — rate clarity, structure, pacing, and confidence]
+• **Overall Score:** [X/10] — [one-line summary with encouragement]
+
+📝 **How to Answer This in a Real Interview:**
+• [Bullet 1: The ideal opening — how to frame your answer in 1-2 sentences to hook the interviewer]
+• [Bullet 2: Key technical terms, concepts, or keywords that MUST be mentioned to sound credible]
+• [Bullet 3: A concrete real-world example or analogy that demonstrates deep understanding]
+• [Bullet 4: How to close strongly — what to say to leave a lasting positive impression]
+• [Bullet 5: The #1 mistake most candidates make on this question — and exactly how to avoid it]
+
+Be specific, direct, and constructive. Your goal is to make this candidate ready to ace this exact question in their next real interview.`;
+
+      const textSystemPrompt = `You are a senior technical interviewer and career coach. Evaluate the candidate's written answer and provide structured, actionable feedback.
+
+Return your response using EXACTLY this format:
+
+• **Strengths:** [1-2 specific positives from their answer — be concrete]
+• **Areas to Improve:** [1-2 specific gaps or weaknesses]
+• **Technical Accuracy:** [Score X/10 — explain correctness]
+• **Communication:** [Score X/10 — rate clarity, structure, and depth]
+• **Overall Score:** [X/10] — [one-line summary]
+
+📝 **How to Answer This in a Real Interview:**
+• [Bullet 1: The ideal opening — how to frame your answer to impress immediately]
+• [Bullet 2: Key technical terms and concepts that MUST be covered]
+• [Bullet 3: A strong real-world example or analogy that shows genuine expertise]
+• [Bullet 4: How to close your answer with maximum impact]
+• [Bullet 5: The most common mistake candidates make here — and how to avoid it]
+
+Be specific, constructive, and encouraging.`;
+
+      const systemPrompt = mode === 'audio' ? audioSystemPrompt : textSystemPrompt;
+
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [
-            { role: 'system', content: `You are a senior technical interviewer. Evaluate the candidate's answer.
-If the answer is wrong or incomplete, CLARIFY the accurate knowledge and politely correct them.
-Give specific, concise technical feedback. 
-CRITICAL: You MUST end your entire response perfectly with a score out of 10 in brackets, like this: [8/10]. Do not miss this.` },
-            { role: 'user', content: `Question: ${selectedScenario?.questions[currentQuestion]}\n\nCandidate answer: ${userAnswer}` },
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `Question: ${sessionQuestions[currentQuestion]}\n\nCandidate answer: ${answerToEvaluate}` },
           ],
-          max_tokens: 400,
+          max_tokens: 700,
         }),
       });
       const data = await res.json();
@@ -200,18 +399,21 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
       const cleanFeedback = content.replace(/\[\d+\/10\]/, '').trim();
       
       setAiResponse(cleanFeedback);
-      speak(cleanFeedback);
+      if (mode !== 'audio') {
+        speak(cleanFeedback);
+      }
       
       setHistory(prev => {
          const newHistory = [...prev];
          newHistory[currentQuestion] = {
-           q: selectedScenario?.questions[currentQuestion] || '',
-           a: userAnswer,
+           q: sessionQuestions[currentQuestion] || '',
+           a: answerToEvaluate,
            f: cleanFeedback,
            score
          };
          return newHistory;
       });
+      setLiveScores(generateRealtimeLiveScores(score));
       markComplete();
     } catch (err: any) {
       setAiResponse(`Error: ${err.message}`);
@@ -224,11 +426,8 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
     window.speechSynthesis.cancel();
     stopVideoCall();
     
-    // Calculate average score for the session
     const answered = history.filter(Boolean);
     const totalScore = answered.reduce((acc, h) => acc + h.score, 0);
-    // Since each question is out of 10, the total percentage for this interview is:
-    // Actually, we want to store the total score out of 10. Let's store the average out of 10.
     const averageScore = answered.length > 0 ? (totalScore / answered.length) : 0;
     
     if (selectedScenario?.id) {
@@ -242,10 +441,18 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
       }
     }
     
+    setLiveScores(prev => ({
+      presentation: Math.min(100, prev.presentation + 8),
+      clarity: Math.min(100, prev.clarity + 6),
+      confidence: Math.min(100, prev.confidence + 7),
+      business: Math.min(100, prev.business + 4),
+      closing: Math.min(100, prev.closing + 5),
+    }));
+    incrementUsage('interview');
     setActiveTab('evaluation');
   };
 
-  const totalQuestions = selectedScenario?.questions?.length || 0;
+  const totalQuestions = sessionQuestions.length;
   const isLastQuestion = currentQuestion === totalQuestions - 1;
 
   if (loading) return null;
@@ -273,15 +480,28 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
             {interviewScenarios.length === 0 ? (
                <div className="col-span-3 text-center p-12 text-text-dim font-bold">
                  No scenarios found. Please re-login to generate your personalized curriculum.
+                 <div className="mt-4 text-sm">Debug: interviewScenarios length: {interviewScenarios.length}</div>
                </div>
             ) : (
-              interviewScenarios.map((scenario) => {
+              interviewScenarios.map((scenario, index) => {
                 const IconComponent = iconMap[scenario.icon] || Brain;
+                const isLocked = !isPro && index > 0;
                 return (
                   <div 
                     key={scenario.id}
-                    className="playful-card flex flex-col group hover:scale-[1.02] transition-all cursor-pointer"
-                    onClick={() => startSession(scenario)}
+                    className={cn(
+                      "playful-card flex flex-col group transition-all relative overflow-hidden",
+                      isLocked ? "opacity-75 cursor-not-allowed grayscale-[0.5]" : "hover:scale-[1.02] cursor-pointer"
+                    )}
+                    onClick={() => {
+                      if (isLocked) {
+                        alert("Please upgrade to Pro to unlock this Mock Interview scenario!");
+                        return;
+                      }
+                      console.log('Interview card clicked - raw click event');
+                      console.log('Interview card clicked:', scenario);
+                      startSession(scenario);
+                    }}
                   >
                     <div className={cn("w-16 h-16 rounded-3xl flex items-center justify-center mb-6 shadow-xl", `bg-${scenario.color} text-white`)}>
                       <IconComponent className="w-8 h-8" />
@@ -295,12 +515,24 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
                         <MessageSquare className="w-3 h-3" /> {scenario.questions.length} Qs
                       </div>
                     </div>
-                    <div className="mt-auto pt-6 border-t border-border/50 flex items-center justify-between">
+                    <div className="mt-auto pt-6 border-t border-border/50 flex items-center justify-between relative z-10">
                       <span className={cn("text-[10px] font-black uppercase tracking-widest", `text-${scenario.color}`)}>{scenario.level}</span>
-                      <button className="flex items-center gap-1 font-black text-sm group-hover:gap-2 transition-all">
-                        START <ChevronRight className="w-4 h-4" />
+                      <button 
+                        className={cn("flex items-center gap-1 font-black text-sm transition-all", isLocked ? "text-text-dim" : "group-hover:gap-2")}
+                        disabled={isLocked}
+                      >
+                        {isLocked ? "LOCKED" : "START"} {isLocked ? <AlertCircle className="w-4 h-4 ml-1" /> : <ChevronRight className="w-4 h-4" />}
                       </button>
                     </div>
+                    {isLocked && (
+                      <div className="absolute inset-0 bg-surface/40 backdrop-blur-[2px] flex flex-col items-center justify-center text-center p-6 z-20">
+                        <div className="w-12 h-12 bg-surface rounded-full shadow-lg flex items-center justify-center mb-3">
+                           <AlertCircle className="w-6 h-6 text-text-dim" />
+                        </div>
+                        <h4 className="font-black text-lg">Pro Feature</h4>
+                        <p className="text-xs font-bold text-text-dim mt-1">Upgrade to unlock</p>
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -338,17 +570,17 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
                   </span>
                   {/* Mode Switcher */}
                   <div className="flex bg-brand-bg rounded-2xl border-2 border-border p-1 gap-1">
-                    {(['text', 'audio', 'video'] as InterviewMode[]).map((m) => (
+                    {(['text', 'audio'] as InterviewMode[]).map((m) => (
                       <button
                         key={m}
-                        onClick={() => { setMode(m); if (m !== 'video') stopVideoCall(); }}
+                        onClick={() => setMode(m)}
                         className={cn(
                           "px-2 sm:px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
                           mode === m ? "bg-text-main text-surface shadow-md" : "text-text-dim hover:text-text-main"
                         )}
                       >
-                        {m === 'text' ? '💬' : m === 'audio' ? '🎙️' : '📹'}
-                        <span className="hidden sm:inline ml-1">{m === 'text' ? 'Text' : m === 'audio' ? 'Audio' : 'Video'}</span>
+                        {m === 'text' ? '💬' : '🎙️'}
+                        <span className="hidden sm:inline ml-1">{m === 'text' ? 'Text' : 'Audio'}</span>
                       </button>
                     ))}
                   </div>
@@ -357,7 +589,7 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
 
               {/* Question progress pills */}
               <div className="flex gap-2 mt-6 flex-wrap">
-                {selectedScenario?.questions?.map((_: any, idx: number) => (
+                {sessionQuestions.map((_: any, idx: number) => (
                   <button
                     key={idx}
                     onClick={() => { setCurrentQuestion(idx); setAiResponse(''); setUserAnswer(''); }}
@@ -376,157 +608,6 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
               </div>
             </div>
 
-            {/* VIDEO MODE */}
-            {mode === 'video' && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="playful-card min-h-[500px] sm:min-h-[600px] flex flex-col p-0 border-none bg-surface shadow-2xl relative overflow-hidden"
-              >
-                {/* Main Video Area */}
-                <div className="relative flex-1 bg-gray-900 overflow-hidden flex flex-col">
-                  {/* AI Interviewer Placeholder / Stream */}
-                  <div className="flex-1 flex items-center justify-center relative">
-                    <div className="text-center space-y-4">
-                      <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto border-2 border-white/10">
-                        <User className="w-10 h-10 text-white/20" />
-                      </div>
-                      <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Interviewer Stream</p>
-                    </div>
-                  </div>
-
-                  {/* Question Overlay - Bottom of video area */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6 pt-12">
-                    <p className="text-white font-bold text-sm sm:text-lg leading-relaxed max-w-3xl mx-auto text-center">
-                      "{selectedScenario?.questions?.[currentQuestion]}"
-                    </p>
-                  </div>
-
-                  {/* Top Overlays */}
-                  <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start pointer-events-none">
-                    {/* Live Score Overlay */}
-                    <div className="bg-black/60 backdrop-blur-md rounded-2xl p-3 sm:p-4 min-w-[120px] sm:min-w-[160px] pointer-events-auto">
-                      <p className="text-white/60 text-[8px] sm:text-[9px] font-black uppercase tracking-widest mb-2 sm:mb-3">Live Score</p>
-                      {[
-                        { label: 'Presentation', val: 72, color: '#f97316' },
-                        { label: 'Clarity', val: 65, color: '#22d3ee' },
-                        { label: 'Confidence', val: 80, color: '#4ade80' },
-                      ].map(item => (
-                        <div key={item.label} className="mb-1.5 sm:mb-2">
-                          <div className="flex justify-between text-[8px] sm:text-[9px] font-black text-white/70 mb-0.5">
-                            <span className="hidden sm:inline">{item.label}</span>
-                            <span className="sm:hidden">{item.label.charAt(0)}</span>
-                            <span>{item.val}%</span>
-                          </div>
-                          <div className="h-1 sm:h-1.5 bg-white/10 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${item.val}%`, background: item.color }} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* User camera / PIP */}
-                    <div className="w-28 h-20 sm:w-36 sm:h-24 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl bg-gray-950 pointer-events-auto relative">
-                      {videoActive ? (
-                        <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          {profile?.avatar_url ? (
-                            <img src={`${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}`} alt="You" className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="flex flex-col items-center gap-1">
-                              <User className="w-6 h-6 sm:w-8 sm:h-8 text-white/40" />
-                              <span className="text-[8px] text-white/40 font-black uppercase">You</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {!micActive && callActive && (
-                        <div className="absolute bottom-1 left-1 bg-red-500 rounded-full p-0.5">
-                          <MicOff className="w-2.5 h-2.5 text-white" />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Recording badge */}
-                  {callActive && (
-                    <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-1 rounded-full">
-                      <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                      <span className="text-white text-[8px] sm:text-[10px] font-black uppercase">Live</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Video Controls bar */}
-                <div className="p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-text-main rounded-b-[2rem]">
-                  {/* Reaction icons (hidden on small mobile) */}
-                  <div className="hidden sm:flex items-center gap-3">
-                    <button className="w-10 h-10 bg-white/10 text-white rounded-full flex items-center justify-center hover:bg-white/20 transition-all text-sm">💬</button>
-                    <button className="w-10 h-10 bg-white/10 text-white rounded-full flex items-center justify-center hover:bg-white/20 transition-all text-sm">❤️</button>
-                  </div>
-
-                  {/* Center: main controls */}
-                  <div className="flex items-center gap-4 sm:gap-6">
-                    <button
-                      onClick={toggleVideo}
-                      className={cn(
-                        "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all",
-                        videoActive ? "bg-white/20 text-white hover:bg-white/30" : "bg-white/10 text-white/40 hover:bg-white/20"
-                      )}
-                    >
-                      {videoActive ? <Video className="w-4 h-4 sm:w-5 sm:h-5" /> : <VideoOff className="w-4 h-4 sm:w-5 sm:h-5" />}
-                    </button>
-                    <button
-                      onClick={toggleMic}
-                      className={cn(
-                        "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all",
-                        micActive ? "bg-white/20 text-white hover:bg-white/30" : "bg-white/10 text-white/40 hover:bg-white/20"
-                      )}
-                    >
-                      {micActive ? <Mic className="w-4 h-4 sm:w-5 sm:h-5" /> : <MicOff className="w-4 h-4 sm:w-5 sm:h-5" />}
-                    </button>
-
-                    {!callActive ? (
-                      <button
-                        onClick={startVideoCall}
-                        className="w-14 h-14 sm:w-16 sm:h-16 bg-soft-green rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all"
-                      >
-                        <Phone className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={stopVideoCall}
-                        className="w-14 h-14 sm:w-16 sm:h-16 bg-red-500 rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all"
-                      >
-                        <PhoneOff className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Right: next question */}
-                  <div className="flex items-center gap-3">
-                    {!isLastQuestion && (
-                      <button
-                        onClick={goToNextQuestion}
-                        className="flex items-center gap-2 bg-white/10 text-white px-4 py-2 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest hover:bg-white/20 transition-all"
-                      >
-                        <span className="hidden sm:inline">Next Q</span> <SkipForward className="w-4 h-4" />
-                      </button>
-                    )}
-                    {isLastQuestion && (
-                      <button
-                        onClick={finishInterview}
-                        className="flex items-center gap-2 bg-soft-green/80 text-white px-4 py-2 rounded-full font-black text-[10px] sm:text-xs uppercase tracking-widest hover:bg-soft-green transition-all"
-                      >
-                        Done <CheckCircle2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
             {/* TEXT / AUDIO MODE */}
             {(mode === 'text' || mode === 'audio') && (
               <motion.div
@@ -544,22 +625,135 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
                     <Brain className="w-10 h-10 text-soft-blue relative z-10" />
                   </div>
                   <h4 className="text-2xl font-black max-w-2xl leading-tight">
-                    "{selectedScenario?.questions?.[currentQuestion]}"
+                    "{sessionQuestions[currentQuestion]}"
                   </h4>
                   {mode === 'audio' ? (
-                    <div className="w-full max-w-md space-y-4">
-                      <button
-                        onClick={() => setMicActive(prev => !prev)}
-                        className={cn(
-                          "w-20 h-20 rounded-full shadow-2xl flex items-center justify-center mx-auto hover:scale-110 active:scale-95 transition-all",
-                          micActive ? "bg-red-500 text-white animate-pulse" : "bg-text-main text-surface"
+                    <div className="w-full max-w-2xl space-y-5">
+
+                      {/* Mic button with pulsing rings + waveform */}
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="relative flex items-center justify-center">
+                          {isRecording && (
+                            <>
+                              <motion.span
+                                animate={{ scale: [1, 1.7, 1], opacity: [0.5, 0, 0.5] }}
+                                transition={{ duration: 1.4, repeat: Infinity }}
+                                className="absolute inset-0 rounded-full bg-red-500/30"
+                              />
+                              <motion.span
+                                animate={{ scale: [1, 2.1, 1], opacity: [0.3, 0, 0.3] }}
+                                transition={{ duration: 1.4, repeat: Infinity, delay: 0.25 }}
+                                className="absolute inset-0 rounded-full bg-red-500/15"
+                              />
+                            </>
+                          )}
+                          <button
+                            onClick={isRecording ? stopRecording : startRecording}
+                            disabled={isTranscribing || isLoadingResponse}
+                            className={cn(
+                              "relative w-24 h-24 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed",
+                              isRecording ? "bg-red-500 text-white" : "bg-soft-blue text-white"
+                            )}
+                          >
+                            {isRecording ? <MicOff className="w-10 h-10" /> : <Mic className="w-10 h-10" />}
+                          </button>
+                        </div>
+
+                        {/* Animated waveform bars while recording */}
+                        {isRecording && (
+                          <div className="flex items-end gap-1 h-8">
+                            {[0.4, 0.75, 1, 0.55, 0.9, 0.45, 0.8, 0.35, 0.7, 1, 0.5, 0.65, 0.85].map((h, i) => (
+                              <motion.div
+                                key={i}
+                                animate={{ scaleY: [h, Math.max(0.1, h * 0.25 + Math.random() * 0.5), h] }}
+                                transition={{ duration: 0.45 + i * 0.03, repeat: Infinity, ease: 'easeInOut', delay: i * 0.06 }}
+                                style={{ height: `${h * 28}px`, transformOrigin: 'bottom' }}
+                                className="w-1.5 rounded-full bg-red-400"
+                              />
+                            ))}
+                          </div>
                         )}
-                      >
-                        {micActive ? <MicOff className="w-8 h-8" /> : <Mic className="w-8 h-8" />}
-                      </button>
-                      <p className="text-text-dim font-bold uppercase tracking-[0.2em] text-[10px]">
-                        {micActive ? 'Recording... Click to stop' : 'Click mic to start recording'}
-                      </p>
+
+                        {/* Dynamic status text */}
+                        <p className="text-text-dim font-bold uppercase tracking-[0.18em] text-xs">
+                          {isTranscribing
+                            ? '📝 Transcribing with Whisper...'
+                            : isLoadingResponse
+                            ? '⚡ AI is analyzing your answer...'
+                            : isRecording
+                            ? '🎙️ Recording — speak freely, click Stop when done'
+                            : aiResponse
+                            ? '✅ Feedback ready — scroll down to read'
+                            : '🎙️ Click the mic to start recording your answer'}
+                        </p>
+                      </div>
+
+                      {/* Transcript — shown after Whisper returns */}
+                      {audioTranscript && (
+                        <div className="bg-surface border-2 border-border/50 rounded-2xl p-4 text-left">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-text-dim">
+                              Your Recorded Answer
+                            </p>
+                            <span className="text-[10px] font-black text-soft-blue bg-soft-blue/10 px-2 py-0.5 rounded-full border border-soft-blue/20">
+                              {audioTranscript.trim().split(/\s+/).filter(Boolean).length} words
+                            </span>
+                          </div>
+                          <p className="text-sm font-bold text-text-main leading-relaxed italic">"{audioTranscript}"</p>
+                        </div>
+                      )}
+
+                      {/* Phase 1: Whisper transcribing */}
+                      {isTranscribing && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="bg-purple-500/10 border-2 border-purple-500/30 rounded-2xl p-5 flex flex-col items-center gap-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Sparkles className="w-5 h-5 text-purple-400 animate-spin" />
+                            <span className="font-black text-purple-400 uppercase tracking-widest text-sm">
+                              Transcribing with Whisper AI...
+                            </span>
+                          </div>
+                          <p className="text-xs text-text-dim font-bold text-center">
+                            Converting your speech to text — no internet dependency on Google
+                          </p>
+                          <div className="w-full h-1.5 bg-surface rounded-full overflow-hidden">
+                            <motion.div
+                              animate={{ x: ['-100%', '120%'] }}
+                              transition={{ duration: 1.0, repeat: Infinity, ease: 'easeInOut' }}
+                              className="h-full w-1/3 bg-purple-400 rounded-full"
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {/* Phase 2: GPT analyzing */}
+                      {isLoadingResponse && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="bg-soft-blue/10 border-2 border-soft-blue/30 rounded-2xl p-5 flex flex-col items-center gap-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Sparkles className="w-5 h-5 text-soft-blue animate-spin" />
+                            <span className="font-black text-soft-blue uppercase tracking-widest text-sm">
+                              AI is analyzing your answer...
+                            </span>
+                          </div>
+                          <p className="text-xs text-text-dim font-bold text-center">
+                            Evaluating content, delivery & generating your real-interview coaching guide
+                          </p>
+                          <div className="w-full h-1.5 bg-surface rounded-full overflow-hidden">
+                            <motion.div
+                              animate={{ x: ['-100%', '120%'] }}
+                              transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
+                              className="h-full w-1/3 bg-soft-blue rounded-full"
+                            />
+                          </div>
+                        </motion.div>
+                      )}
                     </div>
                   ) : (
                     <div className="w-full max-w-2xl space-y-4">
@@ -571,7 +765,7 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
                         className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 font-bold outline-none focus:border-soft-blue transition-colors resize-none text-sm"
                       />
                       <button
-                        onClick={getAiFeedback}
+                        onClick={() => getAiFeedback()}
                         disabled={isLoadingResponse || !userAnswer.trim()}
                         className="btn-pill bg-text-main text-surface px-8 py-3 flex items-center gap-2 mx-auto disabled:opacity-50"
                       >
@@ -590,12 +784,39 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mx-8 mb-6 p-6 bg-soft-blue/10 border-2 border-soft-blue/20 rounded-2xl"
+                    className="mx-8 mb-6 p-6 bg-soft-blue/10 border-2 border-soft-blue/20 rounded-2xl space-y-4"
                   >
-                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-soft-blue mb-3">
-                      <Brain className="w-4 h-4" /> AI Feedback
+                    <div className="bg-surface p-4 rounded-xl border border-border/50">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-text-dim mb-2">Your Answer</p>
+                      <p className="text-sm font-bold text-text-main italic">"{userAnswer}"</p>
                     </div>
-                    <p className="text-sm font-bold leading-relaxed">{aiResponse}</p>
+
+                    <div>
+                      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-soft-blue mb-3">
+                        <Brain className="w-4 h-4" /> AI Analysis & Feedback
+                      </div>
+                      <div className="text-sm font-bold leading-relaxed text-text-main whitespace-pre-line">
+                        {aiResponse}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-center pt-4">
+                      {!isLastQuestion ? (
+                        <button
+                          onClick={goToNextQuestion}
+                          className="btn-pill bg-soft-blue text-white px-8 py-3 font-black uppercase tracking-widest hover:scale-105 transition-all"
+                        >
+                          Next Question <SkipForward className="w-4 h-4 inline ml-2" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={finishInterview}
+                          className="btn-pill bg-soft-green text-white px-8 py-3 font-black uppercase tracking-widest hover:scale-105 transition-all"
+                        >
+                          Finish Interview <CheckCircle2 className="w-4 h-4 inline ml-2" />
+                        </button>
+                      )}
+                    </div>
                   </motion.div>
                 )}
 
@@ -614,22 +835,6 @@ CRITICAL: You MUST end your entire response perfectly with a score out of 10 in 
                       <CheckCircle2 className="w-4 h-4" />
                       {completedQuestions.has(currentQuestion) ? 'Answered' : 'Mark Done'}
                     </button>
-
-                    {!isLastQuestion ? (
-                      <button
-                        onClick={goToNextQuestion}
-                        className="flex items-center gap-2 bg-text-main text-surface px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl"
-                      >
-                        Next Question <SkipForward className="w-4 h-4" />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={finishInterview}
-                        className="flex items-center gap-2 bg-soft-green text-white px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl"
-                      >
-                        Finish Interview <CheckCircle2 className="w-4 h-4" />
-                      </button>
-                    )}
                   </div>
                 </div>
                 </motion.div>

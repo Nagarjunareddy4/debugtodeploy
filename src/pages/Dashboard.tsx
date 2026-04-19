@@ -79,6 +79,20 @@ export default function Dashboard() {
           prof.email = prof.email || user.email;
         }
 
+        // If the profile row does not include an avatar URL, fall back to auth metadata and persist it.
+        // Do not restore auth avatar when the profile explicitly removed it (avatar_url === null).
+        if (prof.avatar_url === undefined || prof.avatar_url === '') {
+          const fallbackAvatar =
+            user.user_metadata?.avatar_url ||
+            user.user_metadata?.picture ||
+            user.user_metadata?.photo ||
+            user.user_metadata?.pictureUrl;
+          if (fallbackAvatar) {
+            await supabase.from('profiles').update({ avatar_url: fallbackAvatar }).eq('id', user.id);
+            prof.avatar_url = fallbackAvatar;
+          }
+        }
+
         // Try to update streak — wrapped so missing columns don't crash
         try {
           const today = new Date().toISOString().split('T')[0];
@@ -487,7 +501,13 @@ export default function Dashboard() {
               <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-soft-blue p-0.5 bg-brand-bg relative z-10 shadow-xl">
                 <div className="w-full h-full bg-soft-blue/10 rounded-full flex items-center justify-center text-soft-blue">
                   {profile?.avatar_url ? (
-                    <img src={`${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}`} className="w-full h-full rounded-full object-cover" />
+                    <img
+                      src={`${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}`}
+                      className="w-full h-full rounded-full object-cover"
+                      alt="Profile"
+                      referrerPolicy="no-referrer"
+                      crossOrigin="anonymous"
+                    />
                   ) : (
                     <Users className="w-16 h-16" />
                   )}
