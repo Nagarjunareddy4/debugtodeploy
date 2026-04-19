@@ -48,14 +48,7 @@ export default function Certificates() {
   }, []);
 
   const generateCertificates = async (userId: string, roadmapData: any, profileData?: any) => {
-    // Check limits
-    const { data: prof } = await supabase.from('profiles').select('subscription_status').eq('id', userId).single();
-    if (isLimitReached('certificates', prof?.subscription_status === 'pro')) {
-      alert(getLimitMessage('certificates'));
-      setLoading(false);
-      return;
-    }
-
+    // Certificates are unlimited, no limit check needed
     setGenerating(true);
     try {
       const apiKey = (window as any).OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;

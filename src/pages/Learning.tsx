@@ -55,10 +55,7 @@ export default function Learning() {
   const handleGenerate = async () => {
     if (!profile) return;
 
-    if (isLimitReached('docs', profile.subscription_status === 'pro')) {
-      alert(getLimitMessage('docs'));
-      return;
-    }
+    // Docs are unlimited, no limit check needed
 
     setIsGenerating(true);
 

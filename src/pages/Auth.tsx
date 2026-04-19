@@ -204,10 +204,23 @@ export default function Auth() {
         {/* Right Side: Auth Form */}
         <div className="p-6 sm:p-10 lg:p-16 flex flex-col justify-center">
           {/* Mobile Logo Only */}
-          <div className="lg:hidden flex flex-col items-center mb-6">
-            <Rocket className="w-10 h-10 text-soft-blue mb-3" />
-            <h1 className="text-2xl font-black tracking-tighter italic">DebugToDeploy</h1>
-          </div>
+          <motion.div 
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="lg:hidden flex flex-col items-center mb-8 group cursor-pointer"
+          >
+            <motion.div
+              whileHover={{ rotate: 15, scale: 1.1, y: -5 }}
+              whileTap={{ scale: 0.9 }}
+              className="w-16 h-16 bg-soft-blue/10 rounded-2xl flex items-center justify-center mb-4 border border-soft-blue/20 shadow-lg shadow-soft-blue/10"
+            >
+              <Rocket className="w-8 h-8 text-soft-blue group-hover:text-soft-purple transition-colors" />
+            </motion.div>
+            <h1 className="text-3xl font-black tracking-tighter italic group-hover:scale-105 transition-transform duration-300">
+              Debug<span className="text-soft-blue group-hover:text-soft-purple transition-colors">To</span>Deploy
+            </h1>
+          </motion.div>
 
           <div className="mb-8 text-center lg:text-left">
             <h2 className="text-3xl font-black tracking-tight mb-2">

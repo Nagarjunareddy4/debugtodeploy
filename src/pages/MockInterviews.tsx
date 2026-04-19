@@ -15,7 +15,8 @@ import {
   Phone,
   PhoneOff,
   User,
-  Cloud
+  Cloud,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
@@ -142,8 +143,7 @@ export default function MockInterviews() {
       alert(message);
       return;
     }
-    console.log('Incrementing usage...');
-    incrementUsage('interview');
+    console.log('Incrementing usage deferred to finishInterview...');
     console.log('Setting selected scenario...');
     setSelectedScenario(scenario);
     const randomized = shuffleArray(scenario.questions);
@@ -448,6 +448,7 @@ Be specific, constructive, and encouraging.`;
       business: Math.min(100, prev.business + 4),
       closing: Math.min(100, prev.closing + 5),
     }));
+    incrementUsage('interview');
     setActiveTab('evaluation');
   };
 
@@ -482,13 +483,21 @@ Be specific, constructive, and encouraging.`;
                  <div className="mt-4 text-sm">Debug: interviewScenarios length: {interviewScenarios.length}</div>
                </div>
             ) : (
-              interviewScenarios.map((scenario) => {
+              interviewScenarios.map((scenario, index) => {
                 const IconComponent = iconMap[scenario.icon] || Brain;
+                const isLocked = !isPro && index > 0;
                 return (
                   <div 
                     key={scenario.id}
-                    className="playful-card flex flex-col group hover:scale-[1.02] transition-all cursor-pointer"
+                    className={cn(
+                      "playful-card flex flex-col group transition-all relative overflow-hidden",
+                      isLocked ? "opacity-75 cursor-not-allowed grayscale-[0.5]" : "hover:scale-[1.02] cursor-pointer"
+                    )}
                     onClick={() => {
+                      if (isLocked) {
+                        alert("Please upgrade to Pro to unlock this Mock Interview scenario!");
+                        return;
+                      }
                       console.log('Interview card clicked - raw click event');
                       console.log('Interview card clicked:', scenario);
                       startSession(scenario);
@@ -506,12 +515,24 @@ Be specific, constructive, and encouraging.`;
                         <MessageSquare className="w-3 h-3" /> {scenario.questions.length} Qs
                       </div>
                     </div>
-                    <div className="mt-auto pt-6 border-t border-border/50 flex items-center justify-between">
+                    <div className="mt-auto pt-6 border-t border-border/50 flex items-center justify-between relative z-10">
                       <span className={cn("text-[10px] font-black uppercase tracking-widest", `text-${scenario.color}`)}>{scenario.level}</span>
-                      <button className="flex items-center gap-1 font-black text-sm group-hover:gap-2 transition-all">
-                        START <ChevronRight className="w-4 h-4" />
+                      <button 
+                        className={cn("flex items-center gap-1 font-black text-sm transition-all", isLocked ? "text-text-dim" : "group-hover:gap-2")}
+                        disabled={isLocked}
+                      >
+                        {isLocked ? "LOCKED" : "START"} {isLocked ? <AlertCircle className="w-4 h-4 ml-1" /> : <ChevronRight className="w-4 h-4" />}
                       </button>
                     </div>
+                    {isLocked && (
+                      <div className="absolute inset-0 bg-surface/40 backdrop-blur-[2px] flex flex-col items-center justify-center text-center p-6 z-20">
+                        <div className="w-12 h-12 bg-surface rounded-full shadow-lg flex items-center justify-center mb-3">
+                           <AlertCircle className="w-6 h-6 text-text-dim" />
+                        </div>
+                        <h4 className="font-black text-lg">Pro Feature</h4>
+                        <p className="text-xs font-bold text-text-dim mt-1">Upgrade to unlock</p>
+                      </div>
+                    )}
                   </div>
                 );
               })
