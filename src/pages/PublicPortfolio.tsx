@@ -49,7 +49,14 @@ export default function PublicPortfolio() {
         return;
       }
 
-      setProfile(data);
+      if (data) {
+        setProfile(data);
+        document.title = `${data.full_name || data.username} | Professional Tech Portfolio`;
+        const metaDescription = document.querySelector('meta[name="description"]');
+        if (metaDescription) {
+          metaDescription.setAttribute('content', `Explore the professional technical portfolio of ${data.full_name || data.username}.`);
+        }
+      }
       
       // If user is Pro, they might have generated a resume.
       // For now, we'll show the resume if they are Pro.
