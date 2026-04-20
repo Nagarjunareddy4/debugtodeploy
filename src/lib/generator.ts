@@ -378,17 +378,3 @@ Include realistic technologies based on the goal of ${goal}.`;
     return null;
   }
 }
-
-export function isCurriculumStale(profile: any, currentRoadmapVersion: string): boolean {
-  if (!profile.generated_labs || !profile.generated_interviews) return true;
-  if (!profile.roadmap_version) return true; // never been versioned
-  return profile.roadmap_version !== currentRoadmapVersion;
-}
-
-export function isAllContentStale(profile: any, currentRoadmapVersion: string): boolean {
-  return (
-    isCurriculumStale(profile, currentRoadmapVersion) ||
-    !profile.generated_certificates ||
-    !profile.generated_docs
-  );
-}
