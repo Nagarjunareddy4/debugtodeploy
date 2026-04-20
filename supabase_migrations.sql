@@ -5,8 +5,8 @@
 
 -- 1. Add new columns to profiles table (safe to run multiple times)
 ALTER TABLE profiles
-  ADD COLUMN IF NOT EXISTS email TEXT,
-  ADD COLUMN IF NOT EXISTS username TEXT,
+  ADD COLUMN IF NOT EXISTS email TEXT UNIQUE,
+  ADD COLUMN IF NOT EXISTS username TEXT UNIQUE,
   ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0,
   ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1,
   ADD COLUMN IF NOT EXISTS streak INTEGER DEFAULT 0,
@@ -52,6 +52,29 @@ CREATE POLICY "Users can insert own activity" ON activity_log FOR INSERT WITH CH
 CREATE POLICY "Users can update own activity" ON activity_log FOR UPDATE USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can view own profile"   ON profiles FOR SELECT USING (auth.uid() = id);
+
+-- Protect sensitive columns from being updated by the client
+CREATE OR REPLACE FUNCTION protect_sensitive_profile_columns()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF (current_setting('role') <> 'service_role') THEN
+    NEW.subscription_status := OLD.subscription_status;
+    NEW.xp := OLD.xp;
+    NEW.level := OLD.level;
+    NEW.readiness_score := OLD.readiness_score;
+    NEW.email := OLD.email;
+    NEW.labs_completed := OLD.labs_completed;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS tr_protect_sensitive_profile_columns ON profiles;
+CREATE TRIGGER tr_protect_sensitive_profile_columns
+  BEFORE UPDATE ON profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION protect_sensitive_profile_columns();
+
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
@@ -95,9 +118,70 @@ CREATE POLICY "Avatar images are publicly accessible."
 CREATE POLICY "Users can upload their own avatar."
   ON storage.objects FOR INSERT
   TO authenticated
-  WITH CHECK ( bucket_id = 'avatars' );
+  WITH CHECK ( 
+    bucket_id = 'avatars' AND 
+    (storage.foldername(name))[1] = auth.uid()::text
+  );
 
 CREATE POLICY "Users can update their own avatar."
   ON storage.objects FOR UPDATE
   TO authenticated
-  USING ( bucket_id = 'avatars' );
+  USING ( 
+    bucket_id = 'avatars' AND 
+    (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- 8. Secure RPC for Lab Completion
+CREATE OR REPLACE FUNCTION complete_lab_securely(lab_id_input TEXT, xp_gain_input INTEGER)
+RETURNS VOID AS $$
+DECLARE
+  v_current_completed INTEGER;
+  v_new_completed INTEGER;
+  v_today DATE := CURRENT_DATE;
+BEGIN
+  -- Get current progress
+  v_current_completed := (SELECT labs_completed FROM profiles WHERE id = auth.uid());
+  
+  -- If profile not found, do nothing
+  IF v_current_completed IS NULL THEN
+    v_current_completed := 0;
+  END IF;
+
+  -- Only update if it's a new lab or higher progress
+  v_new_completed := GREATEST(v_current_completed, lab_id_input::INTEGER);
+  
+  -- Update profile with SERVICE ROLE (bypasses trigger)
+  UPDATE profiles 
+  SET 
+    labs_completed = v_new_completed,
+    xp = xp + (CASE WHEN lab_id_input::INTEGER > v_current_completed THEN xp_gain_input ELSE 0 END)
+  WHERE id = auth.uid();
+
+  -- Update activity log
+  IF (lab_id_input::INTEGER > v_current_completed) THEN
+    INSERT INTO activity_log (user_id, date, xp_earned, labs_done)
+    VALUES (auth.uid(), v_today, xp_gain_input, 1)
+    ON CONFLICT (user_id, date)
+    DO UPDATE SET 
+      xp_earned = activity_log.xp_earned + EXCLUDED.xp_earned,
+      labs_done = activity_log.labs_done + EXCLUDED.labs_done;
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 9. Public RPC for Login & Availability Checks
+CREATE OR REPLACE FUNCTION check_availability(target_username TEXT, target_email TEXT)
+RETURNS TABLE (username_taken BOOLEAN, email_taken BOOLEAN) AS $$
+BEGIN
+  RETURN QUERY SELECT 
+    EXISTS(SELECT 1 FROM profiles WHERE username = target_username),
+    EXISTS(SELECT 1 FROM profiles WHERE email = target_email);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION get_email_by_username(target_username TEXT)
+RETURNS TABLE (email TEXT) AS $$
+BEGIN
+  RETURN QUERY SELECT profiles.email FROM profiles WHERE profiles.username = target_username;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

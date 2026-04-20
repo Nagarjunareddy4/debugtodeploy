@@ -35,13 +35,13 @@ export default function Pricing() {
 
   const handleSubscribe = async (plan: string, amount: number) => {
     if (amount === 0) return;
-    
-    navigate('/checkout', { 
-      state: { 
-        planName: plan, 
+
+    navigate('/checkout', {
+      state: {
+        planName: plan,
         amount: amount,
         period: billingCycle === 'monthly' ? 'month' : 'year'
-      } 
+      }
     });
   };
 
@@ -90,8 +90,8 @@ export default function Pricing() {
         >
           <Crown className="w-4 h-4" /> Elevate Your Career
         </motion.div>
-        
-        <motion.h2 
+
+        <motion.h2
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -99,8 +99,8 @@ export default function Pricing() {
         >
           Engineering <br /> <span className="text-soft-blue">Beyond Limits</span>
         </motion.h2>
-        
-        <motion.p 
+
+        <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -112,11 +112,11 @@ export default function Pricing() {
         {/* Toggle */}
         <div className="flex items-center justify-center gap-6 pt-4">
           <span className={cn("text-xs font-black uppercase tracking-widest transition-colors", billingCycle === 'monthly' ? "text-text-main" : "text-text-dim")}>Monthly</span>
-          <button 
+          <button
             onClick={() => setBillingCycle(billingCycle === 'monthly' ? 'yearly' : 'monthly')}
             className="w-16 h-8 bg-surface border-2 border-border rounded-full relative p-1 group transition-colors hover:border-soft-blue"
           >
-            <motion.div 
+            <motion.div
               animate={{ x: billingCycle === 'monthly' ? 0 : 32 }}
               className="w-5 h-5 bg-soft-blue rounded-full shadow-lg"
             />
@@ -171,13 +171,13 @@ export default function Pricing() {
               ))}
             </div>
 
-            <button 
+            <button
               onClick={() => handleSubscribe(plan.name, plan.priceUSD)}
               disabled={loading || profile?.subscription_status === (plan.priceUSD === 0 ? 'free' : 'pro')}
               className={cn(
                 "w-full py-6 rounded-[2rem] font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-2xl relative group",
-                plan.priceUSD === 0 ? "bg-brand-bg text-text-dim border-2 border-border cursor-not-allowed" : 
-                "bg-text-main text-surface hover:bg-soft-blue hover:text-white transition-all overflow-hidden"
+                plan.priceUSD === 0 ? "bg-brand-bg text-text-dim border-2 border-border cursor-not-allowed" :
+                  "bg-text-main text-surface hover:bg-soft-blue hover:text-white transition-all overflow-hidden"
               )}
             >
               <div className="absolute inset-0 bg-linear-to-r from-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
@@ -196,6 +196,7 @@ export default function Pricing() {
       </div>
 
       {/* Trust Section */}
+      {/* Enterprise Section - On Hold
       <section className="playful-card bg-text-main text-surface p-12 md:p-16 flex flex-col md:flex-row items-center justify-between gap-12 border-none shadow-3xl overflow-hidden relative group rounded-[3rem]">
          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
          <div className="absolute -left-20 -top-20 w-64 h-64 bg-soft-blue/20 blur-[100px] rounded-full" />
@@ -207,7 +208,10 @@ export default function Pricing() {
             </p>
          </div>
          
-         <button className="z-10 px-12 py-6 bg-surface text-text-main rounded-full font-black flex items-center gap-4 hover:scale-105 active:scale-95 transition-all shadow-2xl hover:bg-soft-blue hover:text-white">
+         <button 
+           onClick={() => window.location.href = 'mailto:enterprise@debugtodeploy.com?subject=Enterprise Mastery Inquiry'}
+           className="z-10 px-12 py-6 bg-surface text-text-main rounded-full font-black flex items-center gap-4 hover:scale-105 active:scale-95 transition-all shadow-2xl hover:bg-soft-blue hover:text-white"
+         >
             CONTACT COMMAND <ArrowRight className="w-6 h-6" />
          </button>
          
@@ -215,6 +219,7 @@ export default function Pricing() {
             <Rocket className="w-80 h-80" />
          </div>
       </section>
+      */}
 
       <footer className="text-center space-y-4">
         <p className="text-text-dim font-bold uppercase tracking-[0.3em] text-[10px]">Secure Payments via Razorpay</p>

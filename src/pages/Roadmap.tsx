@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Compass, Sparkles, CheckCircle2, Loader2, ChevronRight, Zap, Target, BookOpen, RefreshCw, Lock } from 'lucide-react';
 import { cn, getObjectHash } from '../lib/utils';
 import { supabase } from '../lib/supabase';
@@ -23,6 +24,10 @@ interface RoadmapData {
 }
 
 export default function Roadmap() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const hasTriggeredRef = useRef(false);
+
   const [experience, setExperience] = useState('beginner');
   const [goal, setGoal] = useState('Senior DevOps Engineer');
   const [loading, setLoading] = useState(false);
@@ -38,9 +43,13 @@ export default function Roadmap() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      
       const { data: prof } = await supabase.from('profiles').select('subscription_status, roadmap_data, completed_roadmap_tasks, last_roadmap_generated_at').eq('id', user.id).single();
+      
+      let currentIsPro = false;
       if (prof) {
-        setIsPro(prof.subscription_status === 'pro');
+        currentIsPro = prof.subscription_status === 'pro';
+        setIsPro(currentIsPro);
         if (prof.roadmap_data) {
           try {
             const parsed = typeof prof.roadmap_data === 'string' ? JSON.parse(prof.roadmap_data) : prof.roadmap_data;
@@ -63,6 +72,22 @@ export default function Roadmap() {
             setServerLimitBlocked(true);
           }
         }
+      }
+
+      // Check for automatic trigger from Dashboard
+      const state = location.state as any;
+      if (state?.triggerUpdate && state?.newGoal && !hasTriggeredRef.current) {
+        hasTriggeredRef.current = true;
+        const targetGoal = state.newGoal;
+        setGoal(targetGoal);
+        
+        // Clean up state so refresh doesn't re-trigger
+        navigate(location.pathname, { replace: true, state: {} });
+        
+        // Short delay to ensure state updates and then generate
+        setTimeout(() => {
+          generateRoadmap(targetGoal, experience, currentIsPro);
+        }, 100);
       }
     };
     init();
@@ -103,9 +128,13 @@ export default function Roadmap() {
     });
   };
 
-  const generateRoadmap = async () => {
-    if (isLimitReached('roadmap', isPro)) {
-      setLimitError(getLimitMessage('roadmap', isPro));
+  const generateRoadmap = async (overrideGoal?: string, overrideExperience?: string, overrideIsPro?: boolean) => {
+    const activeIsPro = overrideIsPro !== undefined ? overrideIsPro : isPro;
+    const activeGoal = overrideGoal || goal;
+    const activeExperience = overrideExperience || experience;
+
+    if (isLimitReached('roadmap', activeIsPro)) {
+      setLimitError(getLimitMessage('roadmap', activeIsPro));
       return;
     }
 
@@ -134,7 +163,7 @@ export default function Roadmap() {
             },
             {
               role: 'user',
-              content: `Create a structured DevOps personalized roadmap for a ${experience} level user aiming to become a ${goal}.
+              content: `Create a structured DevOps personalized roadmap for a ${activeExperience} level user aiming to become a ${activeGoal}.
 Return a JSON object exactly like this:
 {
   "title": "string",
@@ -165,16 +194,16 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
       const clean = text.replace(/```json|```/g, '').trim();
       const parsed: RoadmapData = JSON.parse(clean);
       const finalRoadmap: RoadmapData = {
-        goal,
-        experience,
-        title: parsed.title || goal,
-        description: parsed.description || `Personalized ${experience} roadmap to become ${goal}.`,
+        goal: activeGoal,
+        experience: activeExperience,
+        title: parsed.title || activeGoal,
+        description: parsed.description || `Personalized ${activeExperience} roadmap to become ${activeGoal}.`,
         stages: parsed.stages || [],
       };
       const roadmapHash = await getObjectHash(finalRoadmap);
       setRoadmap(finalRoadmap);
       setHasExistingRoadmap(true);
-      incrementUsage('roadmap', isPro);
+      incrementUsage('roadmap', activeIsPro);
       await saveRoadmapToProfile(finalRoadmap, roadmapHash);
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {

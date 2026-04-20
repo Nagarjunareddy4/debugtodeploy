@@ -93,10 +93,11 @@ export default function Checkout() {
 
     // 1. Create Order on Backend
     try {
+      const planId = amount === 5 ? 'pro_monthly' : 'pro_yearly';
       const orderRes = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: amountINR })
+        body: JSON.stringify({ planId })
       });
       const orderData = await orderRes.json();
       
@@ -113,14 +114,17 @@ export default function Checkout() {
         handler: async function (response: any) {
           // 2. Verify Payment on Backend
           try {
+            const { data: { session } } = await supabase.auth.getSession();
             const verifyRes = await fetch('/api/verify-payment', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session?.access_token}`
+              },
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                userId: profile?.id
+                razorpay_signature: response.razorpay_signature
               })
             });
             const verifyData = await verifyRes.json();

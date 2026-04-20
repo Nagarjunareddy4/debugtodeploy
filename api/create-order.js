@@ -1,5 +1,10 @@
 import Razorpay from 'razorpay';
 
+const PLANS = {
+  'pro_monthly': { amount: 399, currency: 'INR' },
+  'pro_yearly': { amount: 2999, currency: 'INR' }
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -11,11 +16,12 @@ export default async function handler(req, res) {
       key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
 
-    const { amount, currency = 'INR' } = req.body;
+    const { planId } = req.body;
+    const plan = PLANS[planId] || PLANS['pro_monthly']; // Default to monthly if not specified or invalid
     
     const options = {
-      amount: amount * 100, // amount in paise
-      currency,
+      amount: plan.amount * 100, // amount in paise
+      currency: plan.currency,
       receipt: `receipt_${Date.now()}`,
     };
 

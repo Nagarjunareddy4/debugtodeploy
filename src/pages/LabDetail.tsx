@@ -112,56 +112,23 @@ export default function LabDetail() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('labs_completed, xp')
-        .eq('id', user.id)
-        .single();
+      const labIdStr = id || '0';
+      const xpGain = lab.xp;
 
-      const labId = parseInt(id || '0');
-      const currentCompleted = profile?.labs_completed || 0;
-      const newCompleted = Math.max(currentCompleted, labId);
-      const xpGain = labId > currentCompleted ? lab.xp : 0;
+      // Call the secure RPC function
+      const { error: rpcError } = await supabase.rpc('complete_lab_securely', {
+        lab_id_input: labIdStr,
+        xp_gain_input: xpGain
+      });
 
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id: user.id,
-        labs_completed: newCompleted,
-        xp: (profile?.xp || 0) + xpGain
-      }, { onConflict: 'id' });
-
-      if (profileError) {
-        throw new Error(`Profile update failed: ${profileError.message}`);
-      }
-
-      if (xpGain > 0) {
-        const today = new Date().toISOString().split('T')[0];
-        const { data: existing } = await supabase
-          .from('activity_log')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('date', today)
-          .single();
-
-        if (existing) {
-          await supabase.from('activity_log').update({
-            xp_earned: (existing.xp_earned || 0) + xpGain,
-            labs_done: (existing.labs_done || 0) + 1,
-          }).eq('id', existing.id);
-        } else {
-          const { error: insertError } = await supabase.from('activity_log').insert({
-            user_id: user.id,
-            date: today,
-            xp_earned: xpGain,
-            labs_done: 1,
-          });
-          if (insertError) throw new Error(`Activity log insert failed: ${insertError.message}`);
-        }
+      if (rpcError) {
+        throw new Error(`Secure lab completion failed: ${rpcError.message}`);
       }
 
       await updateReadinessScore(user.id);
     } catch (err: any) {
       console.error('Error saving lab completion:', err);
-      alert(`Could not save lab progress: ${err.message}. Please check your connection or database schema.`);
+      alert(`Could not save lab progress: ${err.message}`);
     } finally {
       setCompleting(false);
       navigate('/labs');

@@ -26,6 +26,11 @@ export default function Settings() {
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [viewingAvatar, setViewingAvatar] = useState(false);
 
+  // API Key states
+  const [apiKey, setApiKey] = useState(localStorage.getItem('openai_api_key') || '');
+  const [apiKeySaved, setApiKeySaved] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
+
   useEffect(() => {
     fetchProfile();
   }, []);
@@ -478,6 +483,56 @@ export default function Settings() {
             </div>
           </form>
 
+          {/* API Configuration */}
+          <div className="playful-card p-8 bg-surface space-y-8 shadow-2xl border-none">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-black uppercase tracking-widest flex items-center gap-2">
+                <Shield className="w-5 h-5 text-soft-blue" /> API Configuration
+              </h3>
+              {apiKeySaved && (
+                <span className="text-[10px] font-black text-soft-green uppercase animate-pulse">Saved Successfully</span>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-xs font-bold text-text-dim leading-relaxed">
+                Enter your OpenAI API key to enable AI-powered roadmaps, search, and interview features.
+                The key is stored locally in your browser and is never sent to our database.
+              </p>
+
+              <div className="relative">
+                <input
+                  type={showApiKey ? "text" : "password"}
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="sk-..."
+                  className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 font-mono text-sm outline-hidden focus:border-soft-blue transition-colors pr-14"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 hover:bg-white/10 rounded-xl transition-colors text-text-dim"
+                >
+                  {showApiKey ? <Eye className="w-4 h-4 opacity-50" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  onClick={saveApiKey}
+                  className="flex-1 py-4 bg-text-main text-surface rounded-2xl font-black text-sm hover:bg-soft-blue transition-colors flex items-center justify-center gap-2"
+                >
+                  <Check className="w-4 h-4" /> Save API Key
+                </button>
+                <button
+                  onClick={clearApiKey}
+                  className="px-6 py-4 border-2 border-border rounded-2xl font-black text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -12,6 +12,35 @@ export default function Auth() {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usernameTaken, setUsernameTaken] = useState(false);
+  const [emailTaken, setEmailTaken] = useState(false);
+  const [checking, setChecking] = useState(false);
+
+  // Real-time availability checks (debounced)
+  useEffect(() => {
+    if (isLogin) return;
+    
+    const checkTimer = setTimeout(async () => {
+      if (username.length >= 3 || identifier.includes('@')) {
+        setChecking(true);
+        const { data, error } = await supabase.rpc('check_availability', {
+          target_username: username,
+          target_email: identifier.includes('@') ? identifier : ''
+        });
+        
+        if (!error && data?.[0]) {
+          setUsernameTaken(data[0].username_taken);
+          setEmailTaken(data[0].email_taken);
+        }
+        setChecking(false);
+      } else {
+        setUsernameTaken(false);
+        setEmailTaken(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(checkTimer);
+  }, [username, identifier, isLogin]);
 
   // Safety: Reset loading state when component mounts
   useEffect(() => {
@@ -31,15 +60,12 @@ export default function Auth() {
 
         if (!identifier.includes('@')) {
           const { data, error: lookupError } = await supabase
-            .from('profiles')
-            .select('email')
-            .eq('username', identifier)
-            .single();
+            .rpc('get_email_by_username', { target_username: identifier });
 
-          if (lookupError || !data) {
+          if (lookupError || !data || data.length === 0) {
             throw new Error('Username not found. Please use your email.');
           }
-          loginEmail = data.email;
+          loginEmail = data[0].email;
         }
 
         const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
@@ -47,6 +73,14 @@ export default function Auth() {
       } else {
         if (!username || !fullName) {
           throw new Error('Please fill in all fields (Name, Username, Email, Password).');
+        }
+
+        if (usernameTaken) {
+          throw new Error('This username is already claimed. Please try another.');
+        }
+
+        if (emailTaken) {
+          throw new Error('This email is already registered. Please sign in instead.');
         }
 
         const { data, error } = await supabase.auth.signUp({
@@ -91,7 +125,7 @@ export default function Auth() {
     try {
       // Clear any cached sessions to force fresh login
       await supabase.auth.signOut({ scope: 'global' });
-      
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
@@ -204,7 +238,7 @@ export default function Auth() {
         {/* Right Side: Auth Form */}
         <div className="p-6 sm:p-10 lg:p-16 flex flex-col justify-center">
           {/* Mobile Logo Only */}
-          <motion.div 
+          <motion.div
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
@@ -278,17 +312,28 @@ export default function Auth() {
                       type="text"
                       required
                       className="w-full bg-white/5 border-2 border-white/5 rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm"
-                      placeholder="Nagarjuna Reddy"
+                      placeholder="John Smith"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black ml-4">Username</label>
+                    <div className="flex justify-between items-center px-4">
+                      <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black">Username</label>
+                      {!isLogin && username.length >= 3 && !checking && (
+                        <span className={cn("text-[9px] font-black uppercase tracking-widest", usernameTaken ? "text-soft-red" : "text-soft-green")}>
+                          {usernameTaken ? '• Taken' : '• Available'}
+                        </span>
+                      )}
+                    </div>
                     <input
                       type="text"
                       required
-                      className="w-full bg-white/5 border-2 border-white/5 rounded-3xl px-8 py-4 outline-hidden focus:border-soft-purple/50 focus:bg-white/10 transition-all font-mono font-bold text-sm"
+                      className={cn(
+                        "w-full bg-white/5 border-2 rounded-3xl px-8 py-4 outline-hidden transition-all font-mono font-bold text-sm",
+                        !isLogin && username.length >= 3 && !checking && (usernameTaken ? "border-soft-red/50" : "border-soft-green/50"),
+                        (!username || isLogin) && "border-white/5"
+                      )}
                       placeholder="devops_master"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
@@ -299,13 +344,24 @@ export default function Auth() {
             </AnimatePresence>
 
             <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black ml-4">
-                {isLogin ? 'Identity (Email/Username)' : 'Email Address'}
-              </label>
+              <div className="flex justify-between items-center px-4">
+                <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black">
+                  {isLogin ? 'Identity (Email/Username)' : 'Email Address'}
+                </label>
+                {!isLogin && identifier.includes('@') && !checking && (
+                  <span className={cn("text-[9px] font-black uppercase tracking-widest", emailTaken ? "text-soft-red" : "text-soft-green")}>
+                    {emailTaken ? '• Registered' : '• Unique'}
+                  </span>
+                )}
+              </div>
               <input
                 type={isLogin ? "text" : "email"}
                 required
-                className="w-full bg-white/5 border-2 border-white/5 rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm"
+                className={cn(
+                  "w-full bg-white/5 border-2 rounded-3xl px-8 py-4 outline-hidden transition-all font-bold text-sm",
+                  !isLogin && identifier.includes('@') && !checking && (emailTaken ? "border-soft-red/50" : "border-soft-green/50"),
+                  (!identifier || isLogin) && "border-white/5"
+                )}
                 placeholder={isLogin ? "engineer@debugtodeploy.com" : "engineer@debugtodeploy.com"}
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}

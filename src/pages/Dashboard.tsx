@@ -234,25 +234,17 @@ export default function Dashboard() {
 
   const handleQuickGoalUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quickGoal.trim() || !profile?.id) return;
+    if (!quickGoal.trim() || !profile?.id || !isPro) return;
     
-    setIsUpdatingGoal(true);
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ roadmap_data: JSON.stringify({ ...JSON.parse(profile.roadmap_data || '{}'), goal: quickGoal }) })
-        .eq('id', profile.id);
-      
-      if (!error) {
-        setProfile((prev: any) => ({ ...prev, roadmap_data: JSON.stringify({ ...JSON.parse(prev.roadmap_data || '{}'), goal: quickGoal }) }));
-        alert('Goal updated! Refresh the roadmap to see changes.');
-        setQuickGoal('');
-      }
-    } catch (err) {
-      console.error('Goal update failed:', err);
-    } finally {
-      setIsUpdatingGoal(false);
-    }
+    // Instead of just updating the DB and alerting, we navigate to the roadmap page 
+    // with a flag to trigger an immediate generation using this new goal.
+    navigate('/roadmap', { 
+      state: { 
+        triggerUpdate: true, 
+        newGoal: quickGoal 
+      } 
+    });
+    setQuickGoal('');
   };
 
   const displayName = profile?.full_name || profile?.username || profile?.email?.split('@')[0] || 'Engineer';
@@ -408,19 +400,32 @@ export default function Dashboard() {
                 >
                   {nextLab === null ? 'Labs Complete ✓' : 'Start Lab'}
                 </button>
-                <div className="flex items-center gap-2 bg-brand-bg/50 border-2 border-border p-1 rounded-full pl-6">
+                <div className={cn(
+                  "flex items-center gap-2 bg-brand-bg/50 border-2 p-1 rounded-full pl-6 transition-all",
+                  isPro ? "border-border" : "border-soft-blue/20 opacity-75 grayscale"
+                )}>
                   <input 
                     value={quickGoal}
                     onChange={(e) => setQuickGoal(e.target.value)}
-                    placeholder="New Goal? (e.g. SRE)"
-                    className="bg-transparent border-none font-bold text-xs outline-hidden w-32"
+                    disabled={!isPro || isUpdatingGoal}
+                    placeholder={isPro ? "New Goal? (e.g. SRE)" : "Pro Only Goal Update"}
+                    className="bg-transparent border-none font-bold text-xs outline-hidden w-32 disabled:cursor-not-allowed"
                   />
                   <button
                     onClick={handleQuickGoalUpdate}
-                    disabled={isUpdatingGoal || !quickGoal.trim()}
-                    className="p-3 bg-soft-blue text-white rounded-full hover:scale-110 transition-transform disabled:opacity-50"
+                    disabled={!isPro || isUpdatingGoal || !quickGoal.trim()}
+                    className={cn(
+                      "p-3 rounded-full transition-all disabled:opacity-50",
+                      isPro ? "bg-soft-blue text-white hover:scale-110" : "bg-border text-text-dim cursor-not-allowed"
+                    )}
                   >
-                    {isUpdatingGoal ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                    {isUpdatingGoal ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : !isPro ? (
+                      <Lock className="w-4 h-4" />
+                    ) : (
+                      <ArrowRight className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
