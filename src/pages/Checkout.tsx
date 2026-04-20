@@ -10,6 +10,8 @@ import {
   Building2, 
   Lock, 
   CheckCircle2,
+  XCircle,
+  Loader2,
   Sparkles,
   Zap
 } from 'lucide-react';
@@ -54,6 +56,7 @@ export default function Checkout() {
   const [selectedMethod, setSelectedMethod] = useState<string>('upi');
   const [autoRenew, setAutoRenew] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'success' | 'failed'>('idle');
   const [profile, setProfile] = useState<any>(null);
 
   const planName = location.state?.planName || 'Fleet Captain (Pro)';
@@ -84,11 +87,13 @@ export default function Checkout() {
 
   const handlePay = async () => {
     setLoading(true);
+    setPaymentStatus('processing');
     
     const res = await loadRazorpay();
     if (!res) {
       alert('Razorpay SDK failed to load. Check your internet connection.');
       setLoading(false);
+      setPaymentStatus('failed');
       return;
     }
 
@@ -131,12 +136,17 @@ export default function Checkout() {
             const verifyData = await verifyRes.json();
             
             if (verifyData.status === 'ok') {
-              navigate('/dashboard', { state: { paymentSuccess: true } });
+              setPaymentStatus('success');
+              setTimeout(() => {
+                navigate('/dashboard', { state: { paymentSuccess: true } });
+              }, 1500);
             } else {
+              setPaymentStatus('failed');
               alert('Payment verification failed!');
             }
           } catch (err) {
             console.error('Verification error:', err);
+            setPaymentStatus('failed');
             alert('Verification failed. Please contact support.');
           } finally {
             setLoading(false);
@@ -151,6 +161,7 @@ export default function Checkout() {
         modal: {
           ondismiss: function() {
             setLoading(false);
+            setPaymentStatus('failed');
           }
         },
         theme: { color: '#3B82F6' },
@@ -160,6 +171,7 @@ export default function Checkout() {
       paymentObject.open();
     } catch (err) {
       console.error('Order error:', err);
+      setPaymentStatus('failed');
       alert('Could not initiate payment. Is the backend server running?');
       setLoading(false);
     }
@@ -408,10 +420,43 @@ export default function Checkout() {
                   </div>
                 </div>
               </div>
+              {/* Dynamic Payment Status Feedback */}
+              <AnimatePresence>
+                {paymentStatus !== 'idle' && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className={cn(
+                      "mb-6 p-4 rounded-2xl border flex items-start gap-3 overflow-hidden",
+                      paymentStatus === 'processing' && "bg-soft-blue/5 border-soft-blue/20 text-soft-blue",
+                      paymentStatus === 'success' && "bg-soft-green/5 border-soft-green/20 text-soft-green",
+                      paymentStatus === 'failed' && "bg-soft-red/5 border-soft-red/20 text-soft-red"
+                    )}
+                  >
+                    {paymentStatus === 'processing' && <Loader2 className="w-4 h-4 mt-0.5 animate-spin" />}
+                    {paymentStatus === 'success' && <CheckCircle2 className="w-4 h-4 mt-0.5" />}
+                    {paymentStatus === 'failed' && <XCircle className="w-4 h-4 mt-0.5" />}
+                    
+                    <div className="flex-1">
+                      <p className="text-[10px] font-black uppercase tracking-widest">
+                        {paymentStatus === 'processing' && "Processing Link..."}
+                        {paymentStatus === 'success' && "Handshake Verified!"}
+                        {paymentStatus === 'failed' && "Transmission Interrupted"}
+                      </p>
+                      <p className="text-[9px] font-bold opacity-80 leading-tight">
+                        {paymentStatus === 'processing' && "Opening secure payment gateway."}
+                        {paymentStatus === 'success' && "Redirecting to your new Command Center..."}
+                        {paymentStatus === 'failed' && "The payment was cancelled or declined. Please retry."}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <button
                 onClick={handlePay}
-                disabled={loading}
+                disabled={loading || paymentStatus === 'success'}
                 className="w-full py-6 bg-surface text-text-main rounded-3xl font-black uppercase tracking-[0.2em] text-sm flex items-center justify-center gap-3 shadow-2xl hover:scale-[1.03] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed group overflow-hidden"
               >
                 {loading ? (
@@ -419,7 +464,7 @@ export default function Checkout() {
                 ) : (
                   <>
                     <ShieldCheck className="w-5 h-5 text-soft-blue group-hover:animate-pulse" />
-                    Pay Now
+                    {paymentStatus === 'failed' ? "Retry Payment" : "Pay Now"}
                   </>
                 )}
                 <div className="absolute inset-0 bg-soft-blue/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
