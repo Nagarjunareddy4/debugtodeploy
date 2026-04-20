@@ -73,7 +73,6 @@ export interface ResumeData {
 }
 
 function sanitizeInput(input: string): string {
-  // Remove potential prompt injection characters and limit length
   return input.replace(/[<>{}|[\]\\]/g, '').slice(0, 100).trim();
 }
 
@@ -125,7 +124,6 @@ For each resource, provide:
     const result = JSON.parse(content);
     const docs: GeneratedDoc[] = result.docs;
 
-    // Save to supabase
     const updatePayload: Record<string, any> = {
       generated_docs: docs,
     };
@@ -137,7 +135,6 @@ For each resource, provide:
 
     if (error) {
       console.error('Supabase Save Error:', error.message);
-      // We still return the docs since they were generated successfully
     }
 
     return docs;
@@ -211,7 +208,6 @@ For each "interview", provide:
     const content = data.choices[0].message.content;
     const curriculum: Curriculum = JSON.parse(content);
 
-    // Save to supabase
     const updatePayload: Record<string, any> = {
       generated_labs: curriculum.labs,
       generated_interviews: curriculum.interviews,
@@ -283,7 +279,6 @@ For each certificate, provide:
     const result = JSON.parse(content);
     const certificates: GeneratedCertificate[] = result.certificates;
 
-    // Save to supabase
     const updatePayload: Record<string, any> = {
       generated_certificates: certificates,
     };
@@ -306,7 +301,7 @@ For each certificate, provide:
 
 export function isCurriculumStale(profile: any, currentRoadmapVersion: string): boolean {
   if (!profile.generated_labs || !profile.generated_interviews) return true;
-  if (!profile.roadmap_version) return true; // never been versioned
+  if (!profile.roadmap_version) return true;
   return profile.roadmap_version !== currentRoadmapVersion;
 }
 
