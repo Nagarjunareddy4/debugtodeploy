@@ -21,13 +21,16 @@ import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 import { GeneratedLab, GeneratedLabStep } from '../lib/generator';
 import { updateReadinessScore } from '../lib/readiness';
+import Terminal from '../components/lab/Terminal';
 
 export default function LabDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   
   const [lab, setLab] = useState<GeneratedLab | null>(null);
+  const [labsData, setLabsData] = useState<GeneratedLab[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isPro, setIsPro] = useState(false);
   
   const [stepIndex, setStepIndex] = useState(0);
   const [codes, setCodes] = useState<string[]>([]);
@@ -36,6 +39,7 @@ export default function LabDetail() {
   
   const [isRunning, setIsRunning] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [latestLogs, setLatestLogs] = useState<{ type: 'output' | 'error' | 'success', text: string }[]>([]);
 
   useEffect(() => {
     fetchLab();
@@ -44,14 +48,30 @@ export default function LabDetail() {
   const fetchLab = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data } = await supabase.from('profiles').select('generated_labs').eq('id', user.id).single();
-      if (data?.generated_labs) {
-        const foundLab = (data.generated_labs as GeneratedLab[]).find(l => l.id === id);
-        if (foundLab) {
-          setLab(foundLab);
-          setCodes(foundLab.steps.map(s => s.defaultCode));
-          setOutputs(foundLab.steps.map(() => []));
-          setSuccesses(foundLab.steps.map(() => false));
+      const { data } = await supabase.from('profiles').select('generated_labs, subscription_status').eq('id', user.id).single();
+      if (data) {
+        setIsPro(data.subscription_status === 'pro');
+        const activeIsPro = data.subscription_status === 'pro';
+        
+        if (data.generated_labs) {
+          const labs = data.generated_labs as GeneratedLab[];
+          setLabsData(labs);
+          const labIndex = labs.findIndex(l => l.id === id);
+          const foundLab = labs[labIndex];
+
+          // Security check: If free, only allow index 0
+          if (!activeIsPro && labIndex > 0) {
+            alert('This lab is reserved for Pro members. Upgrade to continue your journey!');
+            navigate('/pricing');
+            return;
+          }
+
+          if (foundLab) {
+            setLab(foundLab);
+            setCodes(foundLab.steps.map(s => s.defaultCode));
+            setOutputs(foundLab.steps.map(() => []));
+            setSuccesses(foundLab.steps.map(() => false));
+          }
         }
       }
     }
@@ -74,28 +94,46 @@ export default function LabDetail() {
 
   const runCode = () => {
     setIsRunning(true);
-    setOutputs(prev => prev.map((o, i) => i === stepIndex ? [{ type: 'info', text: 'Applying manifests to cluster...' }] : o));
+    setLatestLogs([]); // Reset
+    
+    // 1. Basic YAML Validation (Simple check for common mistakes like missing colons)
+    const lines = currentCode.split('\n');
+    const hasSyntaxError = lines.some(line => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) return false;
+      return !trimmed.includes(':') && !trimmed.startsWith('-');
+    });
+
+    setLatestLogs([{ type: 'output', text: 'Applying manifests to cluster...' }]);
     
     setTimeout(() => {
+      let newOutput: any[] = [];
       const hasBug = currentCode.includes(currentStep.bugToken);
-      const newOutput = hasBug
-        ? [
-            { type: 'info', text: 'Manifest applied.' },
-            { type: 'error', text: `Error detected: ${currentStep.fixHint}` },
-            { type: 'error', text: 'Deployment failed. Review configuration.' }
-          ]
-        : [
-            { type: 'info', text: 'Manifest applied.' },
-            { type: 'success', text: 'Resource created successfully.' },
-            { type: 'success', text: 'All checks passed ✓' }
-          ];
+
+      if (hasSyntaxError) {
+        newOutput = [
+          { type: 'error', text: 'error: error parsing manifest.yaml: did not find expected key' },
+          { type: 'error', text: 'DEPLOYMENT CRASHED: Fix syntax errors in the editor.' }
+        ];
+      } else if (hasBug) {
+        newOutput = [
+          { type: 'error', text: `Error detected in cluster state: ${currentStep.fixHint}` },
+          { type: 'error', text: 'Status: ImagePullBackOff / CrashLoopBackOff' }
+        ];
+      } else {
+        newOutput = [
+          { type: 'success', text: 'Resource created successfully.' },
+          { type: 'success', text: 'Status: Running (1/1 pods ready) ✓' }
+        ];
+      }
       
+      setLatestLogs(newOutput);
       setOutputs(prev => prev.map((o, i) => i === stepIndex ? newOutput : o));
-      if (!hasBug) {
+      if (!hasSyntaxError && !hasBug) {
         setSuccesses(prev => prev.map((s, i) => i === stepIndex ? true : s));
       }
       setIsRunning(false);
-    }, 1500);
+    }, 1200);
   };
 
   const goNext = () => {
@@ -134,6 +172,9 @@ export default function LabDetail() {
       navigate('/labs');
     }
   };
+
+  const labIndex = lab && labsData.length > 0 ? labsData.findIndex(l => l.id === lab.id) : -1;
+  const isLabUnlocked = isPro || labIndex === 0;
 
   return (
     <div className="flex flex-col gap-4 max-w-[1600px] mx-auto pb-8">
@@ -190,7 +231,7 @@ export default function LabDetail() {
         <div className="playful-card flex flex-col p-0 border-none bg-surface shadow-2xl relative" style={{ minHeight: '300px' }}>
           <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-border bg-brand-bg/20">
             <Code2 className="w-4 h-4 text-text-dim" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-text-dim">manifest.yaml</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-dim">IDE: manifest.yaml</span>
           </div>
           <div className="flex-1 overflow-hidden relative">
              <div className="absolute inset-y-0 left-0 w-12 bg-brand-bg/30 border-r-2 border-border flex flex-col items-center py-4 font-mono text-[10px] text-text-dim opacity-50 select-none">
@@ -204,34 +245,27 @@ export default function LabDetail() {
              />
           </div>
         </div>
-
-        <div className="playful-card flex flex-col p-0 border-none bg-text-main text-surface shadow-2xl overflow-hidden relative" style={{ minHeight: '300px' }}>
-          <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-surface/10 bg-surface/5">
-            <TerminalIcon className="w-4 h-4" />
-            <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Execution Output</span>
-          </div>
+        <div className="flex flex-col p-0 border-none relative overflow-hidden" style={{ minHeight: '300px' }}>
+          <Terminal 
+            isUnlocked={isLabUnlocked} 
+            isRealPro={isPro}
+            currentLab={lab} 
+            currentCode={currentCode}
+            externalLogs={latestLogs}
+            onCommand={(cmd) => {
+              // Optional: Logic to automatically check success based on commands
+              if (cmd === 'kubectl apply -f deployment.yaml') {
+                runCode();
+              }
+            }} 
+          />
           
-          <div className="flex-1 p-8 space-y-4 overflow-y-auto font-mono text-sm">
-            {currentOutput.length === 0 && <p className="text-surface/40 italic">Waiting for execution...</p>}
-            {currentOutput.map((line, i) => (
-              <div key={i} className={cn(
-                "flex gap-4 p-4 rounded-2xl border-2",
-                line.type === 'error' && "bg-red-500/10 border-red-500/20 text-red-400",
-                line.type === 'success' && "bg-soft-green/10 border-soft-green/20 text-soft-green",
-                line.type === 'info' && "bg-surface/5 border-surface/10 text-surface"
-              )}>
-                {line.type === 'error' ? <AlertCircle className="w-5 h-5 flex-shrink-0" /> : <TerminalSquare className="w-5 h-5 flex-shrink-0" />}
-                <p className="font-bold">{line.text}</p>
-              </div>
-            ))}
-          </div>
-
           <AnimatePresence>
             {currentSuccess && !allDone && (
               <motion.div 
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="absolute inset-0 bg-soft-green flex flex-col items-center justify-center p-12 text-center text-white"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="absolute inset-0 bg-soft-green/95 backdrop-blur-sm flex flex-col items-center justify-center p-12 text-center text-white z-30"
               >
                 <CheckCircle className="w-20 h-20 mb-6" />
                 <h3 className="text-3xl font-black italic tracking-tighter mb-2">Step {stepIndex + 1} Complete!</h3>
@@ -250,9 +284,9 @@ export default function LabDetail() {
             )}
             {allDone && (
               <motion.div 
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="absolute inset-0 bg-soft-green flex flex-col items-center justify-center p-12 text-center text-white"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="absolute inset-0 bg-soft-green/95 backdrop-blur-sm flex flex-col items-center justify-center p-12 text-center text-white z-30"
               >
                 <div className="relative mb-8">
                    <motion.div animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }} transition={{ duration: 2, repeat: Infinity }} className="relative z-10">

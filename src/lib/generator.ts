@@ -53,6 +53,25 @@ export interface Curriculum {
   interviews: GeneratedInterview[];
 }
 
+export interface ResumeData {
+  summary: string;
+  technicalSkills: {
+    category: string;
+    skills: string[];
+  }[];
+  experience: {
+    title: string;
+    company: string;
+    period: string;
+    achievements: string[];
+  }[];
+  projects: {
+    name: string;
+    description: string;
+    technologies: string[];
+  }[];
+}
+
 function sanitizeInput(input: string): string {
   // Remove potential prompt injection characters and limit length
   return input.replace(/[<>{}|[\]\\]/g, '').slice(0, 100).trim();
@@ -297,4 +316,70 @@ export function isAllContentStale(profile: any, currentRoadmapVersion: string): 
     !profile.generated_certificates ||
     !profile.generated_docs
   );
+}
+
+export async function generateAiResume(apiKey: string, profile: any): Promise<ResumeData | null> {
+  if (!apiKey || !profile) return null;
+
+  try {
+    const roadmap = profile.roadmap_data ? (typeof profile.roadmap_data === 'string' ? JSON.parse(profile.roadmap_data) : profile.roadmap_data) : null;
+    const completedLabs = profile.labs_completed || 0;
+    const goal = roadmap?.goal || 'DevOps Engineer';
+    const xp = profile.xp || 0;
+
+    const prompt = `Act as a senior DevOps hiring manager. Create a professional, high-impact resume for a user with the following stats:
+- Current Goal: ${goal}
+- Total XP: ${xp}
+- Practical Labs Completed: ${completedLabs}
+- Current Skill Roadmap: ${roadmap?.title || 'N/A'}
+
+The resume should translate their platform progress into professional industry terms.
+"Labs Completed" should be treated as "Technical Hands-on Projects."
+
+Return ONLY a JSON object matching this structure:
+{
+  "summary": "Professional summary focusing on their career goal and technical growth",
+  "technicalSkills": [
+    { "category": "Cloud & Infrastructure", "skills": ["AWS", "Kubernetes", "..."] },
+    { "category": "CI/CD & DevOps", "skills": ["Jenkins", "GitHub Actions", "..."] }
+  ],
+  "experience": [
+    { 
+      "title": "DevOps Engineer (Hands-on Training)", 
+      "company": "DebugToDeploy Advanced Simulation", 
+      "period": "2024 - Present",
+      "achievements": ["Successfully solved ${completedLabs} production-grade infrastructure anomalies", "Mastered ${goal} core competencies through practical lab clusters"]
+    }
+  ],
+  "projects": [
+    { "name": "Cloud Infrastructure Optimization", "description": "Designed and fixed high-availability Kubernetes deployments", "technologies": ["Kubernetes", "YAML", "Docker"] }
+  ]
+}
+Include realistic technologies based on the goal of ${goal}.`;
+
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Authorization': `Bearer ${apiKey}` 
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You are an expert technical resume writer. Output only strict JSON.' },
+          { role: 'user', content: prompt },
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 2000,
+        temperature: 0.7,
+      }),
+    });
+
+    if (!res.ok) throw new Error('API request failed');
+    const data = await res.json();
+    return JSON.parse(data.choices[0].message.content);
+  } catch (error) {
+    console.error('Resume generation failed:', error);
+    return null;
+  }
 }

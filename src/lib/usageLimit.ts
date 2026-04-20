@@ -4,14 +4,14 @@
 const FREE_LIMITS: Record<string, number> = {
   roadmap: 1,    // 1 roadmap generation per week
   search: 2,     // 2 AI searches per day
-  lab: 2,        // 2 labs per week
+  lab: Infinity, // Structural limit (1st lab only) handles this now
   interview: 1,  // 1 interview per week
   docs: Infinity,
   certificates: Infinity,
 };
 
 const PRO_LIMITS: Record<string, number> = {
-  roadmap: 100,  // 100 roadmap generations per month
+  roadmap: Infinity,
   search: Infinity,
   lab: Infinity,
   interview: Infinity,
@@ -55,12 +55,14 @@ export function getUsageCount(action: string, isPro: boolean = false): number {
 }
 
 export function incrementUsage(action: string, isPro: boolean = false): void {
+  if (isPro) return; // Pro users have no usage tracking
   const key = usageKey(action, isPro);
   const current = getUsageCount(action, isPro);
   localStorage.setItem(key, String(current + 1));
 }
 
 export function isLimitReached(action: string, isPro: boolean): boolean {
+  if (isPro) return false; // Pro users are never limited
   const limits = isPro ? PRO_LIMITS : FREE_LIMITS;
   const limit = limits[action] ?? Infinity;
   return getUsageCount(action, isPro) >= limit;

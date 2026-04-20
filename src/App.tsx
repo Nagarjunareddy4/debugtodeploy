@@ -15,6 +15,7 @@ import Checkout from './pages/Checkout';
 import Settings from './pages/Settings';
 import Certificates from './pages/Certificates';
 import Learning from './pages/Learning';
+import Portfolio from './pages/Portfolio';
 import { supabase } from './lib/supabase';
 import { getObjectHash } from './lib/utils';
 import { generateUserCurriculum, generateUserDocs, generateUserCertificates, isAllContentStale } from './lib/generator';
@@ -192,6 +193,7 @@ export default function App() {
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/roadmap" element={<Roadmap />} />
+                  <Route path="/portfolio" element={<Portfolio />} />
                   <Route path="/labs" element={<LabList />} />
                   <Route path="/labs/:id" element={<LabDetail />} />
                   <Route path="/interviews" element={<MockInterviews />} />

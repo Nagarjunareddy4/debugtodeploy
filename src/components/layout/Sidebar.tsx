@@ -66,6 +66,7 @@ function useTheme() {
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: Map, label: 'AI Roadmap', path: '/roadmap' },
+  { icon: UserIcon, label: 'Portfolio', path: '/portfolio' },
   { icon: Terminal, label: 'Cloud Labs', path: '/labs' },
   { icon: Book, label: 'Learning', path: '/learning' },
   { icon: MessageSquare, label: 'Interviews', path: '/interviews' },
