@@ -13,7 +13,11 @@ import {
   XCircle,
   Loader2,
   Sparkles,
-  Zap
+  Zap,
+  Handshake,
+  Frown,
+  Trophy,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
@@ -139,15 +143,13 @@ export default function Checkout() {
               setPaymentStatus('success');
               setTimeout(() => {
                 navigate('/dashboard', { state: { paymentSuccess: true } });
-              }, 1500);
+              }, 3000); // 3 seconds of glory
             } else {
               setPaymentStatus('failed');
-              alert('Payment verification failed!');
             }
           } catch (err) {
             console.error('Verification error:', err);
             setPaymentStatus('failed');
-            alert('Verification failed. Please contact support.');
           } finally {
             setLoading(false);
           }
@@ -156,15 +158,21 @@ export default function Checkout() {
           name: profile?.full_name || '',
           email: profile?.email || '',
           contact: '',
-          method: selectedMethod === 'upi' ? 'upi' : selectedMethod === 'card' ? 'card' : 'netbanking',
         },
         modal: {
           ondismiss: function() {
             setLoading(false);
             setPaymentStatus('failed');
-          }
+          },
+          // Enhance the modal experience
+          backdrop_close: false,
+          escape: false,
+          handle_back: true
         },
-        theme: { color: '#3B82F6' },
+        theme: { 
+          color: '#3B82F6', // Your core soft-blue
+          backdrop_color: '#0A0F1C', // Dark space-themed backdrop
+        },
       };
 
       const paymentObject = new (window as any).Razorpay(options);
@@ -172,13 +180,24 @@ export default function Checkout() {
     } catch (err) {
       console.error('Order error:', err);
       setPaymentStatus('failed');
-      alert('Could not initiate payment. Is the backend server running?');
       setLoading(false);
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-10 pb-24 px-6">
+      <AnimatePresence>
+        {(paymentStatus === 'success' || paymentStatus === 'failed') && (
+          <PaymentOverlay 
+            status={paymentStatus} 
+            onRetry={() => {
+              setPaymentStatus('idle');
+              handlePay();
+            }}
+          />
+        )}
+      </AnimatePresence>
+      
       <header className="flex items-center justify-between">
         <button 
           onClick={() => navigate('/pricing')}
@@ -485,6 +504,150 @@ export default function Checkout() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Cinematic Overlay for Success/Failure
+function PaymentOverlay({ status, onRetry }: { status: 'success' | 'failed', onRetry: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-surface/95 backdrop-blur-xl"
+    >
+      {/* Background Particles Simulation */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[...Array(20)].map((_, i) => (
+          <motion.div
+            key={i}
+            initial={{ 
+              opacity: 0,
+              x: Math.random() * window.innerWidth,
+              y: Math.random() * window.innerHeight 
+            }}
+            animate={{ 
+              opacity: [0, 0.3, 0],
+              y: [null, Math.random() * -500],
+              x: [null, Math.random() * (Math.random() > 0.5 ? 200 : -200)]
+            }}
+            transition={{ 
+              duration: Math.random() * 3 + 2, 
+              repeat: Infinity,
+              ease: "linear" 
+            }}
+            className={cn(
+              "absolute w-1 h-1 rounded-full",
+              status === 'success' ? "bg-soft-blue" : "bg-soft-red"
+            )}
+          />
+        ))}
+      </div>
+
+      <div className="relative text-center max-w-xl px-10">
+        <AnimatePresence mode="wait">
+          {status === 'success' ? (
+            <motion.div
+              key="success"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", damping: 15 }}
+              className="space-y-8"
+            >
+              <div className="relative flex justify-center">
+                <motion.div
+                  initial={{ rotate: -20 }}
+                  animate={{ rotate: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="bg-soft-blue/10 p-8 rounded-full border border-soft-blue/20"
+                >
+                  <Handshake className="w-20 h-20 text-soft-blue" />
+                </motion.div>
+                <motion.div
+                  animate={{ 
+                    scale: [1, 1.2, 1],
+                    opacity: [0.5, 1, 0.5]
+                  }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute inset-0 bg-soft-blue/20 blur-3xl -z-10 rounded-full"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <motion.h2 
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="text-5xl font-black tracking-tighter text-text-main"
+                >
+                  WELCOME TO THE SQUAD, <span className="text-soft-blue">CAPTAIN!</span>
+                </motion.h2>
+                <motion.p
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                  className="text-text-dim font-bold tracking-widest uppercase text-xs"
+                >
+                  Handshake verified. Initializing Fleet Access...
+                </motion.p>
+              </div>
+
+              <div className="flex justify-center gap-4">
+                {[...Array(3)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    animate={{ y: [0, -10, 0] }}
+                    transition={{ delay: i * 0.1, repeat: Infinity }}
+                  >
+                    <Trophy className="w-6 h-6 text-soft-blue/40" />
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="failed"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", damping: 15 }}
+              className="space-y-8"
+            >
+              <div className="relative flex justify-center">
+                <motion.div
+                  animate={{ 
+                    x: [0, -5, 5, -5, 5, 0],
+                  }}
+                  transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}
+                  className="bg-soft-red/10 p-8 rounded-full border border-soft-red/20"
+                >
+                  <AlertCircle className="w-20 h-20 text-soft-red" />
+                </motion.div>
+                <div className="absolute inset-0 bg-soft-red/20 blur-3xl -z-10 rounded-full" />
+              </div>
+
+              <div className="space-y-4">
+                <motion.h2 
+                  className="text-5xl font-black tracking-tighter text-text-main"
+                >
+                  TRANSMISSION <span className="text-soft-red">FAILED.</span>
+                </motion.h2>
+                <p className="text-text-dim font-bold tracking-widest uppercase text-xs">
+                  Signal lost during handshake. Transaction terminated.
+                </p>
+              </div>
+
+              <button
+                onClick={onRetry}
+                className="group flex items-center gap-3 mx-auto px-8 py-4 bg-text-main text-surface rounded-full font-black uppercase tracking-widest text-xs hover:scale-105 active:scale-95 transition-all"
+              >
+                <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+                Retry Uplink
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
   );
 }
 
