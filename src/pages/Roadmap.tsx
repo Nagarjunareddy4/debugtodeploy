@@ -12,7 +12,10 @@ interface RoadmapStage {
   id: string;
   label: string;
   description: string;
-  tasks: string[];
+  tasks: {
+    label: string;
+    url: string;
+  }[];
 }
 
 interface RoadmapData {
@@ -175,11 +178,14 @@ Return a JSON object exactly like this:
       "id": "stage-1",
       "label": "string",
       "description": "string",
-      "tasks": ["task1", "task2", "task3", "task4"]
+      "tasks": [
+        { "label": "Topic Name", "url": "Official Documentation URL" }
+      ]
     }
   ]
 }
-Include 4-6 stages. Each stage has 4-6 tasks.`,
+Include 4-6 stages. Each stage has 4-6 tasks. 
+CRITICAL: Ensure every "url" is a valid, high-quality link to official documentation (e.g. kubernetes.io, aws.amazon.com, terraform.io, or git-scm.com).`,
             },
           ],
           max_tokens: 1500,
@@ -432,17 +438,47 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
                       {stage.tasks.map((task, tidx) => {
                         const taskId = `${stage.id}-task-${tidx}`;
                         const isCompleted = completedTasks.includes(taskId);
+                        // Backwards compatibility check
+                        const taskLabel = typeof task === 'string' ? task : task.label;
+                        const taskUrl = typeof task === 'string' ? `https://www.google.com/search?q=${encodeURIComponent(task + " official documentation")}` : task.url;
+
                         return (
                           <div 
                             key={tidx} 
-                            onClick={() => toggleTask(stage.id, tidx)}
                             className={cn(
-                              "flex items-center gap-4 p-5 rounded-[1.5rem] bg-brand-bg/50 border-2 border-border/30 text-xs font-black uppercase tracking-tight group/item hover:border-soft-blue transition-colors cursor-pointer",
-                              isCompleted && "border-soft-green bg-soft-green/5"
+                              "flex items-center justify-between gap-4 p-5 rounded-[1.5rem] bg-brand-bg/50 border-2 border-border/30 group/item transition-all hover:scale-[1.02]",
+                              isCompleted && "border-soft-green/50 bg-soft-green/5 shadow-lg shadow-soft-green/5"
                             )}
                           >
-                            <CheckCircle2 className={cn("w-5 h-5 transition-opacity", isCompleted ? "text-soft-green opacity-100" : "text-soft-green opacity-50 group-hover/item:opacity-100")} />
-                            <span className={cn("transition-colors", isCompleted ? "text-soft-green" : "group-hover/item:text-soft-blue")}>{task}</span>
+                            <div 
+                              className="flex items-center gap-3 cursor-pointer flex-1"
+                              onClick={() => window.open(taskUrl, '_blank')}
+                            >
+                               <div className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center shrink-0 group-hover/item:border-soft-blue transition-colors">
+                                  <BookOpen className="w-3.5 h-3.5 text-text-dim group-hover/item:text-soft-blue" />
+                               </div>
+                               <div className="flex flex-col">
+                                 <span className={cn(
+                                   "text-[10px] font-black uppercase tracking-tight transition-colors",
+                                   isCompleted ? "text-soft-green" : "text-text-main group-hover/item:text-soft-blue"
+                                 )}>
+                                   {taskLabel}
+                                 </span>
+                               </div>
+                            </div>
+
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleTask(stage.id, tidx);
+                              }}
+                              className={cn(
+                                "shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all",
+                                isCompleted ? "bg-soft-green text-white shadow-lg shadow-soft-green/20" : "bg-surface border border-border text-text-dim hover:border-soft-green hover:text-soft-green"
+                              )}
+                            >
+                              <CheckCircle2 className="w-4 h-4" strokeWidth={3} />
+                            </button>
                           </div>
                         );
                       })}

@@ -52,13 +52,14 @@ export default function Checkout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedMethod, setSelectedMethod] = useState<string>('upi');
+  const [autoRenew, setAutoRenew] = useState(false);
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<any>(null);
 
   const planName = location.state?.planName || 'Fleet Captain (Pro)';
-  const amount = location.state?.amount || 5;
+  const amount = location.state?.amount || 6;
   const period = location.state?.period || 'month';
-  const amountINR = amount === 5 ? 399 : 2999;
+  const amountINR = location.state?.amountINR || (period === 'month' ? 499 : 4499);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -93,11 +94,11 @@ export default function Checkout() {
 
     // 1. Create Order on Backend
     try {
-      const planId = amount === 5 ? 'pro_monthly' : 'pro_yearly';
+      const planId = period === 'month' ? 'pro_monthly' : 'pro_yearly';
       const orderRes = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId })
+        body: JSON.stringify({ planId, autoRenew })
       });
       const orderData = await orderRes.json();
       
@@ -247,14 +248,29 @@ export default function Checkout() {
                   />
                 </div>
                 <div className="flex items-center gap-6 justify-center pt-4">
-                  <div className="bg-white p-1.5 rounded-md flex items-center justify-center shadow-sm">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo.png" alt="UPI" className="h-4 object-contain" />
+                  {/* UPI Logo */}
+                  <div className="bg-white px-3 py-1.5 rounded-lg flex items-center justify-center shadow-sm border border-border/50">
+                    <svg viewBox="0 0 100 24" className="h-5 object-contain fill-[#5F259F]">
+                      <path d="M12.4 2.1l-4.4 19.8h-4.2l4.4-19.8h4.2zm6.6 0l-4.4 19.8h-4.2l4.4-19.8h4.2zm6.6 0l-4.4 19.8h-4.2l4.4-19.8h4.2zm30 0c-3.5 0-6.1 2.3-6.1 5.8 0 4.1 3.5 6 6.5 6 1.4 0 2.2-.2 2.2-.2v4c-.8.1-1.6.2-2.5.2-3.8 0-6.6-1.5-6.6-5.8 0-5.8 4.3-10.2 10.2-10.2 2 0 3.6.4 4.5.8l-1.4 3.4c-.8-.4-2-.8-3.3-.8h-3.5zm11.4 0h4.2l-4.4 19.8h-4.2l4.4-19.8zm11.2 0h4.2l-4.4 19.8h-4.2l4.4-19.8z"/>
+                    </svg>
+                    <span className="text-[10px] font-black ml-1 text-[#5F259F]">UPI</span>
                   </div>
-                  <div className="bg-white p-1.5 rounded-md flex items-center justify-center shadow-sm">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/f/f2/Google_Pay_Logo.svg" alt="GPay" className="h-4 object-contain" />
+
+                  {/* GPay Logo */}
+                  <div className="bg-white px-3 py-1.5 rounded-lg flex items-center justify-center shadow-sm border border-border/50">
+                    <svg viewBox="0 0 40 16" className="h-5 object-contain">
+                      <path fill="#4285F4" d="M5.5 8.1v2.3h3.5c-.1 1-.5 1.7-1 2.2-.6.6-1.5.9-2.5.9-2.2 0-3.9-1.8-3.9-4s1.7-4 3.9-4c1.1 0 1.9.4 2.6 1l1.6-1.6C8.7 1.9 7.2 1.1 5.5 1.1 2.5 1.1 0 3.6 0 6.6s2.5 5.5 5.5 5.5c1.6 0 2.8-.5 3.7-1.5.9-.9 1.2-2.3 1.2-3.4 0-.3 0-.6-.1-.9h-4.8z"/>
+                      <path fill="#34A853" d="M14.6 4.3h-1.1v7.3h1.1V4.3z"/>
+                    </svg>
+                    <span className="text-[10px] font-black ml-1 text-slate-900">GPay</span>
                   </div>
-                  <div className="bg-white p-1.5 rounded-md flex items-center justify-center shadow-sm">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/7/71/PhonePe_Logo.svg" alt="PhonePe" className="h-4 object-contain" />
+
+                  {/* PhonePe Logo */}
+                  <div className="bg-white px-3 py-1.5 rounded-lg flex items-center justify-center shadow-sm border border-border/50">
+                    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-[#5F259F]">
+                      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 22C6.486 22 2 17.514 2 12S6.486 2 12 2s10 4.486 10 10-4.486 10-10 10zm-1-15h2v6h-2zm0 8h2v2h-2z"/>
+                    </svg>
+                    <span className="text-[10px] font-black ml-1 text-[#5F259F]">PhonePe</span>
                   </div>
                 </div>
               </motion.div>
@@ -328,6 +344,34 @@ export default function Checkout() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Autopay Consent Section */}
+          <div className="playful-card p-8 bg-surface border-2 border-border space-y-6">
+            <div className="flex items-start gap-4">
+               <div className="pt-1">
+                 <button 
+                   onClick={() => setAutoRenew(!autoRenew)}
+                   className={cn(
+                     "w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center",
+                     autoRenew ? "bg-soft-blue border-soft-blue text-white" : "border-border hover:border-soft-blue"
+                   )}
+                 >
+                   {autoRenew && <CheckCircle2 className="w-4 h-4" />}
+                 </button>
+               </div>
+               <div className="space-y-2">
+                  <h4 className="font-black text-sm uppercase tracking-tight">Enable Seamless Auto-Renewal</h4>
+                  <p className="text-xs font-bold text-text-dim leading-relaxed">
+                    By checking this, you authorize DebugToDeploy to automatically charge ₹{amountINR} every {period} to your selected payment method. You can cancel anytime from your settings.
+                  </p>
+               </div>
+            </div>
+            
+            <div className="p-4 bg-brand-bg rounded-2xl border border-dashed border-border flex items-center gap-3">
+               <ShieldCheck className="w-5 h-5 text-soft-green" />
+               <p className="text-[9px] font-black uppercase text-text-dim">Secured by Razorpay Subscriptions Framework</p>
+            </div>
+          </div>
         </div>
 
         {/* Right: Order Summary */}

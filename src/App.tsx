@@ -16,6 +16,7 @@ import Settings from './pages/Settings';
 import Certificates from './pages/Certificates';
 import Learning from './pages/Learning';
 import Portfolio from './pages/Portfolio';
+import PublicPortfolio from './pages/PublicPortfolio';
 import { supabase } from './lib/supabase';
 import { getObjectHash } from './lib/utils';
 import { generateUserCurriculum, generateUserDocs, generateUserCertificates, isAllContentStale } from './lib/generator';
@@ -92,6 +93,21 @@ export default function App() {
         });
         if (insertError) console.error('Profile insert error:', insertError.message);
       } else {
+        // SUBSCRIPTION EXPIRY GUARD
+        if (existing.subscription_status === 'pro' && existing.subscription_end_date) {
+          const expiryDate = new Date(existing.subscription_end_date);
+          if (new Date() < expiryDate) {
+             // Still active, but let's double check if we need to revert if it's very close (optional)
+          } else {
+            console.log('Subscription expired. Reverting to free tier.');
+            await supabase.from('profiles').update({ 
+              subscription_status: 'free',
+              auto_renew: false 
+            }).eq('id', user.id);
+            existing.subscription_status = 'free';
+          }
+        }
+
         // Existing user — only patch fields that are still empty, NEVER overwrite avatar_url
         const patches: Record<string, any> = {};
         if (!existing.full_name && metaName) patches.full_name = metaName;
@@ -191,6 +207,7 @@ export default function App() {
             <div className="flex-1 flex flex-col overflow-hidden">
               <main className="flex-1 p-8 overflow-y-auto main-content">
                 <Routes>
+                  <Route path="/p/:username" element={<PublicPortfolio />} />
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/roadmap" element={<Roadmap />} />
                   <Route path="/portfolio" element={<Portfolio />} />
@@ -214,6 +231,7 @@ export default function App() {
           </>
         ) : (
           <Routes>
+            <Route path="/p/:username" element={<PublicPortfolio />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="*" element={<Navigate to="/auth" />} />
           </Routes>

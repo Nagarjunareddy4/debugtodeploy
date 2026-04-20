@@ -55,19 +55,19 @@ export default function Portfolio() {
       navigate('/pricing');
       return;
     }
-    const url = window.location.href;
+    const shareUrl = `${window.location.origin}/p/${profile.username}`;
     if (navigator.share) {
       try {
         await navigator.share({
           title: `${profile?.full_name}'s DevOps Portfolio`,
           text: 'Check out my technical roadmap and labs on DebugToDeploy!',
-          url: url,
+          url: shareUrl,
         });
       } catch (err) {
         console.error('Share failed:', err);
       }
     } else {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }

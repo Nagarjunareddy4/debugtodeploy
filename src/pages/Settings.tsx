@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Mail, AtSign, Camera, Check, Shield, Loader2, X, Eye, Trash2, RefreshCw } from 'lucide-react';
+import { User, Mail, AtSign, Camera, Check, Shield, Loader2, X, Eye, Trash2, RefreshCw, CreditCard, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 import Cropper from 'react-easy-crop';
@@ -115,14 +115,15 @@ export default function Settings() {
   };
 
   const uploadCroppedImage = async () => {
-    if (!profile?.id || !imageSrc || !croppedAreaPixels) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !imageSrc || !croppedAreaPixels) return;
     
     setImageUploading(true);
     try {
       const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
       if (!croppedBlob) throw new Error("Failed to generate cropped image");
 
-      const path = `avatars/${profile.id}.${originalFileExt}`;
+      const path = `${user.id}/avatar.${originalFileExt}`;
 
       const { error: upErr } = await supabase.storage
         .from('avatars')
@@ -133,12 +134,12 @@ export default function Settings() {
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
       const publicUrl = urlData.publicUrl; // Save clean URL
 
-      await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', profile.id);
+      await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
       setProfile((prev: any) => ({ ...prev, avatar_url: publicUrl }));
       setImageSrc(null);
     } catch (err: any) {
-      console.warn('Avatar upload failed (bucket may not exist):', err.message);
-      alert('Image upload failed. Please ensure the "avatars" storage bucket exists in Supabase Storage.');
+      console.warn('Avatar upload failed:', err.message);
+      alert(`Image upload failed: ${err.message}`);
     } finally {
       setImageUploading(false);
     }
@@ -176,8 +177,21 @@ export default function Settings() {
       // Also try to delete from storage
       const exts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
       for (const ext of exts) {
-        await supabase.storage.from('avatars').remove([`avatars/${profile.id}.${ext}`]);
+        await supabase.storage.from('avatars').remove([`${profile.id}/avatar.${ext}`]);
       }
+    }
+  };
+
+  const toggleAutoRenew = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    const newVal = !profile.auto_renew;
+    const { error } = await supabase.from('profiles').update({ auto_renew: newVal }).eq('id', user.id);
+    if (!error) {
+      setProfile({ ...profile, auto_renew: newVal });
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
     }
   };
 
@@ -483,8 +497,44 @@ export default function Settings() {
             </div>
           </form>
 
+          {/* Manage Subscription (Pro Only) */}
+          {profile.subscription_status === 'pro' && (
+            <div className="playful-card p-8 bg-surface space-y-8 shadow-2xl border-none">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-black uppercase tracking-widest flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-soft-blue" /> Manage Subscription
+                </h3>
+              </div>
+              <div className="p-6 bg-brand-bg rounded-2xl border-2 border-border border-dashed space-y-4">
+                <div className="flex justify-between items-center">
+                   <div className="space-y-1">
+                      <p className="text-[10px] font-black uppercase text-text-dim">Subscription Ends</p>
+                      <p className="font-mono font-bold">{profile.subscription_end_date ? new Date(profile.subscription_end_date).toLocaleDateString() : 'Active'}</p>
+                   </div>
+                   <div className="space-y-1 text-right">
+                      <p className="text-[10px] font-black uppercase text-text-dim">Auto-Renewal</p>
+                      <p className={cn("font-black uppercase text-xs", profile.auto_renew ? "text-soft-green" : "text-red-400")}>
+                        {profile.auto_renew ? 'Active' : 'Disabled'}
+                      </p>
+                   </div>
+                </div>
+                <button 
+                  onClick={toggleAutoRenew}
+                  className={cn(
+                    "w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                    profile.auto_renew 
+                      ? "bg-red-500/10 text-red-400 border-2 border-red-500/20 hover:bg-red-500 hover:text-white" 
+                      : "bg-soft-green/10 text-soft-green border-2 border-soft-green/20 hover:bg-soft-green hover:text-white"
+                  )}
+                >
+                  {profile.auto_renew ? 'Disable Auto-Renewal' : 'Enable Auto-Renewal'}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* API Configuration */}
-          <div className="playful-card p-8 bg-surface space-y-8 shadow-2xl border-none">
+          <div className="playful-card p-8 bg-surface space-y-8 shadow-2xl border-none relative overflow-hidden">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-black uppercase tracking-widest flex items-center gap-2">
                 <Shield className="w-5 h-5 text-soft-blue" /> API Configuration
@@ -494,44 +544,64 @@ export default function Settings() {
               )}
             </div>
 
-            <div className="space-y-4">
-              <p className="text-xs font-bold text-text-dim leading-relaxed">
-                Enter your OpenAI API key to enable AI-powered roadmaps, search, and interview features.
-                The key is stored locally in your browser and is never sent to our database.
-              </p>
+            {profile.subscription_status === 'pro' ? (
+              <div className="space-y-4">
+                <p className="text-xs font-bold text-text-dim leading-relaxed">
+                  Enter your OpenAI API key to enable AI-powered roadmaps, search, and interview features.
+                  The key is stored locally in your browser and is never sent to our database.
+                </p>
 
-              <div className="relative">
-                <input
-                  type={showApiKey ? "text" : "password"}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-..."
-                  className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 font-mono text-sm outline-hidden focus:border-soft-blue transition-colors pr-14"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 hover:bg-white/10 rounded-xl transition-colors text-text-dim"
-                >
-                  {showApiKey ? <Eye className="w-4 h-4 opacity-50" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
+                <div className="relative">
+                  <input
+                    type={showApiKey ? "text" : "password"}
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="sk-..."
+                    className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 font-mono text-sm outline-hidden focus:border-soft-blue transition-colors pr-14"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 hover:bg-white/10 rounded-xl transition-colors text-text-dim"
+                  >
+                    {showApiKey ? <Eye className="w-4 h-4 opacity-50" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
 
-              <div className="flex gap-4">
-                <button
-                  onClick={saveApiKey}
-                  className="flex-1 py-4 bg-text-main text-surface rounded-2xl font-black text-sm hover:bg-soft-blue transition-colors flex items-center justify-center gap-2"
-                >
-                  <Check className="w-4 h-4" /> Save API Key
-                </button>
-                <button
-                  onClick={clearApiKey}
-                  className="px-6 py-4 border-2 border-border rounded-2xl font-black text-sm text-red-400 hover:bg-red-500/10 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex gap-4">
+                  <button
+                    onClick={saveApiKey}
+                    className="flex-1 py-4 bg-text-main text-surface rounded-2xl font-black text-sm hover:bg-soft-blue transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Check className="w-4 h-4" /> Save API Key
+                  </button>
+                  <button
+                    onClick={clearApiKey}
+                    className="px-6 py-4 border-2 border-border rounded-2xl font-black text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-6 py-4 text-center">
+                 <div className="w-16 h-16 bg-brand-bg rounded-3xl flex items-center justify-center mx-auto border-2 border-border">
+                    <Lock className="w-8 h-8 text-text-dim" />
+                 </div>
+                 <div className="space-y-2">
+                    <h4 className="font-black text-sm uppercase tracking-tight">API Controls Locked</h4>
+                    <p className="text-xs font-bold text-text-dim max-w-xs mx-auto">
+                       Upgrade to Fleet Captain to use your own OpenAI API keys for unlimited AI features.
+                    </p>
+                 </div>
+                 <button 
+                   onClick={() => navigate('/pricing')}
+                   className="px-8 py-3 bg-soft-blue text-white rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform"
+                 >
+                    Get Pro Access
+                 </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

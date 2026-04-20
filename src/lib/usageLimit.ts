@@ -1,3 +1,5 @@
+import { supabase } from './supabase';
+
 // Usage limit tracker for free and pro users
 // Limits are stored in localStorage, keyed by action + date/week/month id.
 
@@ -54,11 +56,23 @@ export function getUsageCount(action: string, isPro: boolean = false): number {
   return parseInt(localStorage.getItem(key) || '0', 10);
 }
 
-export function incrementUsage(action: string, isPro: boolean = false): void {
-  if (isPro) return; // Pro users have no usage tracking
+export async function incrementUsage(action: string, isPro: boolean = false): Promise<void> {
+  if (isPro) return; 
   const key = usageKey(action, isPro);
   const current = getUsageCount(action, isPro);
+  
+  // Update local cache
   localStorage.setItem(key, String(current + 1));
+
+  // Background sync to Database (Hardening)
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    await supabase.rpc('increment_usage_stats', { 
+      u_id: user.id, 
+      u_action: action, 
+      u_key: key 
+    }).catch(err => console.warn('Usage sync failed:', err));
+  }
 }
 
 export function isLimitReached(action: string, isPro: boolean): boolean {
