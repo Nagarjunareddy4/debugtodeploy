@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Compass, Sparkles, CheckCircle2, Loader2, ChevronRight, Zap, Target, BookOpen, RefreshCw, Lock } from 'lucide-react';
 import { cn, getObjectHash } from '../lib/utils';
 import { supabase } from '../lib/supabase';
@@ -11,7 +12,10 @@ interface RoadmapStage {
   id: string;
   label: string;
   description: string;
-  tasks: string[];
+  tasks: {
+    label: string;
+    url: string;
+  }[];
 }
 
 interface RoadmapData {
@@ -23,6 +27,10 @@ interface RoadmapData {
 }
 
 export default function Roadmap() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const hasTriggeredRef = useRef(false);
+
   const [experience, setExperience] = useState('beginner');
   const [goal, setGoal] = useState('Senior DevOps Engineer');
   const [loading, setLoading] = useState(false);
@@ -38,9 +46,13 @@ export default function Roadmap() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      
       const { data: prof } = await supabase.from('profiles').select('subscription_status, roadmap_data, completed_roadmap_tasks, last_roadmap_generated_at').eq('id', user.id).single();
+      
+      let currentIsPro = false;
       if (prof) {
-        setIsPro(prof.subscription_status === 'pro');
+        currentIsPro = prof.subscription_status === 'pro';
+        setIsPro(currentIsPro);
         if (prof.roadmap_data) {
           try {
             const parsed = typeof prof.roadmap_data === 'string' ? JSON.parse(prof.roadmap_data) : prof.roadmap_data;
@@ -63,6 +75,22 @@ export default function Roadmap() {
             setServerLimitBlocked(true);
           }
         }
+      }
+
+      // Check for automatic trigger from Dashboard
+      const state = location.state as any;
+      if (state?.triggerUpdate && state?.newGoal && !hasTriggeredRef.current) {
+        hasTriggeredRef.current = true;
+        const targetGoal = state.newGoal;
+        setGoal(targetGoal);
+        
+        // Clean up state so refresh doesn't re-trigger
+        navigate(location.pathname, { replace: true, state: {} });
+        
+        // Short delay to ensure state updates and then generate
+        setTimeout(() => {
+          generateRoadmap(targetGoal, experience, currentIsPro);
+        }, 100);
       }
     };
     init();
@@ -103,9 +131,13 @@ export default function Roadmap() {
     });
   };
 
-  const generateRoadmap = async () => {
-    if (isLimitReached('roadmap', isPro)) {
-      setLimitError(getLimitMessage('roadmap'));
+  const generateRoadmap = async (overrideGoal?: string, overrideExperience?: string, overrideIsPro?: boolean) => {
+    const activeIsPro = overrideIsPro !== undefined ? overrideIsPro : isPro;
+    const activeGoal = overrideGoal || goal;
+    const activeExperience = overrideExperience || experience;
+
+    if (isLimitReached('roadmap', activeIsPro)) {
+      setLimitError(getLimitMessage('roadmap', activeIsPro));
       return;
     }
 
@@ -134,7 +166,7 @@ export default function Roadmap() {
             },
             {
               role: 'user',
-              content: `Create a structured DevOps personalized roadmap for a ${experience} level user aiming to become a ${goal}.
+              content: `Create a structured DevOps personalized roadmap for a ${activeExperience} level user aiming to become a ${activeGoal}.
 Return a JSON object exactly like this:
 {
   "title": "string",
@@ -146,11 +178,14 @@ Return a JSON object exactly like this:
       "id": "stage-1",
       "label": "string",
       "description": "string",
-      "tasks": ["task1", "task2", "task3", "task4"]
+      "tasks": [
+        { "label": "Topic Name", "url": "Official Documentation URL" }
+      ]
     }
   ]
 }
-Include 4-6 stages. Each stage has 4-6 tasks.`,
+Include 4-6 stages. Each stage has 4-6 tasks. 
+CRITICAL: Ensure every "url" is a valid, high-quality link to official documentation (e.g. kubernetes.io, aws.amazon.com, terraform.io, or git-scm.com).`,
             },
           ],
           max_tokens: 1500,
@@ -165,16 +200,16 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
       const clean = text.replace(/```json|```/g, '').trim();
       const parsed: RoadmapData = JSON.parse(clean);
       const finalRoadmap: RoadmapData = {
-        goal,
-        experience,
-        title: parsed.title || goal,
-        description: parsed.description || `Personalized ${experience} roadmap to become ${goal}.`,
+        goal: activeGoal,
+        experience: activeExperience,
+        title: parsed.title || activeGoal,
+        description: parsed.description || `Personalized ${activeExperience} roadmap to become ${activeGoal}.`,
         stages: parsed.stages || [],
       };
       const roadmapHash = await getObjectHash(finalRoadmap);
       setRoadmap(finalRoadmap);
       setHasExistingRoadmap(true);
-      incrementUsage('roadmap');
+      incrementUsage('roadmap', activeIsPro);
       await saveRoadmapToProfile(finalRoadmap, roadmapHash);
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -217,7 +252,7 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
   };
 
   const remaining = getRemainingUsage('roadmap', isPro);
-  const isBlocked = !isPro && (remaining === 0 || serverLimitBlocked);
+  const isBlocked = remaining === 0 || (!isPro && serverLimitBlocked);
 
   return (
     <div className="max-w-5xl mx-auto space-y-12 pb-24">
@@ -227,11 +262,18 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
           <p className="text-text-dim font-bold uppercase tracking-[0.2em] text-xs">Custom logic for your engineering growth</p>
         </div>
         {!roadmap && <Compass className="w-16 h-16 text-soft-blue opacity-20 animate-spin-slow" />}
-        {!isPro && (
-          <div className="text-[10px] font-black uppercase tracking-widest text-soft-orange bg-soft-orange/10 px-4 py-2 rounded-full border border-soft-orange/20">
-            {isBlocked ? '🔒 Weekly limit reached' : `${remaining} generation${remaining !== 1 ? 's' : ''} left this week`}
-          </div>
-        )}
+        <div className="flex flex-col items-end gap-2">
+          {!isPro && (
+            <div className="text-[10px] font-black uppercase tracking-widest text-soft-orange bg-soft-orange/10 px-4 py-2 rounded-full border border-soft-orange/20">
+              {isBlocked ? '🔒 Weekly limit reached' : `${remaining} generation${remaining !== 1 ? 's' : ''} left this week`}
+            </div>
+          )}
+          {isPro && (
+            <div className="text-[10px] font-black uppercase tracking-widest text-soft-blue bg-soft-blue/10 px-4 py-2 rounded-full border border-soft-blue/20">
+              {remaining === 0 ? '🔒 Monthly limit reached' : `${remaining} generation${remaining !== 1 ? 's' : ''} left this month`}
+            </div>
+          )}
+        </div>
       </header>
 
       {/* Update confirmation modal */}
@@ -250,7 +292,7 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
               <h3 className="text-2xl font-black">Update Your Roadmap?</h3>
               <p className="text-text-dim font-bold text-sm leading-relaxed">
                 You already have a roadmap. Generating a new one will replace it.
-                {!isPro && ` This uses your weekly generation (${isBlocked ? 0 : remaining} left this week).`}
+                {` This uses your ${isPro ? 'monthly' : 'weekly'} generation (${isBlocked ? 0 : remaining} left).`}
               </p>
               <div className="flex gap-4">
                 <button
@@ -335,7 +377,7 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
             ) : isBlocked ? (
               <>
                 <Lock className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
-                <span>Weekly Limit Reached — Upgrade to Pro</span>
+                <span>{isPro ? 'Monthly Limit Reached' : 'Weekly Limit Reached — Upgrade to Pro'}</span>
               </>
             ) : hasExistingRoadmap ? (
               <>
@@ -396,17 +438,47 @@ Include 4-6 stages. Each stage has 4-6 tasks.`,
                       {stage.tasks.map((task, tidx) => {
                         const taskId = `${stage.id}-task-${tidx}`;
                         const isCompleted = completedTasks.includes(taskId);
+                        // Backwards compatibility check
+                        const taskLabel = typeof task === 'string' ? task : task.label;
+                        const taskUrl = typeof task === 'string' ? `https://www.google.com/search?q=${encodeURIComponent(task + " official documentation")}` : task.url;
+
                         return (
                           <div 
                             key={tidx} 
-                            onClick={() => toggleTask(stage.id, tidx)}
                             className={cn(
-                              "flex items-center gap-4 p-5 rounded-[1.5rem] bg-brand-bg/50 border-2 border-border/30 text-xs font-black uppercase tracking-tight group/item hover:border-soft-blue transition-colors cursor-pointer",
-                              isCompleted && "border-soft-green bg-soft-green/5"
+                              "flex items-center justify-between gap-4 p-5 rounded-[1.5rem] bg-brand-bg/50 border-2 border-border/30 group/item transition-all hover:scale-[1.02]",
+                              isCompleted && "border-soft-green/50 bg-soft-green/5 shadow-lg shadow-soft-green/5"
                             )}
                           >
-                            <CheckCircle2 className={cn("w-5 h-5 transition-opacity", isCompleted ? "text-soft-green opacity-100" : "text-soft-green opacity-50 group-hover/item:opacity-100")} />
-                            <span className={cn("transition-colors", isCompleted ? "text-soft-green" : "group-hover/item:text-soft-blue")}>{task}</span>
+                            <div 
+                              className="flex items-center gap-3 cursor-pointer flex-1"
+                              onClick={() => window.open(taskUrl, '_blank')}
+                            >
+                               <div className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center shrink-0 group-hover/item:border-soft-blue transition-colors">
+                                  <BookOpen className="w-3.5 h-3.5 text-text-dim group-hover/item:text-soft-blue" />
+                               </div>
+                               <div className="flex flex-col">
+                                 <span className={cn(
+                                   "text-[10px] font-black uppercase tracking-tight transition-colors",
+                                   isCompleted ? "text-soft-green" : "text-text-main group-hover/item:text-soft-blue"
+                                 )}>
+                                   {taskLabel}
+                                 </span>
+                               </div>
+                            </div>
+
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleTask(stage.id, tidx);
+                              }}
+                              className={cn(
+                                "shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all",
+                                isCompleted ? "bg-soft-green text-white shadow-lg shadow-soft-green/20" : "bg-surface border border-border text-text-dim hover:border-soft-green hover:text-soft-green"
+                              )}
+                            >
+                              <CheckCircle2 className="w-4 h-4" strokeWidth={3} />
+                            </button>
                           </div>
                         );
                       })}

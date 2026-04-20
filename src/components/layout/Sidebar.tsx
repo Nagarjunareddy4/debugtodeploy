@@ -66,10 +66,12 @@ function useTheme() {
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: Map, label: 'AI Roadmap', path: '/roadmap' },
+  { icon: UserIcon, label: 'Portfolio', path: '/portfolio' },
   { icon: Terminal, label: 'Cloud Labs', path: '/labs' },
   { icon: Book, label: 'Learning', path: '/learning' },
   { icon: MessageSquare, label: 'Interviews', path: '/interviews' },
   { icon: Award, label: 'Certificates', path: '/certificates' },
+  { icon: CreditCard, label: 'Pricing', path: '/pricing' },
 ];
 
 export default function Sidebar() {
@@ -248,7 +250,15 @@ export default function Sidebar() {
                 )}
                 <div className="min-w-0">
                   <p className="font-black text-sm truncate">{displayName}</p>
-                  <p className="text-[10px] font-bold text-soft-blue uppercase tracking-widest">DevOps Lvl {profile.level || 1}</p>
+                  <p className="text-[10px] font-bold text-soft-blue uppercase tracking-widest flex items-center gap-2">
+                    {profile.subscription_status === 'pro' ? (
+                      <span className="text-soft-orange flex items-center gap-1">
+                        <Star className="w-3 h-3 fill-soft-orange" /> PRO
+                      </span>
+                    ) : (
+                      'DevOps Lvl ' + (profile.level || 1)
+                    )}
+                  </p>
                 </div>
               </div>
               <div className="space-y-2 text-[11px] font-bold text-text-dim">
@@ -304,7 +314,9 @@ export default function Sidebar() {
               <span className="text-[10px] font-black uppercase tracking-widest leading-none truncate">
                 {displayNameShort}
               </span>
-              <span className="text-[8px] font-black text-soft-blue mt-1 uppercase">DevOps Lvl {profile?.level || 1}</span>
+              <span className="text-[8px] font-black text-soft-blue mt-1 uppercase">
+                {profile?.subscription_status === 'pro' ? '⭐ PRO MEMBER' : `DevOps Lvl ${profile?.level || 1}`}
+              </span>
             </div>
           </button>
 
