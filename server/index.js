@@ -24,7 +24,13 @@ const supabase = createClient(
 // 1. Create an Order
 app.post('/api/create-order', async (req, res) => {
   try {
-    const { amount, currency = 'INR' } = req.body;
+    const { planId, currency = 'INR' } = req.body;
+    
+    // Server-side price verification
+    let amount = 499; // Default Monthly
+    if (planId === 'pro_yearly') {
+      amount = 4499;
+    }
     
     const options = {
       amount: amount * 100, // amount in paise
