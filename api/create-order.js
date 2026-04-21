@@ -1,8 +1,8 @@
 import Razorpay from 'razorpay';
 
 const PLANS = {
-  'pro_monthly': { amount: 399, currency: 'INR' },
-  'pro_yearly': { amount: 2999, currency: 'INR' }
+  'pro_monthly': { amount: 499, currency: 'INR' },
+  'pro_yearly': { amount: 3999, currency: 'INR' }
 };
 
 export default async function handler(req, res) {
@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
     const { planId } = req.body;
     const plan = PLANS[planId] || PLANS['pro_monthly']; // Default to monthly if not specified or invalid
-    
+
     const options = {
       amount: plan.amount * 100, // amount in paise
       currency: plan.currency,
