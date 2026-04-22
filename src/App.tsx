@@ -8,7 +8,6 @@ import Roadmap from './pages/Roadmap';
 import LabList from './pages/LabList';
 import LabDetail from './pages/LabDetail';
 import MockInterviews from './pages/MockInterviews';
-import Landing from './pages/Landing';
 import Auth from './pages/Auth';
 import Pricing from './pages/Pricing';
 import Checkout from './pages/Checkout';
