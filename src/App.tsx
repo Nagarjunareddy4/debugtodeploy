@@ -219,6 +219,7 @@ export default function App() {
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/checkout" element={<Checkout />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
               </main>
@@ -233,7 +234,6 @@ export default function App() {
           <Routes>
             <Route path="/p/:username" element={<PublicPortfolio />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="*" element={<Navigate to="/auth" />} />
           </Routes>
         )}
