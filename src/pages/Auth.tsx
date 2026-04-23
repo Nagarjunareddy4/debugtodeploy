@@ -19,7 +19,7 @@ export default function Auth() {
   // Real-time availability checks (debounced)
   useEffect(() => {
     if (isLogin) return;
-    
+
     const checkTimer = setTimeout(async () => {
       if (username.length >= 3 || identifier.includes('@')) {
         setChecking(true);
@@ -27,7 +27,7 @@ export default function Auth() {
           target_username: username,
           target_email: identifier.includes('@') ? identifier : ''
         });
-        
+
         if (!error && data?.[0]) {
           setUsernameTaken(data[0].username_taken);
           setEmailTaken(data[0].email_taken);
@@ -129,7 +129,7 @@ export default function Auth() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: `${window.location.origin}/`,
           prompt: 'login',
           skipBrowserRedirect: false,
         } as any,
@@ -369,7 +369,7 @@ export default function Auth() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black ml-4">Secret Key</label>
+              <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black ml-4">Password</label>
               <input
                 type="password"
                 required
