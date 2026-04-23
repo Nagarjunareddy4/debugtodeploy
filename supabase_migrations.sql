@@ -21,9 +21,76 @@ ALTER TABLE profiles
   ADD COLUMN IF NOT EXISTS generated_docs JSONB,
   ADD COLUMN IF NOT EXISTS read_docs_ids JSONB DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS completed_roadmap_tasks JSONB DEFAULT '[]'::jsonb,
-  ADD COLUMN IF NOT EXISTS interview_scores JSONB DEFAULT '{}'::jsonb;
+  ADD COLUMN IF NOT EXISTS interview_scores JSONB DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS subscription_id TEXT,
+  ADD COLUMN IF NOT EXISTS current_subscription_plan TEXT DEFAULT 'free',
+  ADD COLUMN IF NOT EXISTS subscription_end_date TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS autopay_enabled BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS payment_method TEXT,
+  ADD COLUMN IF NOT EXISTS payment_failures INTEGER DEFAULT 0;
 
--- 2. Create activity_log table for real-time progress graphs
+-- 2. Create plans table
+CREATE TABLE IF NOT EXISTS plans (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  plan_type TEXT NOT NULL UNIQUE,
+  amount_inr INTEGER NOT NULL,
+  currency TEXT DEFAULT 'INR',
+  billing_period TEXT DEFAULT 'month',
+  description TEXT,
+  features JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Insert plan data
+INSERT INTO plans (name, plan_type, amount_inr, billing_period, description, features)
+VALUES 
+  ('Free Fleet', 'free', 0, 'month', 'Foundation plan', '["1 AI Roadmap/week", "2 AI searches/day", "Basic Cloud Labs"]'::jsonb),
+  ('Fleet Captain Monthly', 'pro_monthly', 499, 'month', 'Full-throttle engineering', '["Unlimited Cloud Sandbox", "AI Portfolio Builder", "Unlimited Interviews", "Unlimited Roadmaps"]'::jsonb),
+  ('Fleet Captain Yearly', 'pro_yearly', 3999, 'year', 'Full-throttle engineering', '["Unlimited Cloud Sandbox", "AI Portfolio Builder", "Unlimited Interviews", "Unlimited Roadmaps"]'::jsonb)
+ON CONFLICT DO NOTHING;
+
+-- 3. Create subscriptions table
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  plan_type TEXT NOT NULL REFERENCES plans(plan_type),
+  subscription_id TEXT UNIQUE,
+  status TEXT DEFAULT 'pending',
+  payment_method TEXT,
+  autopay_enabled BOOLEAN DEFAULT FALSE,
+  current_period_start TIMESTAMP,
+  current_period_end TIMESTAMP,
+  next_billing_date TIMESTAMP,
+  cancelled_at TIMESTAMP,
+  failure_count INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_subscriptions_user ON subscriptions(user_id);
+CREATE INDEX idx_subscriptions_sub_id ON subscriptions(subscription_id);
+
+-- 4. Create payments table
+CREATE TABLE IF NOT EXISTS payments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  subscription_id UUID REFERENCES subscriptions(id) ON DELETE SET NULL,
+  payment_id TEXT UNIQUE,
+  order_id TEXT,
+  amount_inr INTEGER,
+  status TEXT DEFAULT 'pending',
+  payment_method TEXT,
+  error_message TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_payments_user ON payments(user_id);
+CREATE INDEX idx_payments_subscription ON payments(subscription_id);
+CREATE INDEX idx_payments_payment_id ON payments(payment_id);
+
+-- 5. Create activity_log table for real-time progress graphs
 CREATE TABLE IF NOT EXISTS activity_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -37,6 +104,9 @@ CREATE TABLE IF NOT EXISTS activity_log (
 -- 3. Enable Row Level Security
 ALTER TABLE activity_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE plans ENABLE ROW LEVEL SECURITY;
 
 -- 4. Drop existing policies before recreating (safe approach)
 DROP POLICY IF EXISTS "Users can read own activity"   ON activity_log;
@@ -45,6 +115,8 @@ DROP POLICY IF EXISTS "Users can update own activity" ON activity_log;
 DROP POLICY IF EXISTS "Users can view own profile"    ON profiles;
 DROP POLICY IF EXISTS "Users can update own profile"  ON profiles;
 DROP POLICY IF EXISTS "Users can insert own profile"  ON profiles;
+DROP POLICY IF EXISTS "Users can view own subscriptions" ON subscriptions;
+DROP POLICY IF EXISTS "Users can view own payments" ON payments;
 
 -- 5. Recreate all policies cleanly
 CREATE POLICY "Users can read own activity"   ON activity_log FOR SELECT USING (auth.uid() = user_id);
@@ -52,6 +124,13 @@ CREATE POLICY "Users can insert own activity" ON activity_log FOR INSERT WITH CH
 CREATE POLICY "Users can update own activity" ON activity_log FOR UPDATE USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can view own profile"   ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Users can view own subscriptions" ON subscriptions FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view own payments" ON payments FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Plans are publicly readable" ON plans FOR SELECT USING (true);
 
 -- Protect sensitive columns from being updated by the client
 CREATE OR REPLACE FUNCTION protect_sensitive_profile_columns()
@@ -59,6 +138,11 @@ RETURNS TRIGGER AS $$
 BEGIN
   IF (current_setting('role') <> 'service_role') THEN
     NEW.subscription_status := OLD.subscription_status;
+    NEW.subscription_id := OLD.subscription_id;
+    NEW.current_subscription_plan := OLD.current_subscription_plan;
+    NEW.subscription_end_date := OLD.subscription_end_date;
+    NEW.payment_method := OLD.payment_method;
+    NEW.payment_failures := OLD.payment_failures;
     NEW.xp := OLD.xp;
     NEW.level := OLD.level;
     NEW.readiness_score := OLD.readiness_score;
@@ -93,6 +177,20 @@ BEGIN
     WHERE pubname = 'supabase_realtime' AND tablename = 'activity_log'
   ) THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE activity_log;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'subscriptions'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE subscriptions;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'payments'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE payments;
   END IF;
 END $$;
 

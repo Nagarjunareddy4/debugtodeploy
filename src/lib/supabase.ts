@@ -13,5 +13,16 @@ if (!supabaseUrl || supabaseUrl === 'https://your-project.supabase.co') {
 
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co', 
-  supabaseAnonKey || 'placeholder'
+  supabaseAnonKey || 'placeholder',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storage: window.localStorage
+    },
+    global: {
+      headers: { 'x-application-name': 'debugtodeploy' }
+    }
+  }
 );

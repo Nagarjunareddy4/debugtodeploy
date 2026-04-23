@@ -17,7 +17,8 @@ import {
   Handshake,
   Frown,
   Trophy,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
@@ -101,49 +102,58 @@ export default function Checkout() {
       return;
     }
 
-    // 1. Create Order on Backend
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const planId = period === 'month' ? 'pro_monthly' : 'pro_yearly';
-      const orderRes = await fetch('/api/create-order', {
+
+      // Create subscription
+      const subscriptionRes = await fetch('/api/subscription/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId, autoRenew })
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
+          planId,
+          paymentMethod: selectedMethod,
+          autopayConsent: autoRenew
+        })
       });
-      const orderData = await orderRes.json();
+
+      const subscriptionData = await subscriptionRes.json();
       
-      if (!orderData.id) throw new Error('Failed to create order');
+      if (!subscriptionData.razorpay_subscription_id) {
+        throw new Error('Failed to create subscription');
+      }
 
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-        amount: orderData.amount,
-        currency: orderData.currency,
+        subscription_id: subscriptionData.razorpay_subscription_id,
         name: 'DebugToDeploy',
-        description: `Upgrade to ${planName}`,
+        description: `Subscribe to ${planName}`,
         image: 'https://debugtodeploy.com/logo.png',
-        order_id: orderData.id,
         handler: async function (response: any) {
-          // 2. Verify Payment on Backend
           try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const verifyRes = await fetch('/api/verify-payment', {
+            const verifyRes = await fetch('/api/subscription/verify', {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${session?.access_token}`
               },
               body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
+                razorpay_subscription_id: response.razorpay_subscription_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature
               })
             });
+
             const verifyData = await verifyRes.json();
             
             if (verifyData.status === 'ok') {
               setPaymentStatus('success');
               setTimeout(() => {
                 navigate('/dashboard', { state: { paymentSuccess: true } });
-              }, 3000); // 3 seconds of glory
+              }, 3000);
             } else {
               setPaymentStatus('failed');
             }
@@ -164,21 +174,20 @@ export default function Checkout() {
             setLoading(false);
             setPaymentStatus('failed');
           },
-          // Enhance the modal experience
           backdrop_close: false,
           escape: false,
           handle_back: true
         },
         theme: { 
-          color: '#3B82F6', // Your core soft-blue
-          backdrop_color: '#0A0F1C', // Dark space-themed backdrop
+          color: '#3B82F6',
+          backdrop_color: '#0A0F1C',
         },
       };
 
       const paymentObject = new (window as any).Razorpay(options);
       paymentObject.open();
     } catch (err) {
-      console.error('Order error:', err);
+      console.error('Subscription error:', err);
       setPaymentStatus('failed');
       setLoading(false);
     }
@@ -650,21 +659,3 @@ function PaymentOverlay({ status, onRetry }: { status: 'success' | 'failed', onR
     </motion.div>
   );
 }
-
-const RefreshCw = ({ className }: { className?: string }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width="24" 
-    height="24" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="3" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
-    className={className}
-  >
-    <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
-    <path d="M21 3v5h-5"/>
-  </svg>
-);

@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
     const { planId } = req.body;
     const plan = PLANS[planId] || PLANS['pro_monthly']; // Default to monthly if not specified or invalid
-    
+
     const options = {
       amount: plan.amount * 100, // amount in paise
       currency: plan.currency,
