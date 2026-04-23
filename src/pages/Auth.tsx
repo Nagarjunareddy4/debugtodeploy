@@ -5,20 +5,22 @@ import { LogIn, UserPlus, AlertCircle, Github, Chrome, Rocket, Sparkles, ShieldC
 import { cn } from '../lib/utils';
 
 export default function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [identifier, setIdentifier] = useState(''); // email or username
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [emailNotRegistered, setEmailNotRegistered] = useState(false);
   const [usernameTaken, setUsernameTaken] = useState(false);
   const [emailTaken, setEmailTaken] = useState(false);
   const [checking, setChecking] = useState(false);
 
   // Real-time availability checks (debounced)
   useEffect(() => {
-    if (isLogin) return;
+    if (authMode !== 'signup') return;
 
     const checkTimer = setTimeout(async () => {
       if (username.length >= 3 || identifier.includes('@')) {
@@ -40,7 +42,7 @@ export default function Auth() {
     }, 500);
 
     return () => clearTimeout(checkTimer);
-  }, [username, identifier, isLogin]);
+  }, [username, identifier, authMode]);
 
   // Safety: Reset loading state when component mounts
   useEffect(() => {
@@ -51,11 +53,13 @@ export default function Auth() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setMessage(null);
+    setEmailNotRegistered(false);
 
     const timeout = setTimeout(() => setLoading(false), 10000);
 
     try {
-      if (isLogin) {
+      if (authMode === 'login') {
         let loginEmail = identifier;
 
         if (!identifier.includes('@')) {
@@ -70,7 +74,7 @@ export default function Auth() {
 
         const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
         if (error) throw error;
-      } else {
+      } else if (authMode === 'signup') {
         if (!username || !fullName) {
           throw new Error('Please fill in all fields (Name, Username, Email, Password).');
         }
@@ -106,8 +110,34 @@ export default function Auth() {
         }
 
         alert('Account created successfully! Please sign in.');
-        setIsLogin(true);
+        setAuthMode('login');
         setPassword('');
+      } else if (authMode === 'forgot') {
+        if (!identifier.includes('@')) {
+          throw new Error('Please enter a valid email address.');
+        }
+
+        // Check if email exists using secure RPC (bypasses RLS)
+        const { data, error: profileError } = await supabase.rpc('check_availability', {
+          target_username: '',
+          target_email: identifier.toLowerCase().trim()
+        });
+
+        if (profileError) throw profileError;
+
+        const isRegistered = data && data[0]?.email_taken;
+
+        if (!isRegistered) {
+          setEmailNotRegistered(true);
+          throw new Error('This email is not registered. Please create an account first.');
+        }
+
+        const { error } = await supabase.auth.resetPasswordForEmail(identifier, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+
+        if (error) throw error;
+        setMessage('Reset link sent! Please check your email.');
       }
     } catch (err: any) {
       setError(err.message);
@@ -258,47 +288,54 @@ export default function Auth() {
 
           <div className="mb-8 text-center lg:text-left">
             <h2 className="text-3xl font-black tracking-tight mb-2">
-              {isLogin ? "Welcome Back" : "Start Journey"}
+              {authMode === 'login' ? "Welcome Back" : authMode === 'signup' ? "Start Journey" : "Reset Access"}
             </h2>
             <p className="text-text-dim font-bold text-sm">
-              {isLogin ? "Continue your ascent to DevOps mastery." : "Join the elite fleet of infrastructure architects."}
+              {authMode === 'login' 
+                ? "Continue your ascent to DevOps mastery." 
+                : authMode === 'signup' 
+                  ? "Join the elite fleet of infrastructure architects."
+                  : "We'll send a recovery beacon to your registered email."}
             </p>
           </div>
 
-          {/* Social Logins */}
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            <motion.button
-              whileHover={{ y: -4, backgroundColor: "rgba(255,255,255,0.05)" }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => signInWithSocial('google')}
-              disabled={loading}
-              className="flex items-center justify-center gap-3 px-6 py-4 bg-white/5 border-2 border-white/5 rounded-3xl text-sm font-black uppercase tracking-widest hover:border-soft-blue/30 transition-all disabled:opacity-50"
-            >
-              <Chrome className="w-5 h-5 text-soft-blue" /> Google
-            </motion.button>
-            <motion.button
-              whileHover={{ y: -4, backgroundColor: "rgba(255,255,255,0.05)" }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => signInWithSocial('github')}
-              disabled={loading}
-              className="flex items-center justify-center gap-3 px-6 py-4 bg-white/5 border-2 border-white/5 rounded-3xl text-sm font-black uppercase tracking-widest hover:border-soft-purple/30 transition-all disabled:opacity-50"
-            >
-              <Github className="w-5 h-5 text-soft-purple" /> GitHub
-            </motion.button>
-          </div>
+          {authMode !== 'forgot' && (
+            <>
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                <motion.button
+                  whileHover={{ y: -4, backgroundColor: "rgba(255,255,255,0.05)" }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => signInWithSocial('google')}
+                  disabled={loading}
+                  className="flex items-center justify-center gap-3 px-6 py-4 bg-white/5 border-2 border-white/5 rounded-3xl text-sm font-black uppercase tracking-widest hover:border-soft-blue/30 transition-all disabled:opacity-50"
+                >
+                  <Chrome className="w-5 h-5 text-soft-blue" /> Google
+                </motion.button>
+                <motion.button
+                  whileHover={{ y: -4, backgroundColor: "rgba(255,255,255,0.05)" }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => signInWithSocial('github')}
+                  disabled={loading}
+                  className="flex items-center justify-center gap-3 px-6 py-4 bg-white/5 border-2 border-white/5 rounded-3xl text-sm font-black uppercase tracking-widest hover:border-soft-purple/30 transition-all disabled:opacity-50"
+                >
+                  <Github className="w-5 h-5 text-soft-purple" /> GitHub
+                </motion.button>
+              </div>
 
-          <div className="relative mb-8">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t-2 border-white/5"></div>
-            </div>
-            <div className="relative flex justify-center text-[10px] uppercase font-black tracking-[0.4em]">
-              <span className="bg-brand-bg lg:bg-transparent px-4 text-text-dim leading-none">Credentials</span>
-            </div>
-          </div>
+              <div className="relative mb-8">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t-2 border-white/5"></div>
+                </div>
+                <div className="relative flex justify-center text-[10px] uppercase font-black tracking-[0.4em]">
+                  <span className="bg-brand-bg lg:bg-transparent px-4 text-text-dim leading-none">Credentials</span>
+                </div>
+              </div>
+            </>
+          )}
 
           <form onSubmit={handleAuth} className="space-y-6">
             <AnimatePresence mode="wait">
-              {!isLogin && (
+              {authMode === 'signup' && (
                 <motion.div
                   key="signup-fields"
                   initial={{ opacity: 0, height: 0 }}
@@ -320,7 +357,7 @@ export default function Auth() {
                   <div className="space-y-2">
                     <div className="flex justify-between items-center px-4">
                       <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black">Username</label>
-                      {!isLogin && username.length >= 3 && !checking && (
+                      {authMode === 'signup' && username.length >= 3 && !checking && (
                         <span className={cn("text-[9px] font-black uppercase tracking-widest", usernameTaken ? "text-soft-red" : "text-soft-green")}>
                           {usernameTaken ? '• Taken' : '• Available'}
                         </span>
@@ -331,8 +368,8 @@ export default function Auth() {
                       required
                       className={cn(
                         "w-full bg-white/5 border-2 rounded-3xl px-8 py-4 outline-hidden transition-all font-mono font-bold text-sm",
-                        !isLogin && username.length >= 3 && !checking && (usernameTaken ? "border-soft-red/50" : "border-soft-green/50"),
-                        (!username || isLogin) && "border-white/5"
+                        authMode === 'signup' && username.length >= 3 && !checking && (usernameTaken ? "border-soft-red/50" : "border-soft-green/50"),
+                        (!username || authMode !== 'signup') && "border-white/5"
                       )}
                       placeholder="devops_master"
                       value={username}
@@ -346,48 +383,90 @@ export default function Auth() {
             <div className="space-y-2">
               <div className="flex justify-between items-center px-4">
                 <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black">
-                  {isLogin ? 'Identity (Email/Username)' : 'Email Address'}
+                  {authMode === 'signup' ? 'Email Address' : authMode === 'forgot' ? 'Registered Email' : 'Identity (Email/Username)'}
                 </label>
-                {!isLogin && identifier.includes('@') && !checking && (
+                {authMode === 'signup' && identifier.includes('@') && !checking && (
                   <span className={cn("text-[9px] font-black uppercase tracking-widest", emailTaken ? "text-soft-red" : "text-soft-green")}>
                     {emailTaken ? '• Registered' : '• Unique'}
                   </span>
                 )}
               </div>
               <input
-                type={isLogin ? "text" : "email"}
+                type={authMode === 'login' ? "text" : "email"}
                 required
                 className={cn(
                   "w-full bg-white/5 border-2 rounded-3xl px-8 py-4 outline-hidden transition-all font-bold text-sm",
-                  !isLogin && identifier.includes('@') && !checking && (emailTaken ? "border-soft-red/50" : "border-soft-green/50"),
-                  (!identifier || isLogin) && "border-white/5"
+                  authMode === 'signup' && identifier.includes('@') && !checking && (emailTaken ? "border-soft-red/50" : "border-soft-green/50"),
+                  (!identifier || authMode !== 'signup') && "border-white/5"
                 )}
-                placeholder={isLogin ? "engineer@debugtodeploy.com" : "engineer@debugtodeploy.com"}
+                placeholder={authMode === 'signup' ? "engineer@debugtodeploy.com" : "engineer@debugtodeploy.com"}
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black ml-4">Password</label>
-              <input
-                type="password"
-                required
-                className="w-full bg-white/5 border-2 border-white/5 rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+            {authMode !== 'forgot' && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center px-4">
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black">Password</label>
+                  {authMode === 'login' && (
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode('forgot')}
+                      className="text-[9px] font-black uppercase tracking-widest text-soft-blue hover:text-white transition-colors"
+                    >
+                      Forgot Password?
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="password"
+                  required
+                  className="w-full bg-white/5 border-2 border-white/5 rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            )}
 
             {error && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="flex items-center gap-3 p-5 bg-soft-red/10 border-2 border-soft-red/20 rounded-[2rem] text-soft-red font-bold text-xs"
+                className="space-y-4"
               >
-                <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                <p className="leading-relaxed">{error}</p>
+                <div className="flex items-center gap-3 p-5 bg-soft-red/10 border-2 border-soft-red/20 rounded-[2rem] text-soft-red font-bold text-xs">
+                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                  <p className="leading-relaxed">{error}</p>
+                </div>
+                
+                {emailNotRegistered && (
+                  <motion.button
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('signup');
+                      setError(null);
+                      setEmailNotRegistered(false);
+                    }}
+                    className="w-full py-4 bg-soft-blue/10 border-2 border-soft-blue/20 rounded-[2rem] text-soft-blue font-black text-[10px] uppercase tracking-[0.2em] hover:bg-soft-blue/20 transition-all flex items-center justify-center gap-2"
+                  >
+                    <UserPlus className="w-4 h-4" /> Join the Squad Instead
+                  </motion.button>
+                )}
+              </motion.div>
+            )}
+
+            {message && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex items-center gap-3 p-5 bg-soft-green/10 border-2 border-soft-green/20 rounded-[2rem] text-soft-green font-bold text-xs"
+              >
+                <ShieldCheck className="w-5 h-5 flex-shrink-0" />
+                <p className="leading-relaxed">{message}</p>
               </motion.div>
             )}
 
@@ -400,10 +479,12 @@ export default function Auth() {
             >
               {loading ? (
                 <div className="w-6 h-6 border-4 border-surface/30 border-t-surface rounded-full animate-spin" />
-              ) : isLogin ? (
+              ) : authMode === 'login' ? (
                 <><LogIn className="w-5 h-5 group-hover:translate-x-1 transition-transform" /> START DEPLOYING</>
-              ) : (
+              ) : authMode === 'signup' ? (
                 <><UserPlus className="w-5 h-5 group-hover:scale-110 transition-transform" /> JOIN THE SQUAD</>
+              ) : (
+                <><Sparkles className="w-5 h-5 group-hover:animate-pulse" /> SEND RECOVERY LINK</>
               )}
             </motion.button>
           </form>
@@ -412,14 +493,18 @@ export default function Auth() {
           <div className="mt-8 pt-6 border-t border-white/5 text-center lg:text-left space-y-4">
             <p className="text-xs font-bold">
               <span className="text-text-dim">
-                {isLogin ? "New to the fleet?" : "Already an architect?"}
+                {authMode === 'login' ? "New to the fleet?" : authMode === 'signup' ? "Already an architect?" : "Remembered your key?"}
               </span>
               <button
                 type="button"
-                onClick={() => setIsLogin(!isLogin)}
+                onClick={() => {
+                  setAuthMode(authMode === 'signup' ? 'login' : authMode === 'forgot' ? 'login' : 'signup');
+                  setError(null);
+                  setMessage(null);
+                }}
                 className="ml-2 text-soft-blue hover:text-white transition-colors underline underline-offset-4 decoration-2"
               >
-                {isLogin ? "CREATE ACCOUNT" : "SIGN IN"}
+                {authMode === 'login' ? "CREATE ACCOUNT" : authMode === 'signup' ? "SIGN IN" : "BACK TO LOGIN"}
               </button>
             </p>
           </div>

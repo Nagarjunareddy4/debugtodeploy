@@ -16,6 +16,7 @@ import Certificates from './pages/Certificates';
 import Learning from './pages/Learning';
 import Portfolio from './pages/Portfolio';
 import PublicPortfolio from './pages/PublicPortfolio';
+import ResetPassword from './pages/ResetPassword';
 import { supabase } from './lib/supabase';
 import { getObjectHash } from './lib/utils';
 import { generateUserCurriculum, generateUserDocs, generateUserCertificates, isAllContentStale } from './lib/generator';
@@ -232,6 +233,7 @@ export default function App() {
           <Routes>
             <Route path="/p/:username" element={<PublicPortfolio />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="*" element={<Navigate to="/auth" />} />
           </Routes>
         )}
