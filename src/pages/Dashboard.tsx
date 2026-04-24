@@ -181,16 +181,10 @@ export default function Dashboard() {
     setIsSearching(true);
     setAiResponse(null);
     try {
-      const apiKey = (window as any).OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
-      if (!apiKey) {
-        setAiResponse('OpenAI API key not configured. Please add your key in Settings → API Configuration.');
-        return;
-      }
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch('/api/openai-proxy?path=v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
@@ -291,7 +285,7 @@ export default function Dashboard() {
               <>Glad you're back, <span className="text-soft-blue">{firstName}</span>!</>
             )}
           </h2>
-          <p className="text-text-dim font-bold uppercase tracking-widest text-xs flex items-center gap-2">
+          <p className="text-text-dim font-bold uppercase tracking-widest text-xs flex flex-wrap items-center gap-2 mt-2">
             <Star className="w-4 h-4 text-soft-orange fill-soft-orange" /> Profile readiness: {profile?.readiness_score || 0}%
             {!isPro ? (
               <span className="ml-2 text-soft-orange bg-soft-orange/10 px-2 py-0.5 rounded-full text-[9px]">
@@ -348,7 +342,7 @@ export default function Dashboard() {
       </AnimatePresence>
 
       {/* Hero banner — dynamic next lab */}
-      <section className="flex flex-col md:flex-row items-center justify-between gap-8 bg-surface border-4 border-border rounded-[4rem] p-12 text-text-main overflow-hidden relative shadow-2xl group">
+      <section className="flex flex-col md:flex-row items-center justify-between gap-8 bg-surface border-4 border-border rounded-[2rem] md:rounded-[4rem] p-6 md:p-12 text-text-main overflow-hidden relative shadow-2xl group">
         {/* Ambient glowing orbs to give the panel depth and premium feel */}
         <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-soft-blue/10 rounded-full blur-3xl -translate-y-1/4 translate-x-1/4 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-soft-purple/10 rounded-full blur-3xl translate-y-1/4 -translate-x-1/4 pointer-events-none" />
@@ -409,7 +403,7 @@ export default function Dashboard() {
                     onChange={(e) => setQuickGoal(e.target.value)}
                     disabled={!isPro || isUpdatingGoal}
                     placeholder={isPro ? "New Goal? (e.g. SRE)" : "Pro Only Goal Update"}
-                    className="bg-transparent border-none font-bold text-xs outline-hidden w-32 disabled:cursor-not-allowed"
+                    className="bg-transparent border-none font-bold text-xs outline-hidden w-full min-w-[140px] disabled:cursor-not-allowed"
                   />
                   <button
                     onClick={handleQuickGoalUpdate}
@@ -504,7 +498,7 @@ export default function Dashboard() {
 
         {/* Profile + Streak */}
         <div className="space-y-8">
-          <div className="playful-card flex flex-col items-center p-12 relative overflow-hidden">
+          <div className="playful-card flex flex-col items-center p-6 md:p-12 relative overflow-hidden">
             <div className="absolute top-4 left-4">
               <Star className="w-8 h-8 text-soft-orange fill-soft-orange opacity-20" />
             </div>

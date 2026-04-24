@@ -255,13 +255,6 @@ export default function MockInterviews() {
           return;
         }
 
-        const apiKey = (window as any).OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
-        if (!apiKey) {
-          setAiResponse('OpenAI API key not configured. Please add it in Settings.');
-          setIsTranscribing(false);
-          return;
-        }
-
         try {
           // ── Step 1: Transcribe with Whisper ──────────────────────────
           const formData = new FormData();
@@ -270,9 +263,8 @@ export default function MockInterviews() {
           formData.append('model', 'whisper-1');
           formData.append('language', 'en');
 
-          const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+          const whisperRes = await fetch('/api/openai-proxy?path=v1/audio/transcriptions', {
             method: 'POST',
-            headers: { Authorization: `Bearer ${apiKey}` },
             body: formData,
           });
           const whisperData = await whisperRes.json();
@@ -328,12 +320,6 @@ export default function MockInterviews() {
     setIsLoadingResponse(true);
     setAiResponse('');
     try {
-      const apiKey = (window as any).OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
-      if (!apiKey) {
-        setAiResponse('OpenAI API key not configured. Please add it in Settings.');
-        return;
-      }
-
       const audioSystemPrompt = `You are an expert technical interviewer and career coach. A candidate just answered a question verbally. Evaluate their spoken answer and give detailed, actionable feedback.
 
 Return your response using EXACTLY this format — do not skip any section:
@@ -374,9 +360,9 @@ Be specific, constructive, and encouraging.`;
 
       const systemPrompt = mode === 'audio' ? audioSystemPrompt : textSystemPrompt;
 
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      const res = await fetch('/api/openai-proxy?path=v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [

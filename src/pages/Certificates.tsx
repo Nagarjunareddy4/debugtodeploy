@@ -51,10 +51,6 @@ export default function Certificates() {
     // Certificates are unlimited, no limit check needed
     setGenerating(true);
     try {
-      const apiKey = (window as any).OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
-      if (!apiKey) {
-        throw new Error('OpenAI API key not configured.');
-      }
 
       let roadmapGoal = "Senior DevOps Engineer";
       let experienceLevel = "intermediate";
@@ -70,7 +66,7 @@ export default function Certificates() {
       }
 
       const roadmapHash = profileData?.roadmap_hash || (roadmapData ? await getObjectHash(typeof roadmapData === 'string' ? JSON.parse(roadmapData) : roadmapData) : undefined);
-      const generated = await generateUserCertificates(apiKey, userId, roadmapGoal, experienceLevel, roadmapHash);
+      const generated = await generateUserCertificates(userId, roadmapGoal, experienceLevel, roadmapHash);
       if (generated) {
         setCertificates(generated);
         incrementUsage('certificates');
