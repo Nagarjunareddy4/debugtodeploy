@@ -114,18 +114,15 @@ export default function Roadmap() {
   };
 
   const regenerateDependentRecommendations = async (roadmapData: RoadmapData, roadmapHash?: string) => {
-    const apiKey = (window as any).OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
-    if (!apiKey) return;
-
     const roadmapGoal = roadmapData.goal || roadmapData.title;
     const experienceLevel = roadmapData.experience || 'intermediate';
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) return;
 
     await Promise.all([
-      generateUserDocs(apiKey, user.id, roadmapGoal, roadmapHash),
-      generateUserCertificates(apiKey, user.id, roadmapGoal, experienceLevel, roadmapHash),
-      generateUserCurriculum(apiKey, user.id, roadmapGoal, experienceLevel, roadmapHash),
+      generateUserDocs(user.id, roadmapGoal, roadmapHash),
+      generateUserCertificates(user.id, roadmapGoal, experienceLevel, roadmapHash),
+      generateUserCurriculum(user.id, roadmapGoal, experienceLevel, roadmapHash),
     ]).catch((error) => {
       console.error('Failed to regenerate dependent recommendations:', error);
     });
@@ -145,17 +142,10 @@ export default function Roadmap() {
     setLimitError(null);
     setShowUpdateConfirm(false);
     try {
-      const apiKey = (window as any).OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
-      if (!apiKey) {
-        alert('OpenAI API key not configured. Please add your key in Settings → API Configuration.');
-        return;
-      }
-
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch('/api/openai-proxy?path=v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           model: 'gpt-4o-mini',

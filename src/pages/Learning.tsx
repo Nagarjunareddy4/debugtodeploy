@@ -64,9 +64,8 @@ export default function Learning() {
     const goal = roadmap.goal || roadmap.title || 'DevOps Engineering';
     const experience = roadmap.experience || 'intermediate';
 
-    const apiKey = (window as any).OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
     const roadmapHash = profile.roadmap_hash || await getObjectHash(roadmap);
-    const newDocs = await generateUserDocs(apiKey, profile.id, goal, roadmapHash);
+    const newDocs = await generateUserDocs(profile.id, goal, roadmapHash);
 
     if (newDocs) {
       setDocs(newDocs);

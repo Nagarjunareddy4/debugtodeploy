@@ -83,14 +83,8 @@ export default function Portfolio() {
       navigate('/pricing');
       return;
     }
-    const apiKey = (window as any).OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
-    if (!apiKey) {
-      alert('OpenAI API key not configured. Please add your key in Settings.');
-      return;
-    }
-
     setGenerating(true);
-    const data = await generateAiResume(apiKey, profile);
+    const data = await generateAiResume(profile);
     if (data) setResume(data);
     setGenerating(false);
   };

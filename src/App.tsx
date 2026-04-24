@@ -122,11 +122,9 @@ export default function App() {
 
       // Check if we need to generate dynamic curriculum
       if (latestProfile) {
-        const apiKey = (window as any).OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
-        if (apiKey) {
-          let roadmapGoal = 'DevOps Engineering';
-          let experienceLevel = 'intermediate';
-          let currentVersion: string | undefined;
+        let roadmapGoal = 'DevOps Engineering';
+        let experienceLevel = 'intermediate';
+        let currentVersion: string | undefined;
 
           if (latestProfile.roadmap_data) {
             try {
@@ -146,15 +144,12 @@ export default function App() {
           if (isStale) {
             setIsGenerating(true);
             await Promise.all([
-              generateUserCurriculum(apiKey, user.id, roadmapGoal, experienceLevel, currentVersion),
-              generateUserCertificates(apiKey, user.id, roadmapGoal, experienceLevel, currentVersion),
-              generateUserDocs(apiKey, user.id, roadmapGoal, currentVersion),
+              generateUserCurriculum(user.id, roadmapGoal, experienceLevel, currentVersion),
+              generateUserCertificates(user.id, roadmapGoal, experienceLevel, currentVersion),
+              generateUserDocs(user.id, roadmapGoal, currentVersion),
             ]);
             setIsGenerating(false);
           }
-        } else {
-          console.warn('No OpenAI API Key found. Skipping curriculum generation.');
-        }
       }
 
     } catch (err) {

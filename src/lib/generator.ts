@@ -76,12 +76,7 @@ function sanitizeInput(input: string): string {
   return input.replace(/[<>{}|[\]\\]/g, '').slice(0, 100).trim();
 }
 
-export async function generateUserDocs(apiKey: string, userId: string, roadmapGoal: string, roadmapHash?: string): Promise<GeneratedDoc[] | null> {
-  if (!apiKey) {
-    console.error('AI Generation Error: Missing API Key. AI features require an OpenAI key.');
-    return null;
-  }
-
+export async function generateUserDocs(userId: string, roadmapGoal: string, roadmapHash?: string): Promise<GeneratedDoc[] | null> {
   try {
     const cleanGoal = sanitizeInput(roadmapGoal);
     const prompt = `Based on the user's career goal of "${cleanGoal}", provide exactly 6 essential official documentation links or deep-dive learning resources (like Kubernetes Docs, Terraform Registry, AWS Whitepapers, etc.).
@@ -96,11 +91,10 @@ For each resource, provide:
 - "icon": string (choose from: "Book", "Link", "Globe", "FileText", "Compass")
 - "color": string (choose from: "soft-blue", "soft-green", "soft-purple", "soft-orange", "soft-red")`;
 
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('/api/openai-proxy?path=v1/chat/completions', {
       method: 'POST',
       headers: { 
-        'Content-Type': 'application/json', 
-        'Authorization': `Bearer ${apiKey}` 
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
@@ -144,12 +138,7 @@ For each resource, provide:
   }
 }
 
-export async function generateUserCurriculum(apiKey: string, userId: string, roadmapGoal: string = 'DevOps Engineering', experienceLevel: string = 'intermediate', roadmapHash?: string): Promise<Curriculum | null> {
-  if (!apiKey) {
-    console.error('AI Generation Error: Missing API Key.');
-    return null;
-  }
-
+export async function generateUserCurriculum(userId: string, roadmapGoal: string = 'DevOps Engineering', experienceLevel: string = 'intermediate', roadmapHash?: string): Promise<Curriculum | null> {
   try {
     const cleanGoal = sanitizeInput(roadmapGoal);
     const cleanLevel = sanitizeInput(experienceLevel);
@@ -181,11 +170,10 @@ For each "interview", provide:
 - "icon": string (choose from: "Zap", "Brain", "Sparkles", "Cloud")
 - "color": string (choose from: "soft-blue", "soft-purple", "soft-green", "soft-orange")`;
 
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('/api/openai-proxy?path=v1/chat/completions', {
       method: 'POST',
       headers: { 
-        'Content-Type': 'application/json', 
-        'Authorization': `Bearer ${apiKey}` 
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
@@ -229,12 +217,7 @@ For each "interview", provide:
   }
 }
 
-export async function generateUserCertificates(apiKey: string, userId: string, roadmapGoal: string, experienceLevel: string, roadmapHash?: string): Promise<GeneratedCertificate[] | null> {
-  if (!apiKey) {
-    console.error('AI Generation Error: Missing API Key.');
-    return null;
-  }
-
+export async function generateUserCertificates(userId: string, roadmapGoal: string, experienceLevel: string, roadmapHash?: string): Promise<GeneratedCertificate[] | null> {
   try {
     const cleanGoal = sanitizeInput(roadmapGoal);
     const cleanLevel = sanitizeInput(experienceLevel);
@@ -251,11 +234,10 @@ For each certificate, provide:
 - "icon": string (choose from: "Cloud", "Award", "ShieldCheck", "Zap", "Terminal")
 - "color": string (choose from: "soft-blue", "soft-green", "soft-purple", "soft-orange", "soft-red")`;
 
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('/api/openai-proxy?path=v1/chat/completions', {
       method: 'POST',
       headers: { 
-        'Content-Type': 'application/json', 
-        'Authorization': `Bearer ${apiKey}` 
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
@@ -313,8 +295,8 @@ export function isAllContentStale(profile: any, currentRoadmapVersion: string): 
   );
 }
 
-export async function generateAiResume(apiKey: string, profile: any): Promise<ResumeData | null> {
-  if (!apiKey || !profile) return null;
+export async function generateAiResume(profile: any): Promise<ResumeData | null> {
+  if (!profile) return null;
 
   try {
     const roadmap = profile.roadmap_data ? (typeof profile.roadmap_data === 'string' ? JSON.parse(profile.roadmap_data) : profile.roadmap_data) : null;
@@ -352,11 +334,10 @@ Return ONLY a JSON object matching this structure:
 }
 Include realistic technologies based on the goal of ${goal}.`;
 
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('/api/openai-proxy?path=v1/chat/completions', {
       method: 'POST',
       headers: { 
-        'Content-Type': 'application/json', 
-        'Authorization': `Bearer ${apiKey}` 
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
