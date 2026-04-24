@@ -39,6 +39,7 @@ export default function ResetPassword() {
       // Force sign out so they must login again with the new credentials
       await supabase.auth.signOut();
 
+
       setSuccess(true);
       setTimeout(() => navigate('/auth'), 3000);
     } catch (err: any) {

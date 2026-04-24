@@ -229,6 +229,7 @@ export default function App() {
           <Routes>
             <Route path="/p/:username" element={<PublicPortfolio />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="*" element={<Navigate to="/auth" />} />
           </Routes>
         )}
