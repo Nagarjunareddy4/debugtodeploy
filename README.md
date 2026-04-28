@@ -12,7 +12,8 @@ DebugToDeploy is an interactive web application designed to accelerate DevOps ma
 - **Hands-on cloud labs** with real Kubernetes YAML debugging challenges
 - **AI mock interviews** with text, audio, and video modes and real-time AI feedback
 - **Progress tracking** with XP, day-wise streaks, and a real-time activity graph
-- **Free & Pro tiers** with daily usage limits for AI features on the free plan
+- **AI Support Assistant** for real-time DevOps troubleshooting
+- **Free & Pro tiers** with role-based feature gating and daily usage limits
 
 ---
 
@@ -25,49 +26,57 @@ DebugToDeploy is an interactive web application designed to accelerate DevOps ma
 | Animation | Motion (Framer) |
 | Routing | React Router v7 |
 | Charts | Recharts |
-| Backend / Auth / DB | Supabase |
-| AI Features | OpenAI GPT-4o-mini |
+| Backend API | Vercel Serverless Functions / Express Node.js |
+| Auth & DB | Supabase |
+| AI Integration | OpenAI GPT-4o-mini (Secured via Backend Proxy) |
+| Payments | Razorpay (Subscriptions API) |
 | Build Tool | Vite 6 |
 
 ---
 
-
-
 ## 📁 Project Structure
 
 ```
-src/
-├── components/
-│   ├── layout/
-│   │   └── Sidebar.tsx          # Navigation sidebar
-│   └── ui/
-│       └── Logo.tsx             # App logo component
-├── lib/
-│   ├── supabase.ts              # Supabase client setup
-│   ├── usageLimit.ts            # Free-tier daily usage tracking
-│   └── utils.ts                 # Utility helpers (cn, etc.)
-├── pages/
-│   ├── Auth.tsx                 # Login & Sign up
-│   ├── Dashboard.tsx            # Main dashboard with graph & streak
-│   ├── Roadmap.tsx              # AI roadmap generator
-│   ├── LabList.tsx              # Lab listing with lock/unlock
-│   ├── LabDetail.tsx            # Interactive lab editor & console
-│   ├── MockInterviews.tsx       # AI interview sessions
-│   ├── Pricing.tsx              # Subscription plans
-│   └── Settings.tsx             # User settings & API config
-├── App.tsx                      # Root app with auth guard & routing
-├── main.tsx                     # Entry point
-└── index.css                    # Global styles & design tokens
-supabase_migrations.sql          # Database schema migrations
+.
+├── api/
+│   ├── subscription/            # Razorpay integration (create & verify)
+│   ├── webhook/                 # Razorpay automated webhooks
+│   └── openai-proxy.js          # Secure edge proxy for OpenAI requests
+├── server/
+│   └── index.js                 # Express dev server (for local backend proxy testing)
+├── src/
+│   ├── components/
+│   │   ├── layout/              # Sidebar & Navigation
+│   │   ├── ui/                  # Reusable UI components
+│   │   └── AiSupportBot.tsx     # Floating AI Support Widget
+│   ├── lib/
+│   │   ├── supabase.ts          # Supabase client setup
+│   │   ├── usageLimit.ts        # Client-side usage tracking helpers
+│   │   └── utils.ts             # Utility helpers
+│   ├── pages/
+│   │   ├── Auth.tsx             # Login, Sign Up, & Password Recovery
+│   │   ├── Dashboard.tsx        # Main dashboard with XP graph
+│   │   ├── Roadmap.tsx          # AI roadmap generator
+│   │   ├── LabList.tsx          # Cloud lab selection
+│   │   ├── LabDetail.tsx        # Interactive YAML editor
+│   │   ├── MockInterviews.tsx   # AI voice/text interview sessions
+│   │   ├── Pricing.tsx          # Subscription plan tiers
+│   │   ├── Checkout.tsx         # Secure Razorpay checkout flow
+│   │   ├── Support.tsx          # Contact forms & feedback
+│   │   └── Settings.tsx         # Profile management
+│   ├── App.tsx                  # Root app & Auth Guard
+│   └── index.css                # Global styles & brand tokens
+└── supabase_migrations.sql      # Database schema setup
 ```
 
 ---
 
-## 🔐 Security Notes
+## 🔐 Security & Infrastructure
 
-- All user data is protected via **Supabase Row Level Security (RLS)** — users can only read/write their own records
-- API keys are stored in `.env` (excluded from git) and accessed via `import.meta.env`
-- Free-tier usage limits are tracked client-side via `localStorage` (keyed by date)
+- **Database Security:** All user data is protected via **Supabase Row Level Security (RLS)** — users can only read/write their own records. Admin overrides are strictly handled on the backend.
+- **AI API Protection:** OpenAI requests are routed through a backend proxy, preventing API key exposure and enforcing server-side rate limits based on user subscription tiers.
+- **Automated Billing:** Payments are securely processed via Razorpay. Webhooks listen for lifecycle events (`subscription.charged`, `payment.failed`, etc.) to automatically upgrade/downgrade user accounts in the database without manual intervention.
+- **Environment Configurations:** All sensitive keys (Database URLs, API secrets, Webhook signatures) are stored as environment variables and are securely excluded from source control.
 
 ---
 
