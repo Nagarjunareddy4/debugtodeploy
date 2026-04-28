@@ -54,7 +54,7 @@ export default function LabDetail() {
         const activeIsPro = data.subscription_status === 'pro';
         
         if (data.generated_labs) {
-          const labs = data.generated_labs as GeneratedLab[];
+          const labs = data.generated_labs as (GeneratedLab & { lastStepIndex?: number })[];
           setLabsData(labs);
           const labIndex = labs.findIndex(l => l.id === id);
           const foundLab = labs[labIndex];
@@ -71,6 +71,11 @@ export default function LabDetail() {
             setCodes(foundLab.steps.map(s => s.defaultCode));
             setOutputs(foundLab.steps.map(() => []));
             setSuccesses(foundLab.steps.map(() => false));
+            
+            // Resume from last saved step if it exists
+            if (foundLab.lastStepIndex !== undefined) {
+              setStepIndex(foundLab.lastStepIndex);
+            }
           }
         }
       }
@@ -136,12 +141,35 @@ export default function LabDetail() {
     }, 1200);
   };
 
+  const saveStepProgress = async (newIndex: number) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !id) return;
+
+    const updatedLabs = labsData.map(l => {
+      if (l.id === id) {
+        return { ...l, lastStepIndex: newIndex };
+      }
+      return l;
+    });
+
+    setLabsData(updatedLabs);
+    await supabase.from('profiles').update({ generated_labs: updatedLabs }).eq('id', user.id);
+  };
+
   const goNext = () => {
-    if (stepIndex < totalSteps - 1) setStepIndex(stepIndex + 1);
+    if (stepIndex < totalSteps - 1) {
+      const nextIdx = stepIndex + 1;
+      setStepIndex(nextIdx);
+      saveStepProgress(nextIdx);
+    }
   };
 
   const goPrev = () => {
-    if (stepIndex > 0) setStepIndex(stepIndex - 1);
+    if (stepIndex > 0) {
+      const prevIdx = stepIndex - 1;
+      setStepIndex(prevIdx);
+      saveStepProgress(prevIdx);
+    }
   };
 
   const completeLab = async () => {
@@ -198,7 +226,10 @@ export default function LabDetail() {
             {lab.steps.map((s, i) => (
               <button
                 key={i}
-                onClick={() => setStepIndex(i)}
+                onClick={() => {
+                  setStepIndex(i);
+                  saveStepProgress(i);
+                }}
                 className={cn(
                   "w-7 h-7 rounded-full text-xs font-black border-2 transition-all",
                   successes[i] ? "bg-soft-green text-white border-soft-green" :

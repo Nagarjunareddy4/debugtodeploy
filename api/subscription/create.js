@@ -52,21 +52,29 @@ export default async function handler(req, res) {
     // If no plan exists in Razorpay, create it first
     let planIdInRazorpay = planId;
     try {
+      // Check if planId is a valid Razorpay Plan ID (starts with plan_)
+      if (!planId.startsWith('plan_')) {
+        throw new Error('Not a Razorpay Plan ID');
+      }
       await razorpay.plans.fetch(planId);
     } catch (e) {
+      console.log(`Plan ${planId} not found or invalid, attempting to create...`);
       // Plan doesn't exist, create it
       const planCreateRes = await razorpay.plans.create({
         period: plan.period,
         interval: plan.interval,
-        period: plan.period,
-        amount: plan.amount,
-        currency: plan.currency,
-        description: `DebugToDeploy ${planId}`,
+        item: {
+          name: `DebugToDeploy ${planId}`,
+          amount: plan.amount,
+          currency: plan.currency,
+          description: `Subscription for ${planId}`,
+        }
       });
       planIdInRazorpay = planCreateRes.id;
-      subscriptionOptions.plan_id = planIdInRazorpay;
+      console.log(`Created new Razorpay plan: ${planIdInRazorpay}`);
     }
 
+    subscriptionOptions.plan_id = planIdInRazorpay;
     const subscription = await razorpay.subscriptions.create(subscriptionOptions);
 
     // Store subscription in Supabase

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Brain, Sparkles, Zap, ShieldCheck, Terminal as TerminalIcon } from 'lucide-react';
+import { Brain, Sparkles, Zap, ShieldCheck, Terminal as TerminalIcon, Map } from 'lucide-react';
 import Sidebar from './components/layout/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Roadmap from './pages/Roadmap';
@@ -17,6 +17,8 @@ import Learning from './pages/Learning';
 import Portfolio from './pages/Portfolio';
 import PublicPortfolio from './pages/PublicPortfolio';
 import ResetPassword from './pages/ResetPassword';
+import Support from './pages/Support';
+import AiSupportBot from './components/AiSupportBot';
 import { supabase } from './lib/supabase';
 import { getObjectHash } from './lib/utils';
 import { generateUserCurriculum, generateUserDocs, generateUserCertificates, isAllContentStale } from './lib/generator';
@@ -142,12 +144,18 @@ export default function App() {
           const isStale = isAllContentStale(latestProfile, currentVersion || '');
 
           if (isStale) {
-            setIsGenerating(true);
+            // Only show the generation screen if the content is completely missing (new user or reset)
+            const hasExistingContent = latestProfile.generated_labs && latestProfile.generated_labs.length > 0;
+            if (!hasExistingContent) {
+              setIsGenerating(true);
+            }
+            
             await Promise.all([
               generateUserCurriculum(user.id, roadmapGoal, experienceLevel, currentVersion),
               generateUserCertificates(user.id, roadmapGoal, experienceLevel, currentVersion),
               generateUserDocs(user.id, roadmapGoal, currentVersion),
-            ]);
+            ]).catch(err => console.error('Background generation failed:', err));
+            
             setIsGenerating(false);
           }
       }
@@ -161,36 +169,7 @@ export default function App() {
   if (loading) return null;
 
   if (isGenerating) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-brand-bg text-text-main flex-col space-y-8 p-6 text-center overflow-hidden relative">
-        <motion.div 
-          animate={{ scale: [1, 1.2, 1], rotate: [0, 5, -5, 0] }} 
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          className="relative"
-        >
-          <div className="absolute inset-0 bg-soft-blue/20 blur-3xl rounded-full scale-150 animate-pulse"></div>
-          <Brain className="w-24 h-24 text-soft-blue relative z-10" />
-        </motion.div>
-        
-        <div className="max-w-md space-y-4">
-          <h2 className="text-4xl font-black italic tracking-tighter">AI Designing Curriculum</h2>
-          <p className="text-text-dim font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-2">
-             <Sparkles className="w-4 h-4 text-soft-blue animate-spin" />
-             Personalizing from zero to advance concepts...
-          </p>
-        </div>
-        
-        {/* Progress bar simulation */}
-        <div className="w-64 h-2 bg-surface border-2 border-border rounded-full overflow-hidden mt-8">
-           <motion.div 
-             initial={{ width: '0%' }}
-             animate={{ width: '100%' }}
-             transition={{ duration: 10, ease: "linear" }}
-             className="h-full bg-soft-blue rounded-full"
-           />
-        </div>
-      </div>
-    );
+    return <GenerationScreen />;
   }
 
   return (
@@ -214,10 +193,12 @@ export default function App() {
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/checkout" element={<Checkout />} />
+                  <Route path="/support" element={<Support />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
               </main>
+              <AiSupportBot />
               <footer className="shrink-0 border-t border-border bg-surface/50 backdrop-blur-sm py-3 px-8">
                 <p className="text-center text-[9px] text-text-dim/50 font-bold tracking-widest">
                   © {new Date().getFullYear()} Nagarjunareddy Annapureddy. All rights reserved.
@@ -235,5 +216,140 @@ export default function App() {
         )}
       </div>
     </Router>
+  );
+}
+
+function GenerationScreen() {
+  const [activeFeature, setActiveFeature] = useState(0);
+  const features = [
+    {
+      title: "AI Roadmaps",
+      desc: "Custom-built career paths tailored to your specific engineering goals.",
+      icon: Map,
+      color: "soft-blue",
+      details: ["Skill Tree Analysis", "Dynamic Resource Fetching", "Goal-Oriented Milestones"]
+    },
+    {
+      title: "Cloud Labs",
+      desc: "Interactive environments where you fix real infrastructure bugs.",
+      icon: TerminalIcon,
+      color: "soft-green",
+      details: ["Real-time YAML Validation", "Infrastructure-as-Code Practice", "Automated Bug Injection"]
+    },
+    {
+      title: "Mock Interviews",
+      desc: "Simulated technical rounds with real-time performance scoring.",
+      icon: Brain,
+      color: "soft-purple",
+      details: ["Behavioral & Technical Analysis", "Instant Feedback Reports", "Industry-Standard Queries"]
+    },
+    {
+      title: "Pro Portfolios",
+      desc: "Showcase your practical achievements to world-class hiring teams.",
+      icon: Zap,
+      color: "soft-orange",
+      details: ["Live Skill Visualizers", "Certificate Integration", "Public Profile Hosting"]
+    }
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveFeature((prev) => (prev + 1) % features.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="flex h-screen items-center justify-center bg-brand-bg text-text-main overflow-hidden relative">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] bg-soft-blue/5 blur-[120px] rounded-full animate-pulse" />
+        <div className="absolute -bottom-[20%] -right-[10%] w-[60%] h-[60%] bg-soft-purple/5 blur-[120px] rounded-full animate-pulse delay-1000" />
+      </div>
+
+      <div className="relative z-10 w-full max-w-5xl px-8 flex flex-col items-center">
+        <div className="text-center space-y-4 mb-16">
+          <motion.div 
+            animate={{ scale: [1, 1.1, 1] }} 
+            transition={{ duration: 3, repeat: Infinity }}
+            className="w-20 h-20 bg-surface border-4 border-border rounded-3xl flex items-center justify-center mx-auto shadow-2xl"
+          >
+            <Brain className="w-10 h-10 text-soft-blue" />
+          </motion.div>
+          <div className="space-y-2">
+            <h2 className="text-5xl font-black italic tracking-tighter">AI Designing <span className="text-soft-blue">Curriculum</span></h2>
+            <p className="text-text-dim font-bold uppercase tracking-[0.4em] text-[10px]">Assembling Mission Parameters...</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center w-full">
+          <div className="space-y-8 order-2 lg:order-1">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeFeature}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="space-y-6"
+              >
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-soft-blue/10 border border-soft-blue/20">
+                  <Sparkles className="w-4 h-4 text-soft-blue" />
+                  <span className="text-xs font-black uppercase tracking-widest text-soft-blue">System Feature</span>
+                </div>
+                <h3 className="text-4xl font-black tracking-tight">{features[activeFeature].title}</h3>
+                <p className="text-text-dim font-bold text-lg leading-relaxed">{features[activeFeature].desc}</p>
+                <div className="flex flex-wrap gap-3">
+                  {features[activeFeature].details.map((d, i) => (
+                    <span key={i} className="text-[10px] font-black uppercase tracking-widest bg-surface border border-border px-3 py-1.5 rounded-lg text-text-dim">
+                      {d}
+                    </span>
+                  ))}
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          <div className="relative h-80 flex items-center justify-center order-1 lg:order-2">
+             <div className="absolute inset-0 bg-surface/30 backdrop-blur-3xl rounded-[3rem] border-4 border-border/50" />
+             <div className="grid grid-cols-2 gap-6 p-12 relative z-10 w-full h-full">
+                {features.map((f, i) => (
+                  <motion.div
+                    key={i}
+                    animate={{ 
+                      scale: activeFeature === i ? 1.05 : 1,
+                      opacity: activeFeature === i ? 1 : 0.4
+                    }}
+                    className={cn(
+                      "playful-card flex flex-col items-center justify-center gap-4 transition-all duration-500",
+                      activeFeature === i ? "bg-surface border-4 border-soft-blue shadow-2xl" : "bg-brand-bg/50 border-2 border-border"
+                    )}
+                  >
+                    <f.icon className={cn("w-10 h-10", activeFeature === i ? "text-soft-blue" : "text-text-dim")} />
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em]">{f.title}</span>
+                  </motion.div>
+                ))}
+             </div>
+          </div>
+        </div>
+
+        <div className="w-full max-w-2xl mt-20 space-y-6">
+           <div className="flex justify-between items-end mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-soft-blue rounded-full animate-ping" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-soft-blue">Optimizing Neural Weights</span>
+              </div>
+              <span className="text-[10px] font-black text-text-dim uppercase tracking-[0.3em]">Phase 02 / 04</span>
+           </div>
+           <div className="h-2 w-full bg-surface border-2 border-border rounded-full overflow-hidden">
+             <motion.div 
+               initial={{ width: '0%' }}
+               animate={{ width: '100%' }}
+               transition={{ duration: 15, ease: "linear" }}
+               className="h-full bg-soft-blue rounded-full shadow-[0_0_20px_rgba(59,130,246,0.5)]"
+             />
+           </div>
+           <p className="text-[9px] text-center text-text-dim/50 font-bold tracking-[0.4em] uppercase">This sequence happens only once per roadmap update</p>
+        </div>
+      </div>
+    </div>
   );
 }

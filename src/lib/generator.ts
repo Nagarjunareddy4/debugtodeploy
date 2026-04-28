@@ -288,11 +288,14 @@ export function isCurriculumStale(profile: any, currentRoadmapVersion: string): 
 }
 
 export function isAllContentStale(profile: any, currentRoadmapVersion: string): boolean {
-  return (
-    isCurriculumStale(profile, currentRoadmapVersion) ||
-    !profile.generated_certificates ||
-    !profile.generated_docs
-  );
+  // Only trigger automatic generation if content is completely missing
+  const isMissingContent = !profile.generated_labs?.length || !profile.generated_interviews?.length;
+  
+  if (isMissingContent && profile.roadmap_data) return true;
+  
+  // For version mismatch, we don't automatically show the generation screen on every login
+  // unless the content is totally missing.
+  return false;
 }
 
 export async function generateAiResume(profile: any): Promise<ResumeData | null> {
@@ -301,38 +304,58 @@ export async function generateAiResume(profile: any): Promise<ResumeData | null>
   try {
     const roadmap = profile.roadmap_data ? (typeof profile.roadmap_data === 'string' ? JSON.parse(profile.roadmap_data) : profile.roadmap_data) : null;
     const completedLabs = profile.labs_completed || 0;
+    const generatedLabs = profile.generated_labs || [];
+    const completedLabTitles = generatedLabs.slice(0, completedLabs).map((l: any) => l.title);
+    
+    const completedTasks = profile.completed_roadmap_tasks || [];
+    const interviewScores = profile.interview_scores || {};
+    const generatedInterviews = profile.generated_interviews || [];
+    const topInterviews = Object.entries(interviewScores)
+      .map(([id, score]) => {
+        const interview = generatedInterviews.find((i: any) => i.id === id);
+        return interview ? { title: interview.title, score } : null;
+      })
+      .filter(Boolean);
+
     const goal = roadmap?.goal || 'DevOps Engineer';
     const xp = profile.xp || 0;
 
-    const prompt = `Act as a senior DevOps hiring manager. Create a professional, high-impact resume for a user with the following stats:
-- Current Goal: ${goal}
-- Total XP: ${xp}
-- Practical Labs Completed: ${completedLabs}
-- Current Skill Roadmap: ${roadmap?.title || 'N/A'}
+    const prompt = `Act as a senior DevOps hiring manager. Create a professional, high-impact resume for a user with the following platform achievements:
+- Primary Career Goal: ${goal}
+- Total Platform Experience (XP): ${xp}
+- Practical Labs Completed: ${completedLabs} (${completedLabTitles.join(', ') || 'Various cloud labs'})
+- Roadmap Progression: Completed ${completedTasks.length} technical milestones.
+- AI Interview Performance: Verified expertise in ${topInterviews.map((i: any) => `${i.title} (${i.score}/10)`).join(', ') || 'General DevOps scenarios'}.
 
-The resume should translate their platform progress into professional industry terms.
-"Labs Completed" should be treated as "Technical Hands-on Projects."
+The resume should translate these simulated/platform achievements into professional industry language. 
+"Labs" should be framed as "Simulation Projects" or "Guided Engineering Exercises."
+"Roadmap Tasks" should be framed as "Technical Competencies" or "Skills Acquired."
 
 Return ONLY a JSON object matching this structure:
 {
-  "summary": "Professional summary focusing on their career goal and technical growth",
+  "summary": "A compelling 3-4 sentence professional summary",
   "technicalSkills": [
-    { "category": "Cloud & Infrastructure", "skills": ["AWS", "Kubernetes", "..."] },
-    { "category": "CI/CD & DevOps", "skills": ["Jenkins", "GitHub Actions", "..."] }
+    { "category": "Cloud & Infrastructure", "skills": ["..."] },
+    { "category": "CI/CD & Automation", "skills": ["..."] },
+    { "category": "Security & Compliance", "skills": ["..."] }
   ],
   "experience": [
     { 
-      "title": "DevOps Engineer (Hands-on Training)", 
-      "company": "DebugToDeploy Advanced Simulation", 
+      "title": "Lead DevOps Simulation Engineer", 
+      "company": "DebugToDeploy Platform", 
       "period": "2024 - Present",
-      "achievements": ["Successfully solved ${completedLabs} production-grade infrastructure anomalies", "Mastered ${goal} core competencies through practical lab clusters"]
+      "achievements": [
+        "Architected and debugged ${completedLabs} production-grade infrastructure environments.",
+        "Demonstrated technical proficiency through ${completedTasks.length} validated roadmap milestones.",
+        "Passed rigorous AI-driven technical assessments in ${topInterviews.length} domains."
+      ]
     }
   ],
   "projects": [
-    { "name": "Cloud Infrastructure Optimization", "description": "Designed and fixed high-availability Kubernetes deployments", "technologies": ["Kubernetes", "YAML", "Docker"] }
+    { "name": "Infrastructure as Code (IaC) Optimization", "description": "Designed and implemented robust Kubernetes manifests and cloud configurations.", "technologies": ["Kubernetes", "Docker", "Terraform"] }
   ]
 }
-Include realistic technologies based on the goal of ${goal}.`;
+Ensure the skills and technologies are highly relevant to the career goal of ${goal}.`;
 
     const res = await fetch('/api/openai-proxy?path=v1/chat/completions', {
       method: 'POST',

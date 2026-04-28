@@ -22,7 +22,8 @@ import {
   Award,
   Book,
   Facebook,
-  Instagram
+  Instagram,
+  LifeBuoy
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
@@ -71,6 +72,7 @@ const navItems = [
   { icon: Book, label: 'Learning', path: '/learning' },
   { icon: MessageSquare, label: 'Interviews', path: '/interviews' },
   { icon: Award, label: 'Certificates', path: '/certificates' },
+  { icon: LifeBuoy, label: 'Support', path: '/support' },
   { icon: CreditCard, label: 'Pricing', path: '/pricing' },
 ];
 
