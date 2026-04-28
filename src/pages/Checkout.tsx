@@ -133,7 +133,7 @@ export default function Checkout() {
         subscription_id: subscriptionData.razorpay_subscription_id,
         name: 'DebugToDeploy',
         description: `Subscribe to ${planName}`,
-        image: 'https://debugtodeploy.com/logo.png',
+        image: 'https://debugtodeploy.com/logo.jpg',
         handler: async function (response: any) {
           try {
             const verifyRes = await fetch('/api/subscription/verify', {

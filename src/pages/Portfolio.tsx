@@ -327,13 +327,21 @@ export default function Portfolio() {
               <Shield className="w-5 h-5" /> Verified Skills
             </h4>
             <div className="space-y-3">
-              {['Kubernetes Mastery', 'CI/CD Pipelines', 'Cloud Native Security'].map((skill, i) => (
-                <div key={i} className="flex items-center gap-3 bg-white/10 p-3 rounded-2xl border border-white/10">
-                  <div className="w-2 h-2 bg-soft-green rounded-full shadow-[0_0_10px_var(--color-soft-green)]" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">{skill}</span>
-                  <Check className="w-4 h-4 ml-auto text-soft-green" />
-                </div>
-              ))}
+              {(() => {
+                const completedLabs = profile?.labs_completed || 0;
+                const generatedLabs = profile?.generated_labs || [];
+                const completedTitles: string[] = generatedLabs.slice(0, completedLabs).map((l: any) => l.title);
+                // Fallback to roadmap milestones if no labs completed yet
+                const completedTasks: string[] = profile?.completed_roadmap_tasks?.slice(0, 3) || [];
+                const skills = completedTitles.length > 0 ? completedTitles.slice(0, 5) : completedTasks.length > 0 ? completedTasks.slice(0, 5) : ['Start your first lab to unlock verified skills'];
+                return skills.map((skill: string, i: number) => (
+                  <div key={i} className="flex items-center gap-3 bg-white/10 p-3 rounded-2xl border border-white/10">
+                    <div className="w-2 h-2 bg-soft-green rounded-full shadow-[0_0_10px_var(--color-soft-green)]" />
+                    <span className="text-[10px] font-black uppercase tracking-widest line-clamp-1">{skill}</span>
+                    <Check className="w-4 h-4 ml-auto shrink-0 text-soft-green" />
+                  </div>
+                ));
+              })()}
             </div>
           </div>
         </div>

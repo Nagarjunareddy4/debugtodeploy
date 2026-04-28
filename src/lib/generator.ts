@@ -306,7 +306,7 @@ export async function generateAiResume(profile: any): Promise<ResumeData | null>
     const completedLabs = profile.labs_completed || 0;
     const generatedLabs = profile.generated_labs || [];
     const completedLabTitles = generatedLabs.slice(0, completedLabs).map((l: any) => l.title);
-    
+
     const completedTasks = profile.completed_roadmap_tasks || [];
     const interviewScores = profile.interview_scores || {};
     const generatedInterviews = profile.generated_interviews || [];
@@ -319,43 +319,109 @@ export async function generateAiResume(profile: any): Promise<ResumeData | null>
 
     const goal = roadmap?.goal || 'DevOps Engineer';
     const xp = profile.xp || 0;
+    const streak = profile.streak || 0;
+    const readinessScore = profile.readiness_score || 0;
+    const level = profile.level || 1;
 
-    const prompt = `Act as a senior DevOps hiring manager. Create a professional, high-impact resume for a user with the following platform achievements:
-- Primary Career Goal: ${goal}
-- Total Platform Experience (XP): ${xp}
-- Practical Labs Completed: ${completedLabs} (${completedLabTitles.join(', ') || 'Various cloud labs'})
-- Roadmap Progression: Completed ${completedTasks.length} technical milestones.
-- AI Interview Performance: Verified expertise in ${topInterviews.map((i: any) => `${i.title} (${i.score}/10)`).join(', ') || 'General DevOps scenarios'}.
+    // Compute accurate start month/year from DB registration date
+    const joinDate = profile.created_at ? new Date(profile.created_at) : new Date();
+    const joinMonthYear = joinDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
-The resume should translate these simulated/platform achievements into professional industry language. 
-"Labs" should be framed as "Simulation Projects" or "Guided Engineering Exercises."
-"Roadmap Tasks" should be framed as "Technical Competencies" or "Skills Acquired."
+    // Build list of completed lab names for context
+    const labsContext = completedLabTitles.length > 0
+      ? completedLabTitles.join(', ')
+      : 'Cloud infrastructure debugging labs';
 
-Return ONLY a JSON object matching this structure:
+    // Build interview performance context
+    const interviewContext = topInterviews.length > 0
+      ? topInterviews.map((i: any) => `${i.title} (scored ${i.score}/10)`).join(', ')
+      : 'General DevOps engineering scenarios';
+
+    // --- Extract rich data directly from the AI Roadmap ---
+    const roadmapObjective = roadmap?.description || '';
+    const roadmapTitle = roadmap?.title || goal;
+    const roadmapExperience = roadmap?.experience || 'intermediate';
+
+    // Extract stage topic areas as skill categories (e.g. "Kubernetes Fundamentals", "CI/CD Pipelines")
+    const roadmapStages: string[] = roadmap?.stages
+      ? roadmap.stages.map((s: any) => s.label).filter(Boolean)
+      : [];
+
+    // Extract ALL individual task labels from ALL stages as granular skills
+    const roadmapSkills: string[] = roadmap?.stages
+      ? roadmap.stages.flatMap((s: any) =>
+          (s.tasks || []).map((t: any) => (typeof t === 'string' ? t : t.label)).filter(Boolean)
+        )
+      : [];
+
+    // Determine which roadmap tasks are actually completed by matching task IDs
+    const completedRoadmapTaskLabels: string[] = roadmap?.stages
+      ? roadmap.stages.flatMap((stage: any, sIdx: number) =>
+          (stage.tasks || [])
+            .map((t: any, tIdx: number) => ({
+              label: typeof t === 'string' ? t : t.label,
+              id: `${stage.id || `stage-${sIdx + 1}`}-task-${tIdx}`
+            }))
+            .filter((t: any) => completedTasks.includes(t.id))
+            .map((t: any) => t.label)
+        )
+      : [];
+
+    const prompt = `You are a senior DevOps hiring manager and expert resume writer. Generate a complete, professional, high-impact resume in JSON format for the following candidate.
+
+CANDIDATE PROFILE (use ALL of this REAL data to write the resume):
+- Career Goal / Target Role: ${goal}
+- Roadmap Title: ${roadmapTitle}
+- Experience Level: ${roadmapExperience}
+- Career Objective (from their AI roadmap): ${roadmapObjective || `Become a ${goal}`}
+- Platform XP Earned: ${xp}
+- Readiness Score: ${readinessScore}%
+- Current Level: ${level}
+- Day Streak: ${streak} days
+- Member Since: ${joinMonthYear}
+
+ROADMAP KNOWLEDGE AREAS (AI-generated learning plan stage topics — use these as skill categories in the resume):
+${roadmapStages.length > 0 ? roadmapStages.map((s, i) => `  ${i + 1}. ${s}`).join('\n') : '  General DevOps topics'}
+
+INDIVIDUAL SKILLS FROM ROADMAP (specific tasks from their AI roadmap — use these as the actual skills listed under each category):
+${roadmapSkills.length > 0 ? roadmapSkills.slice(0, 30).join(', ') : 'Kubernetes, Docker, CI/CD, Terraform, AWS, Linux'}
+
+COMPLETED ROADMAP MILESTONES (${completedRoadmapTaskLabels.length} tasks marked done by user):
+${completedRoadmapTaskLabels.length > 0 ? completedRoadmapTaskLabels.join(', ') : 'In progress'}
+
+PRACTICAL LABS COMPLETED (${completedLabs}): ${labsContext}
+AI INTERVIEW PERFORMANCE: ${interviewContext}
+
+STRICT INSTRUCTIONS:
+1. The professional summary MUST be based on the Career Objective from the roadmap. Do NOT write a generic summary.
+2. The technicalSkills section MUST use the Roadmap Knowledge Areas as the skill category names, and populate each category with the specific Individual Skills from the roadmap that belong to it.
+3. The experience period MUST be "${joinMonthYear} – Present". Never use 2024 or any other hardcoded year.
+4. Generate 1-2 experience entries and 2-3 projects directly derived from the completed labs and completed roadmap milestones.
+5. All content must be fully AI-generated based on the data above — no placeholder or generic text of any kind.
+
+Return ONLY a valid JSON object with this exact structure:
 {
-  "summary": "A compelling 3-4 sentence professional summary",
+  "summary": "A compelling 3-4 sentence professional summary based directly on the Career Objective and roadmap content",
   "technicalSkills": [
-    { "category": "Cloud & Infrastructure", "skills": ["..."] },
-    { "category": "CI/CD & Automation", "skills": ["..."] },
-    { "category": "Security & Compliance", "skills": ["..."] }
+    { "category": "<use exact Roadmap Knowledge Area stage label>", "skills": ["<specific roadmap skill>", "<specific roadmap skill>"] },
+    { "category": "<use exact Roadmap Knowledge Area stage label>", "skills": ["<specific roadmap skill>", "<specific roadmap skill>"] }
   ],
   "experience": [
-    { 
-      "title": "Lead DevOps Simulation Engineer", 
-      "company": "DebugToDeploy Platform", 
-      "period": "2024 - Present",
-      "achievements": [
-        "Architected and debugged ${completedLabs} production-grade infrastructure environments.",
-        "Demonstrated technical proficiency through ${completedTasks.length} validated roadmap milestones.",
-        "Passed rigorous AI-driven technical assessments in ${topInterviews.length} domains."
-      ]
+    {
+      "title": "<a relevant job title matching their career goal>",
+      "company": "DebugToDeploy Learning Platform",
+      "period": "${joinMonthYear} – Present",
+      "achievements": ["<specific achievement referencing completed milestone or lab names>", "<another specific achievement>", "<another>"]
     }
   ],
   "projects": [
-    { "name": "Infrastructure as Code (IaC) Optimization", "description": "Designed and implemented robust Kubernetes manifests and cloud configurations.", "technologies": ["Kubernetes", "Docker", "Terraform"] }
+    {
+      "name": "<project name derived from a completed lab or roadmap stage topic>",
+      "description": "<specific description based on the actual lab or stage content>",
+      "technologies": ["<technology from roadmap skills>", "<technology from roadmap skills>"]
+    }
   ]
-}
-Ensure the skills and technologies are highly relevant to the career goal of ${goal}.`;
+}`;
 
     const res = await fetch('/api/openai-proxy?path=v1/chat/completions', {
       method: 'POST',
@@ -365,12 +431,12 @@ Ensure the skills and technologies are highly relevant to the career goal of ${g
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'You are an expert technical resume writer. Output only strict JSON.' },
+          { role: 'system', content: 'You are an expert technical resume writer for DevOps engineers. Output only strict, valid JSON. All content must be dynamically generated based on the candidate data provided. Never use placeholder text.' },
           { role: 'user', content: prompt },
         ],
         response_format: { type: "json_object" },
-        max_tokens: 2000,
-        temperature: 0.7,
+        max_tokens: 2500,
+        temperature: 0.8,
       }),
     });
 
