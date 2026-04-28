@@ -42,7 +42,6 @@ export default async function handler(req, res) {
       plan_id: planId, // You need to create these plan IDs in Razorpay Dashboard first
       customer_notify: 1,
       quantity: 1,
-      total_count: 0, // Infinite subscription
       notes: {
         user_id: user.id,
         email: user.email,
@@ -103,6 +102,7 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Subscription creation failed:', error);
-    return res.status(500).json({ error: error.message || 'Failed to create subscription' });
+    const errorMessage = error.error?.description || error.message || 'Failed to create subscription';
+    return res.status(500).json({ error: errorMessage });
   }
 }

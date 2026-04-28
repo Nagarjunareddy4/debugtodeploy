@@ -28,9 +28,9 @@ export default function Support() {
     
     setIsSubmitting(true);
     try {
-      await fetch("https://formspree.io/f/nagarjunareddy9995@gmail.com", {
+      await fetch("https://formspree.io/f/xgorjnag", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify({
           type: 'Platform Feedback',
           user: profile?.full_name || profile?.email,
@@ -112,9 +112,9 @@ export default function Support() {
             <p className="text-text-dim text-sm font-bold mb-4">Direct uplink to our support engineers for complex technical issues.</p>
             <a
               href="mailto:nagarjunareddy9995@gmail.com"
-              className="text-soft-blue font-black text-sm uppercase tracking-widest hover:underline flex items-center gap-2"
+              className="text-soft-blue font-black text-sm uppercase tracking-widest hover:underline flex items-center gap-2 break-all"
             >
-              nagarjunareddy9995@gmail.com <ArrowRight className="w-4 h-4" />
+              nagarjunareddy9995@gmail.com <ArrowRight className="w-4 h-4 shrink-0" />
             </a>
           </div>
 
