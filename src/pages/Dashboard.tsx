@@ -247,8 +247,29 @@ export default function Dashboard() {
   const searchesLeft = getRemainingUsage('search', isPro);
   const isNewUser = !profile?.roadmap_data || profile.roadmap_data === '{}' || profile.roadmap_data === '{"stages":[]}';
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.2
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100 } }
+  };
+
   return (
-    <div className="max-w-7xl mx-auto space-y-12 pb-24">
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="max-w-7xl mx-auto space-y-12 pb-24"
+    >
       <AnimatePresence>
         {showSuccess && (
           <motion.div
@@ -276,7 +297,7 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      <div className="flex flex-col lg:flex-row gap-8 items-start justify-between">
+      <motion.div variants={itemVariants} className="flex flex-col lg:flex-row gap-8 items-start justify-between">
         <header className="space-y-2">
           <h2 className="text-5xl font-black tracking-tighter">
             {isNewUser ? (
@@ -317,7 +338,7 @@ export default function Dashboard() {
             {!isPro && searchesLeft === 0 ? <Lock className="w-4 h-4" /> : 'Search'}
           </button>
         </form>
-      </div>
+      </motion.div>
 
       <AnimatePresence>
         {aiResponse && (
@@ -342,7 +363,7 @@ export default function Dashboard() {
       </AnimatePresence>
 
       {/* Hero banner — dynamic next lab */}
-      <section className="flex flex-col md:flex-row items-center justify-between gap-8 bg-surface border-4 border-border rounded-[2rem] md:rounded-[4rem] p-6 md:p-12 text-text-main overflow-hidden relative shadow-2xl group">
+      <motion.section variants={itemVariants} className="flex flex-col md:flex-row items-center justify-between gap-8 bg-surface border-4 border-border rounded-[2rem] md:rounded-[4rem] p-6 md:p-12 text-text-main overflow-hidden relative shadow-2xl group glass-glow">
         {/* Ambient glowing orbs to give the panel depth and premium feel */}
         <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-soft-blue/10 rounded-full blur-3xl -translate-y-1/4 translate-x-1/4 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-soft-purple/10 rounded-full blur-3xl translate-y-1/4 -translate-x-1/4 pointer-events-none" />
@@ -390,7 +411,7 @@ export default function Dashboard() {
                 <button
                   onClick={handleStartLab}
                   disabled={nextLab === null}
-                  className="px-10 py-4 bg-text-main text-surface rounded-full font-black shadow-xl hover:scale-105 transition-all text-base active:scale-95 shadow-soft-blue/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-10 py-4 bg-text-main text-surface rounded-full font-black shadow-xl hover:scale-105 transition-all text-base active:scale-95 shadow-soft-blue/30 disabled:opacity-50 disabled:cursor-not-allowed magnetic-float"
                 >
                   {nextLab === null ? 'Labs Complete ✓' : 'Start Lab'}
                 </button>
@@ -438,9 +459,9 @@ export default function Dashboard() {
             <Zap className="w-32 h-32 text-soft-blue/20 group-hover:scale-110 transition-transform duration-500" />
           )}
         </div>
-      </section>
+      </motion.section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Progress Graph */}
         <div className="lg:col-span-2 space-y-8">
           <div className="playful-card space-y-10">
@@ -498,7 +519,10 @@ export default function Dashboard() {
 
         {/* Profile + Streak */}
         <div className="space-y-8">
-          <div className="playful-card flex flex-col items-center p-6 md:p-12 relative overflow-hidden">
+          <div className={cn(
+            "playful-card flex flex-col items-center p-6 md:p-12 relative overflow-hidden",
+            isPro && "holographic-pro border-soft-blue/20"
+          )}>
             <div className="absolute top-4 left-4">
               <Star className="w-8 h-8 text-soft-orange fill-soft-orange opacity-20" />
             </div>
@@ -591,10 +615,9 @@ export default function Dashboard() {
           </div>
 
           {/* Streak */}
-          {/* Streak */}
-          <div className="playful-card border-none text-center py-12 shadow-2xl bg-surface">
+          <div className="playful-card border-none text-center py-12 shadow-2xl bg-surface glass-glow">
             <div className="relative mb-6">
-              <Flame className="w-16 h-16 text-soft-orange mx-auto fill-soft-orange animate-pulse relative z-10" />
+              <Flame className="w-16 h-16 text-soft-orange mx-auto fill-soft-orange animate-flicker relative z-10" />
               <div className="absolute inset-0 scale-150 bg-soft-orange/20 blur-2xl rounded-full pointer-events-none" />
             </div>
             <h4 className="text-4xl font-black mb-2 italic text-text-main">{profile?.streak || 0} DAY STREAK</h4>
@@ -627,7 +650,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

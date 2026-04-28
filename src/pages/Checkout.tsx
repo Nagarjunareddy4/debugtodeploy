@@ -62,6 +62,7 @@ export default function Checkout() {
   const [autoRenew, setAutoRenew] = useState(false);
   const [loading, setLoading] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'success' | 'failed'>('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
 
   const planName = location.state?.planName || 'Fleet Captain (Pro)';
@@ -96,7 +97,7 @@ export default function Checkout() {
     
     const res = await loadRazorpay();
     if (!res) {
-      alert('Razorpay SDK failed to load. Check your internet connection.');
+      setErrorMessage('Razorpay SDK failed to load. Check your internet connection.');
       setLoading(false);
       setPaymentStatus('failed');
       return;
@@ -123,7 +124,7 @@ export default function Checkout() {
       const subscriptionData = await subscriptionRes.json();
       
       if (!subscriptionData.razorpay_subscription_id) {
-        throw new Error('Failed to create subscription');
+        throw new Error(subscriptionData.error || 'Failed to create subscription in Razorpay');
       }
 
       const options = {
@@ -186,8 +187,9 @@ export default function Checkout() {
 
       const paymentObject = new (window as any).Razorpay(options);
       paymentObject.open();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Subscription error:', err);
+      setErrorMessage(err.message || 'Transmission interrupted. Please try again.');
       setPaymentStatus('failed');
       setLoading(false);
     }
@@ -199,6 +201,7 @@ export default function Checkout() {
         {(paymentStatus === 'success' || paymentStatus === 'failed') && (
           <PaymentOverlay 
             status={paymentStatus} 
+            errorMessage={errorMessage}
             onRetry={() => {
               setPaymentStatus('idle');
               handlePay();
@@ -475,7 +478,7 @@ export default function Checkout() {
                       <p className="text-[9px] font-bold opacity-80 leading-tight">
                         {paymentStatus === 'processing' && "Opening secure payment gateway."}
                         {paymentStatus === 'success' && "Redirecting to your new Command Center..."}
-                        {paymentStatus === 'failed' && "The payment was cancelled or declined. Please retry."}
+                        {paymentStatus === 'failed' && (errorMessage || "The payment was cancelled or declined. Please retry.")}
                       </p>
                     </div>
                   </motion.div>
@@ -517,7 +520,7 @@ export default function Checkout() {
 }
 
 // Cinematic Overlay for Success/Failure
-function PaymentOverlay({ status, onRetry }: { status: 'success' | 'failed', onRetry: () => void }) {
+function PaymentOverlay({ status, errorMessage, onRetry }: { status: 'success' | 'failed', errorMessage: string | null, onRetry: () => void }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -641,7 +644,7 @@ function PaymentOverlay({ status, onRetry }: { status: 'success' | 'failed', onR
                   TRANSMISSION <span className="text-soft-red">FAILED.</span>
                 </motion.h2>
                 <p className="text-text-dim font-bold tracking-widest uppercase text-xs">
-                  Signal lost during handshake. Transaction terminated.
+                  {errorMessage || "Signal lost during handshake. Transaction terminated."}
                 </p>
               </div>
 

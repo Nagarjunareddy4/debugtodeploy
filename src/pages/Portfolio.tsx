@@ -33,6 +33,7 @@ export default function Portfolio() {
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isPro, setIsPro] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<'modern' | 'classic' | 'cyberpunk'>('modern');
 
   useEffect(() => {
     fetchProfile();
@@ -45,6 +46,20 @@ export default function Portfolio() {
       const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
       setProfile(data);
       setIsPro(data?.subscription_status === 'pro');
+      
+      if (data?.roadmap_data) {
+        try {
+          const roadmap = typeof data.roadmap_data === 'string' ? JSON.parse(data.roadmap_data) : data.roadmap_data;
+          if (roadmap.ai_resume) {
+            setResume(roadmap.ai_resume);
+          }
+          if (roadmap.preferred_template) {
+            setSelectedTemplate(roadmap.preferred_template);
+          }
+        } catch (e) {
+          console.error("Failed to parse data from roadmap_data", e);
+        }
+      }
     }
     setLoading(false);
   };
@@ -85,8 +100,40 @@ export default function Portfolio() {
     }
     setGenerating(true);
     const data = await generateAiResume(profile);
-    if (data) setResume(data);
+    if (data) {
+      setResume(data);
+      
+      // Persist to DB inside roadmap_data
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && profile) {
+        try {
+          const currentRoadmap = typeof profile.roadmap_data === 'string' ? JSON.parse(profile.roadmap_data) : (profile.roadmap_data || {});
+          const updatedRoadmap = { ...currentRoadmap, ai_resume: data, preferred_template: selectedTemplate };
+          await supabase.from('profiles').update({ 
+            roadmap_data: JSON.stringify(updatedRoadmap) 
+          }).eq('id', user.id);
+        } catch (e) {
+          console.error("Failed to save resume to DB", e);
+        }
+      }
+    }
     setGenerating(false);
+  };
+
+  const updateTemplateChoice = async (template: 'modern' | 'classic' | 'cyberpunk') => {
+    setSelectedTemplate(template);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && profile) {
+      try {
+        const currentRoadmap = typeof profile.roadmap_data === 'string' ? JSON.parse(profile.roadmap_data) : (profile.roadmap_data || {});
+        const updatedRoadmap = { ...currentRoadmap, preferred_template: template };
+        await supabase.from('profiles').update({ 
+          roadmap_data: JSON.stringify(updatedRoadmap) 
+        }).eq('id', user.id);
+      } catch (e) {
+        console.warn("Failed to persist template choice:", e);
+      }
+    }
   };
 
   if (loading) {
@@ -97,13 +144,40 @@ export default function Portfolio() {
     );
   }
 
+  const templates = [
+    { id: 'modern', name: 'Modern Minimal', icon: '✨' },
+    { id: 'classic', name: 'Executive Pro', icon: '👔' },
+    { id: 'cyberpunk', name: 'Cyberpunk Tech', icon: '📟' },
+  ];
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.2
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100 } }
+  };
+
   return (
-    <div className="max-w-7xl mx-auto space-y-12 pb-24">
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="max-w-7xl mx-auto space-y-12 pb-24"
+    >
       {/* Print Styles */}
       <style>{`
         @media print {
           .main-content { padding: 0 !important; }
-          .no-print, aside, nav, button, header, .playful-card:not(.resume-view) { 
+          .no-print, aside, nav, button, header, .playful-card:not(.resume-view), .template-selector { 
             display: none !important; 
           }
           .resume-view {
@@ -113,18 +187,25 @@ export default function Portfolio() {
             width: 100%;
             height: auto;
             margin: 0;
-            padding: 2cm;
+            padding: 1.5cm;
             border: none !important;
             box-shadow: none !important;
             border-radius: 0 !important;
             background: white !important;
             color: black !important;
           }
+          .template-cyberpunk.resume-view {
+             background: #000 !important;
+             color: #0ff !important;
+          }
           body { background: white !important; }
         }
+
+        .template-classic { font-family: 'Playfair Display', serif; }
+        .template-cyberpunk { font-family: 'Fira Code', monospace; }
       `}</style>
 
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 no-print">
+      <motion.header variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 no-print">
         <div className="space-y-2">
           <h2 className="text-5xl font-black tracking-tighter">Your DevOps Identity</h2>
           <p className="text-text-dim font-bold uppercase tracking-widest text-xs">Live Portfolio & Career Artifacts</p>
@@ -133,7 +214,7 @@ export default function Portfolio() {
           <button 
             onClick={handleShare}
             className={cn(
-              "btn-pill border-2 flex items-center gap-2 relative",
+              "btn-pill border-2 flex items-center gap-2 relative magnetic-float",
               isPro ? "bg-surface border-border text-text-main" : "bg-brand-bg border-dashed border-border text-text-dim opacity-70"
             )}
           >
@@ -155,18 +236,40 @@ export default function Portfolio() {
           <button 
             onClick={handleGenerateResume}
             disabled={generating}
-            className="btn-pill bg-text-main text-surface flex items-center gap-2 shadow-2xl hover:scale-105 transition-all"
+            className="btn-pill bg-text-main text-surface flex items-center gap-2 shadow-2xl hover:scale-105 transition-all magnetic-float"
           >
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : isPro ? <Sparkles className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
             {!isPro ? 'Unlock Career Tools' : resume ? 'Regenerate AI Resume' : 'Generate AI Resume'}
           </button>
         </div>
-      </header>
+      </motion.header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {isPro && resume && (
+        <motion.div variants={itemVariants} className="no-print template-selector bg-surface border-4 border-border rounded-[2.5rem] p-4 flex gap-4 overflow-x-auto glass-glow">
+          {templates.map(t => (
+            <button
+              key={t.id}
+              onClick={() => updateTemplateChoice(t.id as any)}
+              className={cn(
+                "flex-1 min-w-[160px] py-3 px-6 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2",
+                selectedTemplate === t.id 
+                  ? "bg-text-main text-surface shadow-xl scale-105" 
+                  : "bg-brand-bg text-text-dim hover:bg-border"
+              )}
+            >
+              <span>{t.icon}</span> {t.name}
+            </button>
+          ))}
+        </motion.div>
+      )}
+
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Profile Card */}
         <div className="space-y-8 no-print">
-          <div className="playful-card p-10 bg-surface border-none shadow-2xl relative overflow-hidden group">
+          <div className={cn(
+            "playful-card p-10 bg-surface border-none shadow-2xl relative overflow-hidden group",
+            isPro && "holographic-pro border-soft-blue/20"
+          )}>
             <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform duration-700">
               <Cpu className="w-32 h-32" />
             </div>
@@ -281,16 +384,24 @@ export default function Portfolio() {
               </motion.div>
             ) : resume ? (
               <motion.div
-                key="resume"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="resume-view bg-white text-slate-900 rounded-[3rem] p-12 md:p-16 shadow-3xl border border-border min-h-[800px] relative font-sans transition-all"
+                key={`${resume.summary}-${selectedTemplate}`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className={cn(
+                  "resume-view rounded-[3rem] p-12 md:p-16 shadow-3xl border min-h-[800px] relative transition-all",
+                  selectedTemplate === 'modern' && "bg-white text-slate-900 border-border font-sans",
+                  selectedTemplate === 'classic' && "template-classic bg-[#fffcf5] text-[#2c1810] border-[#e8dcc4] font-serif",
+                  selectedTemplate === 'cyberpunk' && "template-cyberpunk bg-[#050505] text-[#00ffcc] border-[#00ffcc]/30 font-mono shadow-[0_0_50px_rgba(0,255,204,0.1)]"
+                )}
               >
                 <div className="absolute top-10 right-10 flex gap-2 no-print">
                    <button 
                      onClick={handleDownload}
-                     className="p-3 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors text-slate-600 shadow-sm flex items-center gap-2 px-6"
+                     className={cn(
+                       "p-3 rounded-full transition-colors shadow-sm flex items-center gap-2 px-6",
+                       selectedTemplate === 'cyberpunk' ? "bg-[#00ffcc] text-black hover:bg-[#00ccaa]" : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+                     )}
                    >
                      <Download className="w-5 h-5" />
                      <span className="text-xs font-black uppercase">Export PDF</span>
@@ -299,29 +410,67 @@ export default function Portfolio() {
 
                 <div className="space-y-12">
                   {/* Header */}
-                  <div className="border-b-4 border-slate-900 pb-8">
-                    <h1 className="text-5xl font-black tracking-tighter uppercase">{profile?.full_name}</h1>
-                    <p className="text-xl font-bold text-soft-blue mt-2 uppercase tracking-[0.2em]">
+                  <div className={cn(
+                    "border-b-4 pb-8",
+                    selectedTemplate === 'modern' && "border-slate-900",
+                    selectedTemplate === 'classic' && "border-[#2c1810] text-center",
+                    selectedTemplate === 'cyberpunk' && "border-[#00ffcc] shadow-[0_10px_20px_-10px_rgba(0,255,204,0.3)]"
+                  )}>
+                    <h1 className={cn(
+                      "text-5xl font-black tracking-tighter uppercase",
+                      selectedTemplate === 'cyberpunk' && "text-transparent bg-linear-to-r from-[#00ffcc] to-[#ff00ff] bg-clip-text"
+                    )}>{profile?.full_name}</h1>
+                    <p className={cn(
+                      "text-xl font-bold mt-2 uppercase tracking-[0.2em]",
+                      selectedTemplate === 'modern' && "text-soft-blue",
+                      selectedTemplate === 'classic' && "text-[#8b4513] italic",
+                      selectedTemplate === 'cyberpunk' && "text-[#ff00ff]"
+                    )}>
                       {JSON.parse(profile.roadmap_data || '{}').goal || 'DevOps Engineer'}
                     </p>
+                    {selectedTemplate === 'cyberpunk' && (
+                       <div className="flex gap-4 mt-4 text-[10px]">
+                         <span className="border border-[#00ffcc]/50 px-2 py-0.5">UID: {profile.id.slice(0,8)}</span>
+                         <span className="border border-[#00ffcc]/50 px-2 py-0.5">STATUS: VERIFIED</span>
+                         <span className="border border-[#ff00ff]/50 px-2 py-0.5">LEVEL: {profile.level}</span>
+                       </div>
+                    )}
                   </div>
 
                   {/* Summary */}
                   <section className="space-y-4">
-                    <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 border-l-4 border-soft-blue pl-4">Professional Summary</h2>
-                    <p className="text-lg leading-relaxed font-medium">{resume.summary}</p>
+                    <h2 className={cn(
+                      "text-xs font-black uppercase tracking-widest border-l-4 pl-4",
+                      selectedTemplate === 'modern' && "text-slate-400 border-soft-blue",
+                      selectedTemplate === 'classic' && "text-[#8b4513] border-[#8b4513]",
+                      selectedTemplate === 'cyberpunk' && "text-[#00ffcc] border-[#ff00ff]"
+                    )}>Professional Summary</h2>
+                    <p className={cn(
+                      "text-lg leading-relaxed font-medium",
+                      selectedTemplate === 'cyberpunk' && "text-[#00ffcc]/80"
+                    )}>{resume.summary}</p>
                   </section>
 
                   {/* Skills */}
                   <section className="space-y-6">
-                    <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 border-l-4 border-soft-blue pl-4">Technical Arsenal</h2>
+                    <h2 className={cn(
+                      "text-xs font-black uppercase tracking-widest border-l-4 pl-4",
+                      selectedTemplate === 'modern' && "text-slate-400 border-soft-blue",
+                      selectedTemplate === 'classic' && "text-[#8b4513] border-[#8b4513]",
+                      selectedTemplate === 'cyberpunk' && "text-[#00ffcc] border-[#ff00ff]"
+                    )}>Technical Arsenal</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       {resume.technicalSkills.map((cat, i) => (
                         <div key={i} className="space-y-2">
                           <h3 className="font-black text-sm uppercase">{cat.category}</h3>
                           <div className="flex flex-wrap gap-2">
                             {cat.skills.map((s, si) => (
-                              <span key={si} className="bg-slate-100 px-3 py-1 rounded-full text-xs font-bold text-slate-600">
+                              <span key={si} className={cn(
+                                "px-3 py-1 rounded-full text-xs font-bold",
+                                selectedTemplate === 'modern' && "bg-slate-100 text-slate-600",
+                                selectedTemplate === 'classic' && "bg-[#e8dcc4] text-[#2c1810]",
+                                selectedTemplate === 'cyberpunk' && "border border-[#00ffcc]/30 text-[#00ffcc] hover:bg-[#00ffcc]/10"
+                              )}>
                                 {s}
                               </span>
                             ))}
@@ -333,21 +482,35 @@ export default function Portfolio() {
 
                   {/* Experience */}
                   <section className="space-y-6">
-                    <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 border-l-4 border-soft-blue pl-4">Technical Experience</h2>
+                    <h2 className={cn(
+                      "text-xs font-black uppercase tracking-widest border-l-4 pl-4",
+                      selectedTemplate === 'modern' && "text-slate-400 border-soft-blue",
+                      selectedTemplate === 'classic' && "text-[#8b4513] border-[#8b4513]",
+                      selectedTemplate === 'cyberpunk' && "text-[#00ffcc] border-[#ff00ff]"
+                    )}>Technical Experience</h2>
                     <div className="space-y-8">
                       {resume.experience.map((exp, i) => (
                         <div key={i} className="space-y-3">
                           <div className="flex justify-between items-end">
                             <div>
                               <h3 className="text-xl font-black">{exp.title}</h3>
-                              <p className="font-bold text-slate-500">{exp.company}</p>
+                              <p className={cn(
+                                "font-bold",
+                                selectedTemplate === 'modern' && "text-slate-500",
+                                selectedTemplate === 'classic' && "text-[#8b4513]",
+                                selectedTemplate === 'cyberpunk' && "text-[#ff00ff]"
+                              )}>{exp.company}</p>
                             </div>
                             <span className="text-xs font-black text-slate-400 italic">{exp.period}</span>
                           </div>
                           <ul className="space-y-2">
                             {exp.achievements.map((ach, ai) => (
                               <li key={ai} className="flex gap-3 text-sm font-medium leading-relaxed">
-                                <span className="text-soft-blue">▹</span> {ach}
+                                <span className={cn(
+                                  selectedTemplate === 'modern' && "text-soft-blue",
+                                  selectedTemplate === 'classic' && "text-[#8b4513]",
+                                  selectedTemplate === 'cyberpunk' && "text-[#00ffcc]"
+                                )}>▹</span> {ach}
                               </li>
                             ))}
                           </ul>
@@ -358,15 +521,30 @@ export default function Portfolio() {
 
                   {/* Projects */}
                   <section className="space-y-6">
-                    <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 border-l-4 border-soft-blue pl-4">Highlighted Projects</h2>
+                    <h2 className={cn(
+                      "text-xs font-black uppercase tracking-widest border-l-4 pl-4",
+                      selectedTemplate === 'modern' && "text-slate-400 border-soft-blue",
+                      selectedTemplate === 'classic' && "text-[#8b4513] border-[#8b4513]",
+                      selectedTemplate === 'cyberpunk' && "text-[#00ffcc] border-[#ff00ff]"
+                    )}>Highlighted Projects</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {resume.projects.map((proj, i) => (
-                        <div key={i} className="bg-slate-50 p-6 rounded-3xl space-y-3 border border-slate-100">
+                        <div key={i} className={cn(
+                          "p-6 rounded-3xl space-y-3 border",
+                          selectedTemplate === 'modern' && "bg-slate-50 border-slate-100",
+                          selectedTemplate === 'classic' && "bg-[#e8dcc4]/20 border-[#e8dcc4]",
+                          selectedTemplate === 'cyberpunk' && "bg-black border-[#00ffcc]/20 hover:border-[#ff00ff]/40"
+                        )}>
                           <h3 className="font-black text-lg">{proj.name}</h3>
-                          <p className="text-sm text-slate-600 font-medium">{proj.description}</p>
+                          <p className="text-sm font-medium opacity-80">{proj.description}</p>
                           <div className="flex flex-wrap gap-2">
                             {proj.technologies.map((t, ti) => (
-                              <span key={ti} className="text-[10px] font-black uppercase text-soft-blue">{t}</span>
+                              <span key={ti} className={cn(
+                                "text-[10px] font-black uppercase",
+                                selectedTemplate === 'modern' && "text-soft-blue",
+                                selectedTemplate === 'classic' && "text-[#8b4513]",
+                                selectedTemplate === 'cyberpunk' && "text-[#ff00ff]"
+                              )}>{t}</span>
                             ))}
                           </div>
                         </div>
@@ -403,7 +581,7 @@ export default function Portfolio() {
             )}
           </AnimatePresence>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

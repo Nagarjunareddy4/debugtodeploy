@@ -10,6 +10,7 @@ const FREE_LIMITS: Record<string, number> = {
   interview: 1,  // 1 interview per week
   docs: Infinity,
   certificates: Infinity,
+  chat: 3,       // 3 support chats per day
 };
 
 const PRO_LIMITS: Record<string, number> = {
@@ -19,6 +20,7 @@ const PRO_LIMITS: Record<string, number> = {
   interview: Infinity,
   docs: Infinity,
   certificates: Infinity,
+  chat: 50,      // 50 support chats per day for pro
 };
 
 function todayKey(action: string): string {
@@ -99,6 +101,7 @@ export function getLimitMessage(action: string, isPro: boolean = false): string 
     search: `Daily limit of 2 AI Assistant searches reached. Come back tomorrow or Upgrade to Pro for unlimited search.`,
     lab: `Weekly limit of 2 Cloud Labs reached. Upgrade to Pro to unlock unlimited practical environments.`,
     interview: `Weekly limit of 1 Mock Interview reached. Upgrade to Pro for unlimited interview practice.`,
+    chat: `Daily chat limit reached. Please submit a support ticket for further assistance or upgrade to Pro for higher limits.`,
   };
   return messages[action] || 'Limit reached.';
 }

@@ -79,13 +79,20 @@ export default function MockInterviews() {
           if (data) {
             setProfile(data);
             setIsPro(data.subscription_status === 'pro');
-            console.log('Profile data:', data);
-            console.log('Subscription status:', data.subscription_status);
-            console.log('isPro set to:', data.subscription_status === 'pro');
-            console.log('Generated interviews:', data.generated_interviews);
             if (data.generated_interviews) {
-              setInterviewScenarios(data.generated_interviews);
-              console.log('Setting interview scenarios:', data.generated_interviews);
+              const interviews = data.generated_interviews as (GeneratedInterview & { sessionState?: any })[];
+              setInterviewScenarios(interviews);
+              
+              // Check if there's an active session in any scenario
+              const activeSession = interviews.find(i => i.sessionState?.isActive);
+              if (activeSession) {
+                setSelectedScenario(activeSession);
+                setSessionQuestions(activeSession.sessionState.questions);
+                setCurrentQuestion(activeSession.sessionState.currentIndex);
+                setHistory(activeSession.sessionState.history || []);
+                setCompletedQuestions(new Set(activeSession.sessionState.completedIndices || []));
+                setActiveTab('session');
+              }
             }
             if (data.interview_scores) {
               setInterviewScores(data.interview_scores);
@@ -130,21 +137,29 @@ export default function MockInterviews() {
 
 
 
+  const saveInterviewSession = async (scenarioId: string, state: any) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const updatedInterviews = interviewScenarios.map(i => {
+      if (i.id === scenarioId) {
+        return { ...i, sessionState: state };
+      }
+      // Only one active session at a time
+      return { ...i, sessionState: { ...i.sessionState, isActive: false } };
+    });
+
+    setInterviewScenarios(updatedInterviews);
+    await supabase.from('profiles').update({ generated_interviews: updatedInterviews }).eq('id', user.id);
+  };
+
   const startSession = (scenario: GeneratedInterview) => {
-    console.log('Starting session with scenario:', scenario);
-    console.log('isPro:', isPro);
-    console.log('isLimitReached check:', isLimitReached('interview', isPro));
     if (isLimitReached('interview', isPro)) {
-      const message = getLimitMessage('interview', isPro);
-      console.log('Limit reached, showing message:', message);
-      alert(message);
+      alert(getLimitMessage('interview', isPro));
       return;
     }
-    console.log('Incrementing usage deferred to finishInterview...');
-    console.log('Setting selected scenario...');
     setSelectedScenario(scenario);
     const randomized = shuffleArray(scenario.questions);
-    console.log('Randomized questions:', randomized);
     setSessionQuestions(randomized);
     setCurrentQuestion(0);
     setCompletedQuestions(new Set());
@@ -158,13 +173,16 @@ export default function MockInterviews() {
       business: 60,
       closing: 38,
     });
-    console.log('Switching to session tab...');
     setActiveTab('session');
     setMode('text');
-    setCallActive(false);
-    setMicActive(false);
-    setVideoActive(false);
-    console.log('Session started successfully');
+    
+    saveInterviewSession(scenario.id, {
+      isActive: true,
+      questions: randomized,
+      currentIndex: 0,
+      history: [],
+      completedIndices: []
+    });
   };
 
   const generateRealtimeLiveScores = (score: number) => {
@@ -223,14 +241,12 @@ export default function MockInterviews() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // Reset state for fresh recording
       audioChunksRef.current = [];
       setAudioTranscript('');
       setUserAnswer('');
       setAiResponse('');
       setIsRecording(true);
 
-      // Pick the best supported format
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
         : MediaRecorder.isTypeSupported('audio/webm')
@@ -245,18 +261,14 @@ export default function MockInterviews() {
       };
 
       recorder.onstop = async () => {
-        // Stop all mic tracks
         stream.getTracks().forEach(t => t.stop());
-
         const blob = new Blob(audioChunksRef.current, { type: mimeType });
         if (blob.size < 1000) {
-          // Recording too short / empty
           setIsTranscribing(false);
           return;
         }
 
         try {
-          // ── Step 1: Transcribe with Whisper ──────────────────────────
           const formData = new FormData();
           const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
           formData.append('file', blob, `recording.${extension}`);
@@ -279,8 +291,6 @@ export default function MockInterviews() {
           setAudioTranscript(transcript);
           setUserAnswer(transcript);
           setIsTranscribing(false);
-
-          // ── Step 2: Get GPT feedback ──────────────────────────────────
           getAiFeedback(transcript);
         } catch (err: any) {
           setAiResponse(`Transcription error: ${err.message}`);
@@ -297,9 +307,9 @@ export default function MockInterviews() {
 
   const stopRecording = () => {
     setIsRecording(false);
-    setIsTranscribing(true); // show transcribing state immediately
+    setIsTranscribing(true);
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop(); // triggers onstop → Whisper → GPT
+      mediaRecorderRef.current.stop();
     }
   };
 
@@ -308,10 +318,21 @@ export default function MockInterviews() {
   };
 
   const goToNextQuestion = () => {
-    setCurrentQuestion(prev => prev + 1);
+    const nextIdx = currentQuestion + 1;
+    setCurrentQuestion(nextIdx);
     setAiResponse('');
     setUserAnswer('');
     setAudioTranscript('');
+    
+    if (selectedScenario) {
+      saveInterviewSession(selectedScenario.id, {
+        isActive: true,
+        questions: sessionQuestions,
+        currentIndex: nextIdx,
+        history,
+        completedIndices: Array.from(completedQuestions)
+      });
+    }
   };
 
   const getAiFeedback = async (overrideAnswer?: string) => {
@@ -376,16 +397,13 @@ Be specific, constructive, and encouraging.`;
       if (data.error) throw new Error(data.error.message);
       
       const content = data.choices?.[0]?.message?.content || 'No feedback generated. [0/10]';
-      
       const scoreMatch = content.match(/\[(\d+)\/10\]/);
       const score = scoreMatch ? parseInt(scoreMatch[1], 10) : 5;
       const cleanFeedback = content.replace(/\[\d+\/10\]/, '').trim();
       
       setAiResponse(cleanFeedback);
-      if (mode !== 'audio') {
-        speak(cleanFeedback);
-      }
       
+      let updatedHistory: any[] = [];
       setHistory(prev => {
          const newHistory = [...prev];
          newHistory[currentQuestion] = {
@@ -394,10 +412,21 @@ Be specific, constructive, and encouraging.`;
            f: cleanFeedback,
            score
          };
+         updatedHistory = newHistory;
          return newHistory;
       });
       setLiveScores(generateRealtimeLiveScores(score));
       markComplete();
+
+      if (selectedScenario) {
+        saveInterviewSession(selectedScenario.id, {
+          isActive: true,
+          questions: sessionQuestions,
+          currentIndex: currentQuestion,
+          history: updatedHistory,
+          completedIndices: Array.from(new Set([...completedQuestions, currentQuestion]))
+        });
+      }
     } catch (err: any) {
       setAiResponse(`Error: ${err.message}`);
     } finally {
@@ -419,18 +448,17 @@ Be specific, constructive, and encouraging.`;
       
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase.from('profiles').update({ interview_scores: newScores }).eq('id', user.id);
+        // Clear active session on finish
+        const updatedInterviews = interviewScenarios.map(i => ({ ...i, sessionState: { isActive: false } }));
+        await supabase.from('profiles').update({ 
+          interview_scores: newScores,
+          generated_interviews: updatedInterviews
+        }).eq('id', user.id);
+        
         await updateReadinessScore(user.id);
       }
     }
     
-    setLiveScores(prev => ({
-      presentation: Math.min(100, prev.presentation + 8),
-      clarity: Math.min(100, prev.clarity + 6),
-      confidence: Math.min(100, prev.confidence + 7),
-      business: Math.min(100, prev.business + 4),
-      closing: Math.min(100, prev.closing + 5),
-    }));
     incrementUsage('interview', isPro);
     setActiveTab('evaluation');
   };

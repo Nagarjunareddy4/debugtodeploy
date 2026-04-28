@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "backend": "tsx server/index.js",
+    "dev:all": "npm run backend & npm run dev",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",

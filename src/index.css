@@ -59,17 +59,59 @@
   .chip {
     @apply px-3 py-1 rounded-full text-[10px] uppercase font-black tracking-widest;
   }
+
+  /* Premium Utilities */
+  .holographic-pro {
+    position: relative;
+    overflow: hidden;
+  }
+  .holographic-pro::after {
+    content: '';
+    position: absolute;
+    inset: -100%;
+    background: linear-gradient(
+      120deg,
+      transparent,
+      rgba(147, 197, 253, 0.1),
+      rgba(240, 171, 252, 0.1),
+      transparent
+    );
+    animation: holograph 8s linear infinite;
+    pointer-events: none;
+  }
+
+  .magnetic-float {
+    @apply transition-transform duration-300 ease-out;
+  }
+  .magnetic-float:hover {
+    @apply -translate-y-1 scale-105;
+  }
+
+  .glass-glow {
+    @apply relative overflow-hidden;
+  }
+  .glass-glow::before {
+    content: '';
+    @apply absolute -inset-full bg-linear-to-tr from-transparent via-white/5 to-transparent -rotate-45 transition-transform duration-1000;
+  }
+  .glass-glow:hover::before {
+    @apply translate-x-full;
+  }
 }
 
-/* Main content background — outside @layer to avoid parser issues with light-dark() */
-.main-content {
-  background-color: #FFFFFF;
+@keyframes holograph {
+  0% { transform: translateX(-50%) translateY(-50%) rotate(0deg); }
+  100% { transform: translateX(-50%) translateY(-50%) rotate(360deg); }
 }
-@media (prefers-color-scheme: dark) {
-  .main-content { background-color: #080d18; }
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(0.95); }
 }
-:root[data-theme="light"] .main-content { background-color: #FFFFFF; }
-:root[data-theme="dark"]  .main-content { background-color: #080d18; }
+
+.animate-flicker {
+  animation: flicker 2s ease-in-out infinite;
+}
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
