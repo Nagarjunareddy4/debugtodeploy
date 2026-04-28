@@ -42,6 +42,7 @@ export default async function handler(req, res) {
       plan_id: planId, // You need to create these plan IDs in Razorpay Dashboard first
       customer_notify: 1,
       quantity: 1,
+      total_count: plan.period === 'monthly' ? 120 : 10,
       notes: {
         user_id: user.id,
         email: user.email,

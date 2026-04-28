@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Compass, Sparkles, CheckCircle2, Loader2, ChevronRight, Zap, Target, BookOpen, RefreshCw, Lock } from 'lucide-react';
+import { Compass, Sparkles, CheckCircle2, Loader2, ChevronRight, Zap, Target, BookOpen, RefreshCw, Lock, X, ExternalLink, Brain } from 'lucide-react';
 import { cn, getObjectHash } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
@@ -41,6 +41,7 @@ export default function Roadmap() {
   const [limitError, setLimitError] = useState<string | null>(null);
   const [completedTasks, setCompletedTasks] = useState<string[]>([]);
   const [serverLimitBlocked, setServerLimitBlocked] = useState(false);
+  const [topicPanel, setTopicPanel] = useState<{ label: string; url: string; content: string | null; loading: boolean } | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -244,8 +245,145 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
   const remaining = getRemainingUsage('roadmap', isPro);
   const isBlocked = remaining === 0 || (!isPro && serverLimitBlocked);
 
+  // Lock background scroll when topic panel is open
+  useEffect(() => {
+    if (topicPanel) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [topicPanel]);
+
+  const handleTopicClick = async (label: string, url: string) => {
+    // Open panel immediately with loading state
+    setTopicPanel({ label, url, content: null, loading: true });
+    try {
+      const res = await fetch('/api/openai-proxy?path=v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a technical DevOps educator. Summarize topics clearly and concisely in markdown-like plain text. Structure your answer with: a 2-sentence overview, key concepts as bullet points, a practical use-case example, and a "Learn More" tip. Keep it under 300 words. Be direct and technical.'
+            },
+            {
+              role: 'user',
+              content: `Summarize the DevOps/Cloud topic: "${label}". Draw from official documentation, best practices, and real-world usage. Cover: what it is, why it matters, key concepts to know, and a practical example.`
+            }
+          ],
+          max_tokens: 600,
+          temperature: 0.5,
+        }),
+      });
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content || 'Unable to load summary. Please try again.';
+      setTopicPanel(prev => prev ? { ...prev, content, loading: false } : null);
+    } catch {
+      setTopicPanel(prev => prev ? { ...prev, content: 'Failed to load summary. Check your connection.', loading: false } : null);
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-12 pb-24">
+
+      {/* ── Topic Summary Slide-in Panel ── */}
+      <AnimatePresence>
+        {topicPanel && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
+            onClick={() => setTopicPanel(null)}
+          >
+            <motion.div
+              initial={{ y: 60, opacity: 0, scale: 0.96 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 60, opacity: 0, scale: 0.96 }}
+              transition={{ type: 'spring', damping: 22, stiffness: 260 }}
+              onClick={e => e.stopPropagation()}
+              className="w-full max-w-2xl max-h-[85vh] bg-surface rounded-[2.5rem] border-2 border-soft-blue/20 shadow-3xl flex flex-col overflow-hidden"
+            >
+              {/* Panel Header */}
+              <div className="flex items-start justify-between gap-4 p-8 border-b border-border">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-soft-blue/10 rounded-2xl flex items-center justify-center shrink-0">
+                    <Brain className="w-5 h-5 text-soft-blue" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-soft-blue mb-0.5">AI Topic Summary</p>
+                    <h3 className="font-black text-base tracking-tight leading-snug">{topicPanel.label}</h3>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href={topicPanel.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2.5 rounded-xl bg-brand-bg border border-border hover:border-soft-blue text-text-dim hover:text-soft-blue transition-all"
+                    title="Open official docs"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                  <button
+                    onClick={() => setTopicPanel(null)}
+                    className="p-2.5 rounded-xl bg-brand-bg border border-border hover:border-soft-red text-text-dim hover:text-soft-red transition-all hover:rotate-90 duration-300"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Panel Content */}
+              <div className="flex-1 overflow-y-auto p-8 space-y-4">
+                {topicPanel.loading ? (
+                  <div className="flex flex-col items-center justify-center py-16 gap-4">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                    >
+                      <Sparkles className="w-8 h-8 text-soft-blue" />
+                    </motion.div>
+                    <p className="text-text-dim font-black uppercase text-[10px] tracking-widest animate-pulse">Synthesizing from multiple sources...</p>
+                  </div>
+                ) : (
+                  <div className="prose prose-sm max-w-none">
+                    {topicPanel.content?.split('\n').map((line, i) => {
+                      if (!line.trim()) return <div key={i} className="h-3" />;
+                      if (line.startsWith('##')) return <h3 key={i} className="text-base font-black text-text-main mt-4 mb-1">{line.replace(/^##\s*/, '')}</h3>;
+                      if (line.startsWith('#')) return <h2 key={i} className="text-lg font-black text-text-main mt-2 mb-1">{line.replace(/^#\s*/, '')}</h2>;
+                      if (line.startsWith('- ') || line.startsWith('• ')) return (
+                        <div key={i} className="flex gap-3 py-1">
+                          <span className="text-soft-blue shrink-0 mt-0.5">▹</span>
+                          <span className="text-sm font-medium text-text-main leading-relaxed">{line.replace(/^[-•]\s*/, '')}</span>
+                        </div>
+                      );
+                      if (line.startsWith('**') && line.endsWith('**')) return <p key={i} className="font-black text-sm text-text-main">{line.replace(/\*\*/g, '')}</p>;
+                      return <p key={i} className="text-sm font-medium text-text-dim leading-relaxed">{line}</p>;
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Panel Footer */}
+              <div className="p-6 border-t border-border flex items-center justify-between">
+                <p className="text-[9px] font-black uppercase tracking-widest text-text-dim">Summary generated by AI · Always verify with official docs</p>
+                <a
+                  href={topicPanel.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-black uppercase tracking-widest text-soft-blue hover:underline flex items-center gap-1.5"
+                >
+                  Official Docs <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <header className="flex flex-col md:flex-row justify-between items-end gap-6">
         <div className="space-y-4">
           <h2 className="text-5xl font-black tracking-tighter italic">AI Architect</h2>
@@ -442,7 +580,7 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
                           >
                             <div 
                               className="flex items-center gap-3 cursor-pointer flex-1"
-                              onClick={() => window.open(taskUrl, '_blank')}
+                              onClick={() => handleTopicClick(taskLabel, taskUrl)}
                             >
                                <div className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center shrink-0 group-hover/item:border-soft-blue transition-colors">
                                   <BookOpen className="w-3.5 h-3.5 text-text-dim group-hover/item:text-soft-blue" />
