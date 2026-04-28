@@ -60,7 +60,11 @@ export default async function handler(req, res) {
     }
 
     const nextBillingDate = new Date();
-    nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+    if (subscription.plan_type === 'pro_yearly') {
+      nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+    } else {
+      nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+    }
 
     // Update subscription to active
     const { error: updateSubError } = await supabaseAdmin

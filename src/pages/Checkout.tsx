@@ -18,7 +18,8 @@ import {
   Frown,
   Trophy,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  X
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
@@ -206,6 +207,7 @@ export default function Checkout() {
               setPaymentStatus('idle');
               handlePay();
             }}
+            onClose={() => setPaymentStatus('idle')}
           />
         )}
       </AnimatePresence>
@@ -520,7 +522,7 @@ export default function Checkout() {
 }
 
 // Cinematic Overlay for Success/Failure
-function PaymentOverlay({ status, errorMessage, onRetry }: { status: 'success' | 'failed', errorMessage: string | null, onRetry: () => void }) {
+function PaymentOverlay({ status, errorMessage, onRetry, onClose }: { status: 'success' | 'failed', errorMessage: string | null, onRetry: () => void, onClose: () => void }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -528,6 +530,13 @@ function PaymentOverlay({ status, errorMessage, onRetry }: { status: 'success' |
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[100] flex items-center justify-center bg-surface/95 backdrop-blur-xl"
     >
+      <button 
+        onClick={onClose}
+        className="absolute top-6 right-6 md:top-10 md:right-10 z-[110] p-3 bg-text-main/5 hover:bg-text-main/10 rounded-full transition-all text-text-main hover:rotate-90 hover:scale-110 duration-300"
+      >
+        <X className="w-6 h-6" />
+      </button>
+      
       {/* Background Particles Simulation */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[...Array(20)].map((_, i) => (
