@@ -38,11 +38,18 @@ export default function PublicPortfolio() {
     setError(null);
 
     try {
-      const { data, error: fetchErr } = await supabase
-        .from('profiles')
-        .select('*')
-        .ilike('username', username)
-        .single();
+      // Search by username OR by ID (uuid)
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(username);
+      
+      let query = supabase.from('profiles').select('*');
+      
+      if (isUuid) {
+        query = query.eq('id', username);
+      } else {
+        query = query.ilike('username', username);
+      }
+
+      const { data, error: fetchErr } = await query.single();
 
       if (fetchErr || !data) {
         setError('Portfolio not found or user has disabled public sharing.');
@@ -59,12 +66,16 @@ export default function PublicPortfolio() {
       }
       
       // If user is Pro, they might have generated a resume.
-      // For now, we'll show the resume if they are Pro.
-      // (In a real app, we might have a 'is_public' flag).
-      if (data.subscription_status === 'pro' && data.generated_resume) {
+      // The resume is stored inside roadmap_data under the 'ai_resume' key.
+      if (data.subscription_status === 'pro' && data.roadmap_data) {
          try {
-           setResume(typeof data.generated_resume === 'string' ? JSON.parse(data.generated_resume) : data.generated_resume);
-         } catch(e) {}
+           const roadmap = typeof data.roadmap_data === 'string' ? JSON.parse(data.roadmap_data) : data.roadmap_data;
+           if (roadmap.ai_resume) {
+             setResume(roadmap.ai_resume);
+           }
+         } catch(e) {
+           console.error("Failed to parse resume from roadmap_data", e);
+         }
       }
 
     } catch (err) {
