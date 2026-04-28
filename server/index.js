@@ -73,7 +73,7 @@ app.post('/api/subscription/create', authenticate, async (req, res) => {
       notes: { user_id: req.user.id }
     });
 
-    await supabaseAdmin.from('subscriptions').insert({
+    const { error: insertError } = await supabaseAdmin.from('subscriptions').insert({
       user_id: req.user.id,
       plan_type: planId,
       subscription_id: subscription.id,
@@ -81,6 +81,11 @@ app.post('/api/subscription/create', authenticate, async (req, res) => {
       payment_method: paymentMethod,
       autopay_enabled: autopayConsent || false,
     });
+
+    if (insertError) {
+      console.error('[Create] DB Insert Error:', insertError);
+      throw insertError;
+    }
 
     res.json({
       subscription_id: subscription.id,
@@ -96,23 +101,40 @@ app.post('/api/subscription/create', authenticate, async (req, res) => {
 app.post('/api/subscription/verify', authenticate, async (req, res) => {
   try {
     const { razorpay_subscription_id, razorpay_payment_id, razorpay_signature } = req.body;
-    const text = razorpay_subscription_id + "|" + razorpay_payment_id;
+    const text = razorpay_payment_id + "|" + razorpay_subscription_id;
     const generated_signature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(text)
       .digest('hex');
 
+    console.log(`[Verify] Starting verification for sub: ${razorpay_subscription_id}`);
+    
     if (generated_signature !== razorpay_signature) {
+      console.error(`[Verify] Signature mismatch!`);
       return res.status(400).json({ error: 'Invalid signature' });
     }
+    console.log(`[Verify] Signature valid. Fetching subscription from DB...`);
 
-    const { data: sub } = await supabaseAdmin.from('subscriptions').select('*').eq('subscription_id', razorpay_subscription_id).single();
-    if (!sub) return res.status(404).json({ error: 'Subscription not found' });
+    const { data: sub, error: subError } = await supabaseAdmin
+      .from('subscriptions')
+      .select('*')
+      .eq('subscription_id', razorpay_subscription_id)
+      .single();
+    
+    if (subError || !sub) {
+      console.error(`[Verify] Subscription not found in DB:`, subError);
+      return res.status(404).json({ error: 'Subscription not found' });
+    }
+    console.log(`[Verify] Found sub in DB. Updating status and profile...`);
 
     const expiry = new Date();
-    expiry.setMonth(expiry.getMonth() + 1);
+    if (sub.plan_type === 'pro_yearly') {
+      expiry.setFullYear(expiry.getFullYear() + 1);
+    } else {
+      expiry.setMonth(expiry.getMonth() + 1);
+    }
 
-    await Promise.all([
+    const [subUpdate, profileUpdate] = await Promise.all([
       supabaseAdmin.from('subscriptions').update({ 
         status: 'active', 
         current_period_end: expiry.toISOString(),
@@ -126,9 +148,90 @@ app.post('/api/subscription/verify', authenticate, async (req, res) => {
       }).eq('id', req.user.id)
     ]);
 
+    if (subUpdate.error) {
+      console.error(`[Verify] Sub update failed:`, subUpdate.error);
+      throw subUpdate.error;
+    }
+    if (profileUpdate.error) {
+      console.error(`[Verify] Profile update failed:`, profileUpdate.error);
+      throw profileUpdate.error;
+    }
+
+    console.log(`[Verify] Success! User ${req.user.id} is now Pro.`);
     res.json({ status: 'ok' });
   } catch (error) {
     console.error('Verification failed:', error);
+    
+    // FAIL-SAFE: If payment was successful but DB update failed, attempt automatic refund
+    const { razorpay_payment_id } = req.body;
+    if (razorpay_payment_id) {
+      try {
+        console.log(`[Fail-Safe] Attempting automatic refund for payment: ${razorpay_payment_id}`);
+        await razorpay.payments.refund(razorpay_payment_id, {
+          notes: {
+            reason: 'Database update failed during verification',
+            error: error.message
+          }
+        });
+        console.log(`[Fail-Safe] Refund successful for ${razorpay_payment_id}`);
+      } catch (refundError) {
+        console.error('[Fail-Safe] Automatic refund failed:', refundError);
+      }
+    }
+
+    res.status(500).json({ error: error.message || 'Verification failed and system could not complete activation.' });
+  }
+});// 3. Manage Subscription
+app.post('/api/subscription/manage', authenticate, async (req, res) => {
+  try {
+    const { action } = req.body;
+    const { data: subscription } = await supabaseAdmin
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!subscription) return res.status(404).json({ error: 'No subscription found' });
+
+    if (action === 'cancel') {
+      await razorpay.subscriptions.cancel(subscription.subscription_id, { cancel_at_cycle_end: 1 });
+      const [subRes, profRes] = await Promise.all([
+        supabaseAdmin.from('subscriptions').update({ status: 'cancelled', autopay_enabled: false }).eq('id', subscription.id),
+        supabaseAdmin.from('profiles').update({ autopay_enabled: false }).eq('id', req.user.id)
+      ]);
+      if (subRes.error) throw subRes.error;
+      if (profRes.error) throw profRes.error;
+      return res.json({ status: 'ok', message: 'Subscription cancelled successfully' });
+    } else if (action === 'toggle-autopay') {
+      const { enabled } = req.body;
+      const [subRes, profRes] = await Promise.all([
+        supabaseAdmin.from('subscriptions').update({ autopay_enabled: enabled }).eq('id', subscription.id),
+        supabaseAdmin.from('profiles').update({ autopay_enabled: enabled }).eq('id', req.user.id)
+      ]);
+      if (subRes.error) throw subRes.error;
+      if (profRes.error) throw profRes.error;
+      return res.json({ status: 'ok', message: `Autopay ${enabled ? 'enabled' : 'disabled'}` });
+    } else if (action === 'pause') {
+      await razorpay.subscriptions.pause(subscription.subscription_id);
+      const { error: subErr } = await supabaseAdmin.from('subscriptions').update({ status: 'paused' }).eq('id', subscription.id);
+      if (subErr) throw subErr;
+      return res.json({ status: 'ok', message: 'Subscription paused' });
+    } else if (action === 'resume') {
+      await razorpay.subscriptions.resume(subscription.subscription_id);
+      const [subRes, profRes] = await Promise.all([
+        supabaseAdmin.from('subscriptions').update({ status: 'active', autopay_enabled: true }).eq('id', subscription.id),
+        supabaseAdmin.from('profiles').update({ subscription_status: 'pro', autopay_enabled: true }).eq('id', req.user.id)
+      ]);
+      if (subRes.error) throw subRes.error;
+      if (profRes.error) throw profRes.error;
+      return res.json({ status: 'ok', message: 'Subscription resumed' });
+    }
+
+    res.status(400).json({ error: 'Invalid action' });
+  } catch (error) {
+    console.error('Management failed:', error);
     res.status(500).json({ error: error.message });
   }
 });// 3. Manage Subscription

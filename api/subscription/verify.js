@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     const key_secret = process.env.RAZORPAY_KEY_SECRET;
 
     // Verify signature
-    const text = razorpay_subscription_id + "|" + razorpay_payment_id;
+    const text = razorpay_payment_id + "|" + razorpay_subscription_id;
     const generated_signature = crypto
       .createHmac('sha256', key_secret)
       .update(text)
@@ -118,6 +118,24 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Verification failed:', error);
-    return res.status(500).json({ error: 'Verification failed' });
+    
+    // FAIL-SAFE: If payment was successful but DB update failed, attempt automatic refund
+    const { razorpay_payment_id } = req.body;
+    if (razorpay_payment_id) {
+      try {
+        console.log(`[Fail-Safe] Attempting automatic refund for payment: ${razorpay_payment_id}`);
+        const razorpay = new Razorpay({
+          key_id: process.env.RAZORPAY_KEY_ID,
+          key_secret: process.env.RAZORPAY_KEY_SECRET,
+        });
+        await razorpay.payments.refund(razorpay_payment_id, {
+          notes: { reason: 'DB Update Failed', error: error.message }
+        });
+      } catch (refundError) {
+        console.error('Automatic refund failed:', refundError);
+      }
+    }
+
+    return res.status(500).json({ error: 'Verification failed. Any deducted amount will be refunded automatically.' });
   }
 }
