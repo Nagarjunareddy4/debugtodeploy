@@ -74,6 +74,7 @@ export default async function handler(req, res) {
         current_period_start: new Date().toISOString(),
         current_period_end: nextBillingDate.toISOString(),
         next_billing_date: nextBillingDate.toISOString(),
+        autopay_enabled: true,
       })
       .eq('id', subscription.id);
 
@@ -101,7 +102,7 @@ export default async function handler(req, res) {
         subscription_id: razorpay_subscription_id,
         current_subscription_plan: subscription.plan_type,
         subscription_end_date: nextBillingDate.toISOString(),
-        autopay_enabled: subscription.autopay_enabled,
+        autopay_enabled: true,
         payment_method: subscription.payment_method,
         payment_failures: 0,
       })

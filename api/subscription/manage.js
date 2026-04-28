@@ -61,11 +61,9 @@ export default async function handler(req, res) {
       }
 
       if (action === 'cancel') {
-        // Cancel subscription in Razorpay
+        // Cancel subscription in Razorpay at the end of the cycle
         await razorpay.subscriptions.cancel(subscription.subscription_id, {
-          notes: {
-            reason: 'User requested cancellation',
-          }
+          cancel_at_cycle_end: 1
         });
 
         // Update local DB
@@ -74,8 +72,14 @@ export default async function handler(req, res) {
           .update({
             status: 'cancelled',
             cancelled_at: new Date().toISOString(),
+            autopay_enabled: false
           })
           .eq('id', subscription.id);
+
+        await supabaseAdmin
+          .from('profiles')
+          .update({ autopay_enabled: false })
+          .eq('id', user.id);
 
         return res.status(200).json({ 
           status: 'ok',

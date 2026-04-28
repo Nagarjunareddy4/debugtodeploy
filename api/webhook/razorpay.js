@@ -122,6 +122,7 @@ async function handleSubscriptionCharged(event, supabaseAdmin) {
       failure_count: 0,
       current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
       current_period_end: nextBillingDate.toISOString(),
+      autopay_enabled: true,
     })
     .eq('id', sub.id);
 
@@ -144,6 +145,7 @@ async function handleSubscriptionCharged(event, supabaseAdmin) {
       subscription_status: 'pro',
       subscription_end_date: nextBillingDate.toISOString(),
       payment_failures: 0,
+      autopay_enabled: true,
     })
     .eq('id', sub.user_id);
 }
@@ -302,11 +304,11 @@ async function handleSubscriptionResumed(event, supabaseAdmin) {
 
   await supabaseAdmin
     .from('subscriptions')
-    .update({ status: 'active' })
+    .update({ status: 'active', autopay_enabled: true })
     .eq('id', sub.id);
 
   await supabaseAdmin
     .from('profiles')
-    .update({ subscription_status: 'pro' })
+    .update({ subscription_status: 'pro', autopay_enabled: true })
     .eq('id', sub.user_id);
 }

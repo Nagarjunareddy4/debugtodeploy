@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Mail, AtSign, Camera, Check, Shield, Loader2, X, Eye, Trash2, RefreshCw, CreditCard, Lock } from 'lucide-react';
+import { User, Mail, AtSign, Camera, Check, Shield, Loader2, X, Eye, Trash2, RefreshCw, CreditCard, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 import Cropper from 'react-easy-crop';
@@ -26,7 +26,10 @@ export default function Settings() {
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [viewingAvatar, setViewingAvatar] = useState(false);
 
-
+  // Subscription cancel states
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProfile();
@@ -179,19 +182,36 @@ export default function Settings() {
     }
   };
 
-  const toggleAutoRenew = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    
-    const newVal = !profile.auto_renew;
-    const { error } = await supabase.from('profiles').update({ auto_renew: newVal }).eq('id', user.id);
-    if (!error) {
-      setProfile({ ...profile, auto_renew: newVal });
+  const cancelSubscription = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      const res = await fetch('/api/subscription/manage', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ action: 'cancel' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Cancellation failed');
+      // Update local profile state to reflect cancellation intent
+      setProfile((prev: any) => ({
+        ...prev,
+        autopay_enabled: false,
+      }));
+      setShowCancelConfirm(false);
       setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      setTimeout(() => setSuccess(false), 4000);
+    } catch (err: any) {
+      setCancelError(err.message);
+    } finally {
+      setCancelling(false);
     }
   };
-
 
 
   if (!profile) return (
@@ -483,43 +503,113 @@ export default function Settings() {
 
           {/* Manage Subscription (Pro Only) */}
           {profile.subscription_status === 'pro' && (
-            <div className="playful-card p-8 bg-surface space-y-8 shadow-2xl border-none">
+            <div className="playful-card p-8 bg-surface space-y-6 shadow-2xl border-none">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-black uppercase tracking-widest flex items-center gap-2">
                   <CreditCard className="w-5 h-5 text-soft-blue" /> Manage Subscription
                 </h3>
+                {profile.autopay_enabled !== false ? (
+                  <span className="chip bg-soft-blue/10 text-soft-blue border-soft-blue/20 text-[10px] font-black uppercase">Active</span>
+                ) : (
+                  <span className="chip bg-red-500/10 text-red-400 border-red-500/20 text-[10px] font-black uppercase">Cancelling</span>
+                )}
               </div>
-              <div className="p-6 bg-brand-bg rounded-2xl border-2 border-border border-dashed space-y-4">
-                <div className="flex justify-between items-center">
-                   <div className="space-y-1">
-                      <p className="text-[10px] font-black uppercase text-text-dim">Subscription Ends</p>
-                      <p className="font-mono font-bold">{profile.subscription_end_date ? new Date(profile.subscription_end_date).toLocaleDateString() : 'Active'}</p>
-                   </div>
-                   <div className="space-y-1 text-right">
-                      <p className="text-[10px] font-black uppercase text-text-dim">Auto-Renewal</p>
-                      <p className={cn("font-black uppercase text-xs", profile.auto_renew ? "text-soft-green" : "text-red-400")}>
-                        {profile.auto_renew ? 'Active' : 'Disabled'}
-                      </p>
-                   </div>
+
+              {/* Subscription Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-brand-bg rounded-2xl border border-border space-y-1">
+                  <p className="text-[10px] font-black uppercase text-text-dim">Current Plan</p>
+                  <p className="font-black capitalize">{profile.current_subscription_plan?.replace('_', ' ') || 'Fleet Captain'}</p>
                 </div>
-                <button 
-                  onClick={toggleAutoRenew}
-                  className={cn(
-                    "w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
-                    profile.auto_renew 
-                      ? "bg-red-500/10 text-red-400 border-2 border-red-500/20 hover:bg-red-500 hover:text-white" 
-                      : "bg-soft-green/10 text-soft-green border-2 border-soft-green/20 hover:bg-soft-green hover:text-white"
-                  )}
-                >
-                  {profile.auto_renew ? 'Disable Auto-Renewal' : 'Enable Auto-Renewal'}
-                </button>
+                <div className="p-4 bg-brand-bg rounded-2xl border border-border space-y-1">
+                  <p className="text-[10px] font-black uppercase text-text-dim">
+                    {profile.autopay_enabled ? 'Renews On' : 'Access Until'}
+                  </p>
+                  <p className="font-black font-mono text-sm">
+                    {profile.subscription_end_date
+                      ? new Date(profile.subscription_end_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                      : 'Active'}
+                  </p>
+                </div>
               </div>
+
+              {/* Cancel Button */}
+              {profile.autopay_enabled !== false ? (
+                <button
+                  onClick={() => { setShowCancelConfirm(true); setCancelError(null); }}
+                  className="w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all bg-red-500/10 text-red-400 border-2 border-red-500/20 hover:bg-red-500 hover:text-white flex items-center justify-center gap-2"
+                >
+                  <AlertTriangle className="w-4 h-4" /> Cancel Subscription
+                </button>
+              ) : (
+                <div className="w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-brand-bg text-text-dim border-2 border-border flex items-center justify-center gap-2 cursor-default">
+                  <Check className="w-4 h-4" /> Cancellation Scheduled
+                </div>
+              )}
+              <p className="text-[9px] text-text-dim font-bold text-center">
+                {profile.autopay_enabled !== false 
+                  ? "You will retain Pro access until the end of your current billing period."
+                  : "Your Pro access will remain active until the date shown above."}
+              </p>
             </div>
           )}
 
+          {/* Cancel Confirmation Modal */}
+          <AnimatePresence>
+            {showCancelConfirm && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm"
+                onClick={() => !cancelling && setShowCancelConfirm(false)}
+              >
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  onClick={e => e.stopPropagation()}
+                  className="bg-surface rounded-[2rem] border-2 border-red-500/20 shadow-2xl max-w-md w-full p-10 space-y-6 text-center"
+                >
+                  <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto">
+                    <AlertTriangle className="w-8 h-8 text-red-400" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-2xl font-black">Cancel Subscription?</h3>
+                    <p className="text-sm font-bold text-text-dim leading-relaxed">
+                      You'll lose access to all Pro features at the end of your current billing period. This action cannot be undone.
+                    </p>
+                  </div>
 
-        </div>
+                  {cancelError && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs font-bold">
+                      {cancelError}
+                    </div>
+                  )}
+
+                  <div className="flex gap-4">
+                    <button
+                      onClick={() => setShowCancelConfirm(false)}
+                      disabled={cancelling}
+                      className="flex-1 py-4 border-2 border-border rounded-2xl font-black text-sm hover:bg-border transition-colors disabled:opacity-50"
+                    >
+                      Keep Plan
+                    </button>
+                    <button
+                      onClick={cancelSubscription}
+                      disabled={cancelling}
+                      className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black text-sm hover:bg-red-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-4 h-4" />}
+                      {cancelling ? 'Cancelling...' : 'Yes, Cancel'}
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
       </div>
     </div>
-  );
+  </div>
+);
 }

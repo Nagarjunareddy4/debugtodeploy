@@ -113,17 +113,68 @@ app.post('/api/subscription/verify', authenticate, async (req, res) => {
     expiry.setMonth(expiry.getMonth() + 1);
 
     await Promise.all([
-      supabaseAdmin.from('subscriptions').update({ status: 'active', current_period_end: expiry.toISOString() }).eq('id', sub.id),
+      supabaseAdmin.from('subscriptions').update({ 
+        status: 'active', 
+        current_period_end: expiry.toISOString(),
+        autopay_enabled: true 
+      }).eq('id', sub.id),
       supabaseAdmin.from('profiles').update({ 
         subscription_status: 'pro', 
         subscription_id: razorpay_subscription_id,
-        subscription_end_date: expiry.toISOString() 
+        subscription_end_date: expiry.toISOString(),
+        autopay_enabled: true
       }).eq('id', req.user.id)
     ]);
 
     res.json({ status: 'ok' });
   } catch (error) {
     console.error('Verification failed:', error);
+    res.status(500).json({ error: error.message });
+  }
+});// 3. Manage Subscription
+app.post('/api/subscription/manage', authenticate, async (req, res) => {
+  try {
+    const { action } = req.body;
+    const { data: subscription } = await supabaseAdmin
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!subscription) return res.status(404).json({ error: 'No subscription found' });
+
+    if (action === 'cancel') {
+      await razorpay.subscriptions.cancel(subscription.subscription_id, { cancel_at_cycle_end: 1 });
+      await Promise.all([
+        supabaseAdmin.from('subscriptions').update({ status: 'cancelled', autopay_enabled: false }).eq('id', subscription.id),
+        supabaseAdmin.from('profiles').update({ autopay_enabled: false }).eq('id', req.user.id)
+      ]);
+      return res.json({ status: 'ok', message: 'Subscription cancelled successfully' });
+    } else if (action === 'toggle-autopay') {
+      const { enabled } = req.body;
+      await Promise.all([
+        supabaseAdmin.from('subscriptions').update({ autopay_enabled: enabled }).eq('id', subscription.id),
+        supabaseAdmin.from('profiles').update({ autopay_enabled: enabled }).eq('id', req.user.id)
+      ]);
+      return res.json({ status: 'ok', message: `Autopay ${enabled ? 'enabled' : 'disabled'}` });
+    } else if (action === 'pause') {
+      await razorpay.subscriptions.pause(subscription.subscription_id);
+      await supabaseAdmin.from('subscriptions').update({ status: 'paused' }).eq('id', subscription.id);
+      return res.json({ status: 'ok', message: 'Subscription paused' });
+    } else if (action === 'resume') {
+      await razorpay.subscriptions.resume(subscription.subscription_id);
+      await Promise.all([
+        supabaseAdmin.from('subscriptions').update({ status: 'active', autopay_enabled: true }).eq('id', subscription.id),
+        supabaseAdmin.from('profiles').update({ subscription_status: 'pro', autopay_enabled: true }).eq('id', req.user.id)
+      ]);
+      return res.json({ status: 'ok', message: 'Subscription resumed' });
+    }
+
+    res.status(400).json({ error: 'Invalid action' });
+  } catch (error) {
+    console.error('Management failed:', error);
     res.status(500).json({ error: error.message });
   }
 });
