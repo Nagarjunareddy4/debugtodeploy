@@ -124,6 +124,7 @@ CREATE POLICY "Users can insert own activity" ON activity_log FOR INSERT WITH CH
 CREATE POLICY "Users can update own activity" ON activity_log FOR UPDATE USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can view own profile"   ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Profiles are publicly viewable" ON profiles FOR SELECT USING (true);
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 

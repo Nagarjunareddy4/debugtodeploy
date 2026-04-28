@@ -70,7 +70,8 @@ export default function Portfolio() {
       navigate('/pricing');
       return;
     }
-    const shareUrl = `${window.location.origin}/p/${profile.username}`;
+    const identifier = profile.username || profile.id;
+    const shareUrl = `${window.location.origin}/p/${identifier}`;
     if (navigator.share) {
       try {
         await navigator.share({
