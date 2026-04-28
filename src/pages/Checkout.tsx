@@ -60,7 +60,6 @@ export default function Checkout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedMethod, setSelectedMethod] = useState<string>('upi');
-  const [autoRenew, setAutoRenew] = useState(false);
   const [loading, setLoading] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'success' | 'failed'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -118,7 +117,7 @@ export default function Checkout() {
         body: JSON.stringify({
           planId,
           paymentMethod: selectedMethod,
-          autopayConsent: autoRenew
+          autopayConsent: true  // Razorpay Subscriptions always require recurring mandate
         })
       });
 
@@ -390,32 +389,12 @@ export default function Checkout() {
             )}
           </AnimatePresence>
 
-          {/* Autopay Consent Section */}
-          <div className="playful-card p-8 bg-surface border-2 border-border space-y-6">
-            <div className="flex items-start gap-4">
-               <div className="pt-1">
-                 <button 
-                   onClick={() => setAutoRenew(!autoRenew)}
-                   className={cn(
-                     "w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center",
-                     autoRenew ? "bg-soft-blue border-soft-blue text-white" : "border-border hover:border-soft-blue"
-                   )}
-                 >
-                   {autoRenew && <CheckCircle2 className="w-4 h-4" />}
-                 </button>
-               </div>
-               <div className="space-y-2">
-                  <h4 className="font-black text-sm uppercase tracking-tight">Enable Seamless Auto-Renewal</h4>
-                  <p className="text-xs font-bold text-text-dim leading-relaxed">
-                    By checking this, you authorize DebugToDeploy to automatically charge ₹{amountINR} every {period} to your selected payment method. You can cancel anytime from your settings.
-                  </p>
-               </div>
-            </div>
-            
-            <div className="p-4 bg-brand-bg rounded-2xl border border-dashed border-border flex items-center gap-3">
-               <ShieldCheck className="w-5 h-5 text-soft-green" />
-               <p className="text-[9px] font-black uppercase text-text-dim">Secured by Razorpay Subscriptions Framework</p>
-            </div>
+          {/* Cancellation notice — replacing the misleading autopay panel */}
+          <div className="flex items-center gap-3 px-2">
+            <ShieldCheck className="w-4 h-4 text-soft-green shrink-0" />
+            <p className="text-[10px] font-bold text-text-dim leading-relaxed">
+              This plan renews automatically. You can <span className="text-text-main font-black">cancel anytime</span> from your account Settings with no extra charges.
+            </p>
           </div>
         </div>
 
