@@ -122,6 +122,7 @@ export default function Checkout() {
       });
 
       const subscriptionData = await subscriptionRes.json();
+      console.log('[Checkout] Subscription Data:', subscriptionData);
       
       if (!subscriptionData.razorpay_subscription_id) {
         throw new Error(subscriptionData.error || 'Failed to create subscription in Razorpay');
