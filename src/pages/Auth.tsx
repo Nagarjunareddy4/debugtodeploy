@@ -20,6 +20,7 @@ export default function Auth() {
   const [usernameTaken, setUsernameTaken] = useState(false);
   const [emailTaken, setEmailTaken] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Real-time availability checks (debounced)
   useEffect(() => {
@@ -233,12 +234,12 @@ export default function Auth() {
               <Rocket className="w-8 h-8 text-soft-blue" />
             </motion.div>
 
-            <h2 className="text-6xl font-black tracking-tighter italic mb-8 leading-tight">
-              Deploy Your
+            <h1 className="text-6xl font-black tracking-tighter italic mb-8 leading-tight">
+              AI-Powered
               <span className="block text-transparent bg-clip-text bg-gradient-to-r from-soft-blue to-soft-purple mt-1">
-                Future Self.
+                DevOps Learning Platform.
               </span>
-            </h2>
+            </h1>
             <p className="text-white/60 font-bold text-lg max-w-sm leading-relaxed mb-16">
               The only platform that combines <span className="text-white">AI-driven learning paths</span> with real-world cloud sandbox environments.
             </p>
@@ -298,9 +299,9 @@ export default function Auth() {
             >
               <Rocket className="w-8 h-8 text-soft-blue group-hover:text-soft-purple transition-colors" />
             </motion.div>
-            <h1 className="text-3xl font-black tracking-tighter italic group-hover:scale-105 transition-transform duration-300">
+            <p className="text-3xl font-black tracking-tighter italic group-hover:scale-105 transition-transform duration-300">
               Debug<span className="text-soft-blue group-hover:text-soft-purple transition-colors">To</span>Deploy
-            </h1>
+            </p>
           </motion.div>
 
           <div className="mb-8 text-center lg:text-left">
@@ -308,9 +309,9 @@ export default function Auth() {
               {authMode === 'login' ? "Welcome Back" : authMode === 'signup' ? "Start Journey" : "Reset Access"}
             </h2>
             <p className="text-text-dim font-bold text-sm">
-              {authMode === 'login' 
-                ? "Continue your ascent to DevOps mastery." 
-                : authMode === 'signup' 
+              {authMode === 'login'
+                ? "Continue your ascent to DevOps mastery."
+                : authMode === 'signup'
                   ? "Join the elite fleet of infrastructure architects."
                   : "We'll send a recovery beacon to your registered email."}
             </p>
@@ -436,14 +437,35 @@ export default function Auth() {
                     </button>
                   )}
                 </div>
-                <input
-                  type="password"
-                  required
-                  className="w-full bg-white/5 border-2 border-white/5 rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+                <div className="relative group/pass">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    className="w-full bg-white/5 border-2 border-white/5 rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm pr-14"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-white/5 transition-colors cursor-pointer z-10"
+                  >
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={showPassword ? 'show' : 'hide'}
+                        initial={{ scale: 0.5, opacity: 0, rotate: -20 }}
+                        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                        exit={{ scale: 0.5, opacity: 0, rotate: 20 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        className="text-xl select-none"
+                      >
+                        {showPassword ? '👁️' : '🙈'}
+                      </motion.span>
+                    </AnimatePresence>
+                  </button>
+                  <div className="absolute inset-0 rounded-3xl bg-soft-blue/5 opacity-0 group-focus-within/pass:opacity-100 transition-opacity pointer-events-none" />
+                </div>
               </div>
             )}
 
@@ -457,7 +479,7 @@ export default function Auth() {
                   <AlertCircle className="w-5 h-5 flex-shrink-0" />
                   <p className="leading-relaxed">{error}</p>
                 </div>
-                
+
                 {emailNotRegistered && (
                   <motion.button
                     initial={{ opacity: 0, y: 10 }}
