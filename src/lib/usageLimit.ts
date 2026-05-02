@@ -71,17 +71,7 @@ export async function syncUsageStats(): Promise<void> {
 
     const isPro = profile?.subscription_status === 'pro';
     
-    // Fetch detailed usage stats if table exists
-    const { data: stats } = await supabase
-      .from('usage_tracking')
-      .select('action, usage_key, count')
-      .eq('user_id', user.id);
-
-    if (stats) {
-      stats.forEach(stat => {
-        localStorage.setItem(stat.usage_key, String(stat.count));
-      });
-    }
+    // Usage tracking is primarily handled locally and via profiles table to avoid missing table 404s
 
     // Special handling for roadmap cooldown which is server-side driven
     if (profile?.last_roadmap_generated_at) {
