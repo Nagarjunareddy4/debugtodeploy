@@ -3,9 +3,13 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Flame, Trophy, Zap, Users, Search, Sparkles, Star, ArrowRight, Brain, Lock, Check, RefreshCw } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Joyride, Step } from 'react-joyride';
 import { supabase } from '../lib/supabase';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
 import { cn } from '../lib/utils';
+import OnboardingModal from '../components/OnboardingModal';
+import { Avatar } from '../components/ui/Avatar';
+import { toast } from 'react-hot-toast';
 
 interface DailyProgress {
   name: string;
@@ -42,6 +46,23 @@ export default function Dashboard() {
   const [nextLab, setNextLab] = useState<any>(undefined); // undefined = still loading
   const [quickGoal, setQuickGoal] = useState('');
   const [isUpdatingGoal, setIsUpdatingGoal] = useState(false);
+  const [runTour, setRunTour] = useState(false);
+
+  const tourSteps: Step[] = [
+    {
+      target: '.tour-step-search',
+      content: 'Start here! Ask our AI expert anything about DevOps or Cloud Engineering.',
+      disableBeacon: true,
+    },
+    {
+      target: '.tour-step-lab',
+      content: 'Jump straight into a real-world sandbox environment to fix infrastructure bugs.',
+    },
+    {
+      target: '.tour-step-progress',
+      content: 'Track your XP, streak, and daily growth as you climb the ranks.',
+    }
+  ];
 
   // Default fallback labs if generated_labs doesn't exist yet
   const defaultLabs = [
@@ -214,7 +235,7 @@ export default function Dashboard() {
   const handleStartLab = () => {
     const isPro = profile?.subscription_status === 'pro';
     if (isLimitReached('lab', isPro)) {
-      alert(getLimitMessage('lab', isPro));
+      toast.error(getLimitMessage('lab', isPro));
       return;
     }
     incrementUsage('lab', isPro);
@@ -245,7 +266,20 @@ export default function Dashboard() {
   const firstName = displayName.split(' ')[0];
   const isPro = profile?.subscription_status === 'pro';
   const searchesLeft = getRemainingUsage('search', isPro);
-  const isNewUser = !profile?.roadmap_data || profile.roadmap_data === '{}' || profile.roadmap_data === '{"stages":[]}';
+  const isNewUser = !profileLoading && 
+    profile && 
+    !localStorage.getItem('hasSeenOnboarding') &&
+    (!profile?.roadmap_data || profile.roadmap_data === '{}' || profile.roadmap_data === '{"stages":[]}');
+  const hasNoActivity = weeklyData.reduce((acc, curr) => acc + curr.xp, 0) === 0;
+
+  useEffect(() => {
+    // Only run tour if profile loaded, not a new user (new users see onboarding modal and redirect),
+    // and hasn't seen the tour before. For demo purposes, we trigger if XP is exactly 0 and they have a roadmap.
+    if (!profileLoading && profile && !isNewUser && profile.xp === 0 && !localStorage.getItem('hasSeenTour')) {
+      setRunTour(true);
+      localStorage.setItem('hasSeenTour', 'true');
+    }
+  }, [profileLoading, profile, isNewUser]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -270,13 +304,50 @@ export default function Dashboard() {
       variants={containerVariants}
       className="max-w-7xl mx-auto space-y-12 pb-24"
     >
+      <Joyride
+        steps={tourSteps}
+        run={runTour}
+        continuous
+        showProgress
+        showSkipButton
+        styles={{
+          options: {
+            primaryColor: '#3B82F6',
+            textColor: '#0A0F1C',
+            backgroundColor: '#FFFFFF',
+            arrowColor: '#FFFFFF',
+            zIndex: 1000,
+          },
+          tooltipContainer: {
+            fontFamily: 'Inter, sans-serif',
+            textAlign: 'left' as const,
+            fontWeight: 700,
+          },
+          buttonNext: {
+            fontWeight: 900,
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            fontSize: '10px',
+            borderRadius: '1rem',
+          },
+          buttonSkip: {
+            fontWeight: 900,
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            fontSize: '10px',
+            color: '#64748B',
+          }
+        }}
+      />
+      <OnboardingModal isOpen={isNewUser} />
+
       <AnimatePresence>
         {showSuccess && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="playful-card bg-soft-green text-white border-none shadow-2xl relative overflow-hidden mb-8"
+            className="w-full playful-card bg-soft-green text-white border-none shadow-2xl relative overflow-hidden mb-8"
           >
             <div className="absolute top-0 right-0 p-8 opacity-20">
               <Trophy className="w-24 h-24" />
@@ -320,7 +391,7 @@ export default function Dashboard() {
           </p>
         </header>
 
-        <form onSubmit={handleAiSearch} className="w-full lg:max-w-xl relative group">
+        <form onSubmit={handleAiSearch} className="w-full lg:max-w-xl relative group tour-step-search">
           <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none text-text-dim group-focus-within:text-soft-blue transition-colors">
             {isSearching ? <Sparkles className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
           </div>
@@ -364,7 +435,6 @@ export default function Dashboard() {
 
       {/* Hero banner — dynamic next lab */}
       <motion.section variants={itemVariants} className="flex flex-col md:flex-row items-center justify-between gap-8 bg-surface border-4 border-border rounded-[2rem] md:rounded-[4rem] p-6 md:p-12 text-text-main overflow-hidden relative shadow-2xl group glass-glow">
-        {/* Ambient glowing orbs to give the panel depth and premium feel */}
         <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-soft-blue/10 rounded-full blur-3xl -translate-y-1/4 translate-x-1/4 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-soft-purple/10 rounded-full blur-3xl translate-y-1/4 -translate-x-1/4 pointer-events-none" />
         
@@ -377,7 +447,6 @@ export default function Dashboard() {
              </div>
            ) : (
              <>
-               {/* Completion badge */}
                <div className="flex items-center gap-3">
                  <span className="text-[10px] font-black uppercase tracking-widest bg-soft-blue/10 text-soft-blue px-4 py-2 rounded-full border border-soft-blue/20">
                    {profile?.labs_completed || 0} / {(profile?.generated_labs || defaultLabs).length} Labs Complete
@@ -397,7 +466,6 @@ export default function Dashboard() {
                 )}
               </h1>
 
-              {/* Mini progress bar */}
               <div className="w-full max-w-xs">
                 <div className="h-2 bg-border rounded-full overflow-hidden">
                   <div
@@ -407,7 +475,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex flex-wrap gap-4 items-center tour-step-lab">
                 <button
                   onClick={handleStartLab}
                   disabled={nextLab === null}
@@ -417,7 +485,7 @@ export default function Dashboard() {
                 </button>
                 <div className={cn(
                   "flex items-center gap-2 bg-brand-bg/50 border-2 p-1 rounded-full pl-6 transition-all",
-                  isPro ? "border-border" : "border-soft-blue/20 opacity-75 grayscale"
+                  isPro ? "border-border" : "border-soft-blue/20 opacity-75 grayscale group/pro"
                 )}>
                   <input 
                     value={quickGoal}
@@ -430,14 +498,17 @@ export default function Dashboard() {
                     onClick={handleQuickGoalUpdate}
                     disabled={!isPro || isUpdatingGoal || !quickGoal.trim()}
                     className={cn(
-                      "p-3 rounded-full transition-all disabled:opacity-50",
-                      isPro ? "bg-soft-blue text-white hover:scale-110" : "bg-border text-text-dim cursor-not-allowed"
+                      "p-3 rounded-full transition-all disabled:opacity-50 relative",
+                      isPro ? "bg-soft-blue text-white hover:scale-110" : "bg-border text-text-dim cursor-not-allowed overflow-hidden"
                     )}
                   >
+                    {!isPro && (
+                      <div className="absolute inset-0 bg-soft-blue opacity-0 group-hover/pro:opacity-20 transition-opacity" />
+                    )}
                     {isUpdatingGoal ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />
                     ) : !isPro ? (
-                      <Lock className="w-4 h-4" />
+                      <Lock className="w-4 h-4 group-hover/pro:text-soft-blue transition-colors" />
                     ) : (
                       <ArrowRight className="w-4 h-4" />
                     )}
@@ -483,8 +554,23 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-64 w-full relative">
+              {hasNoActivity && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-surface/50 backdrop-blur-sm rounded-3xl border-2 border-border">
+                  <div className="w-12 h-12 bg-soft-blue/10 rounded-full flex items-center justify-center text-soft-blue mb-3">
+                    <Flame className="w-6 h-6" />
+                  </div>
+                  <h4 className="font-black text-lg mb-1">No Activity Yet</h4>
+                  <p className="text-text-dim font-bold text-xs mb-4">Complete your first lab to unlock insights!</p>
+                  <button
+                    onClick={handleStartLab}
+                    className="px-6 py-2.5 bg-text-main text-surface rounded-full font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl"
+                  >
+                    Start First Lab
+                  </button>
+                </div>
+              )}
+              <ResponsiveContainer width="100%" height="100%" className={cn(hasNoActivity && "opacity-20 blur-sm pointer-events-none")}>
                 <AreaChart data={weeklyData.length > 0 ? weeklyData : [
                   { name: 'Mon', xp: 0, labs: 0 }, { name: 'Tue', xp: 0, labs: 0 },
                   { name: 'Wed', xp: 0, labs: 0 }, { name: 'Thu', xp: 0, labs: 0 },
@@ -518,7 +604,7 @@ export default function Dashboard() {
         </div>
 
         {/* Profile + Streak */}
-        <div className="space-y-8">
+        <div className="space-y-8 tour-step-progress">
           <div className={cn(
             "playful-card flex flex-col items-center p-6 md:p-12 relative overflow-hidden",
             isPro && "holographic-pro border-soft-blue/20"
@@ -555,18 +641,12 @@ export default function Dashboard() {
                 className="absolute inset-0 border-2 border-dashed border-soft-blue/20 rounded-full scale-[0.9]"
               />
               <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-soft-blue p-0.5 bg-brand-bg relative z-10 shadow-xl">
-                <div className="w-full h-full bg-soft-blue/10 rounded-full flex items-center justify-center text-soft-blue">
-                  {profile?.avatar_url ? (
-                    <img
-                      src={`${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}`}
-                      className="w-full h-full rounded-full object-cover"
-                      alt="Profile"
-                      referrerPolicy="no-referrer"
-                      crossOrigin="anonymous"
-                    />
-                  ) : (
-                    <Users className="w-16 h-16" />
-                  )}
+                <div className="w-full h-full bg-soft-blue/10 rounded-full flex items-center justify-center text-soft-blue overflow-hidden">
+                  <Avatar 
+                    url={profile?.avatar_url ? `${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}` : undefined}
+                    className="w-full h-full"
+                    fallbackClassName="bg-transparent"
+                  />
                 </div>
               </div>
             </div>

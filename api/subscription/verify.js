@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import Razorpay from 'razorpay';
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req, res) {
@@ -121,21 +122,30 @@ export default async function handler(req, res) {
     
     // FAIL-SAFE: If payment was successful but DB update failed, attempt automatic refund
     const { razorpay_payment_id } = req.body;
+    let refundInitiated = false;
     if (razorpay_payment_id) {
       try {
         console.log(`[Fail-Safe] Attempting automatic refund for payment: ${razorpay_payment_id}`);
-        const razorpay = new Razorpay({
+        const razorpayClient = new Razorpay({
           key_id: process.env.RAZORPAY_KEY_ID,
           key_secret: process.env.RAZORPAY_KEY_SECRET,
         });
-        await razorpay.payments.refund(razorpay_payment_id, {
+        await razorpayClient.payments.refund(razorpay_payment_id, {
           notes: { reason: 'DB Update Failed', error: error.message }
         });
+        refundInitiated = true;
+        console.log(`[Fail-Safe] Refund initiated successfully for: ${razorpay_payment_id}`);
       } catch (refundError) {
-        console.error('Automatic refund failed:', refundError);
+        console.error('Automatic refund failed:', refundError.message);
       }
     }
 
-    return res.status(500).json({ error: 'Verification failed. Any deducted amount will be refunded automatically.' });
+    return res.status(500).json({ 
+      error: refundInitiated 
+        ? 'Subscription activation failed. A refund has been automatically initiated to your original payment method within 5-7 business days.'
+        : 'Verification failed. Please contact support with your payment ID for a manual refund.',
+      refund_initiated: refundInitiated,
+      payment_id: razorpay_payment_id || null,
+    });
   }
 }

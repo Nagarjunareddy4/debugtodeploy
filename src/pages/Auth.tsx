@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
 import { LogIn, UserPlus, AlertCircle, Github, Chrome, Rocket, Sparkles, ShieldCheck, Zap, Brain } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { toast } from 'react-hot-toast';
 
 export default function Auth() {
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
@@ -109,7 +110,7 @@ export default function Auth() {
           await supabase.auth.signOut({ scope: 'global' });
         }
 
-        alert('Account created successfully! Please sign in.');
+        toast.success('Account created successfully! Please sign in.');
         setAuthMode('login');
         setPassword('');
       } else if (authMode === 'forgot') {

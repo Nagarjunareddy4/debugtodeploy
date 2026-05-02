@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   LayoutDashboard,
@@ -23,11 +23,13 @@ import {
   Book,
   Facebook,
   Instagram,
+  Twitter,
   LifeBuoy
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { LogoFull } from '../ui/Logo';
+import { Avatar } from '../ui/Avatar';
 
 type ThemeMode = 'system' | 'light' | 'dark';
 
@@ -81,6 +83,7 @@ export default function Sidebar() {
   const [profile, setProfile] = useState<any>(null);
   const [showUserDetails, setShowUserDetails] = useState(false);
   const { mode, setMode } = useTheme();
+  const navigate = useNavigate();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -181,10 +184,29 @@ export default function Sidebar() {
               ))}
             </nav>
 
+            {profile && profile.subscription_status !== 'pro' && (
+              <div className="px-2 mt-8">
+                <div className="relative overflow-hidden rounded-3xl p-6 border-2 border-soft-orange/30 group cursor-pointer transition-all hover:border-soft-orange" onClick={() => navigate('/pricing')}>
+                  <div className="absolute inset-0 bg-linear-to-br from-soft-orange/10 to-soft-purple/10 group-hover:opacity-100 opacity-50 transition-opacity" />
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-soft-orange/20 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform" />
+                  
+                  <div className="relative z-10 flex flex-col items-center text-center space-y-3">
+                    <div className="w-10 h-10 rounded-full bg-soft-orange/20 flex items-center justify-center text-soft-orange group-hover:scale-110 transition-transform">
+                      <Star className="w-5 h-5 fill-soft-orange" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black uppercase tracking-widest text-text-main">Unlock Pro</h4>
+                      <p className="text-[9px] font-bold text-text-dim mt-1 leading-relaxed">Unlimited AI, premium labs, & portfolio sharing.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Social Media Links */}
             <div className="flex items-center justify-center gap-6 py-4">
               <motion.a
-                href="https://www.facebook.com/share/1G3YuZmJdG/"
+                href="https://www.facebook.com/profile.php?id=61589307951543"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-text-dim/70 hover:text-blue-500 transition-colors duration-300"
@@ -194,11 +216,21 @@ export default function Sidebar() {
                 <Facebook className="w-6 h-6" />
               </motion.a>
               <motion.a
+                href="https://x.com/DebugToDeploy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-text-dim/70 hover:text-text-main transition-colors duration-300"
+                whileHover={{ scale: 1.2, rotate: -5 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <Twitter className="w-6 h-6" />
+              </motion.a>
+              <motion.a
                 href="https://www.instagram.com/debugtodeploy?igsh=MTlxcmoyNG9obWN1OA=="
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-text-dim/70 hover:text-pink-500 transition-colors duration-300"
-                whileHover={{ scale: 1.2, rotate: -5 }}
+                whileHover={{ scale: 1.2, rotate: 5 }}
                 whileTap={{ scale: 0.9 }}
               >
                 <Instagram className="w-6 h-6" />
@@ -238,18 +270,10 @@ export default function Sidebar() {
           {showUserDetails && profile && (
             <div className="absolute bottom-full mb-3 left-0 right-0 bg-surface border-2 border-border rounded-3xl p-6 shadow-2xl z-50 space-y-4">
               <div className="flex items-center gap-4">
-                {profile.avatar_url ? (
-                  <img 
-                    src={`${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}`} 
-                    alt="Profile" 
-                    className="w-14 h-14 rounded-full object-cover border-2 border-soft-blue" 
-                    referrerPolicy="no-referrer" 
-                  />
-                ) : (
-                  <div className="w-14 h-14 bg-brand-bg rounded-full flex items-center justify-center border-2 border-border">
-                    <UserIcon className="w-7 h-7 text-text-dim" />
-                  </div>
-                )}
+                <Avatar 
+                  url={profile.avatar_url ? `${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}` : undefined}
+                  className="w-14 h-14 rounded-full border-2 border-soft-blue"
+                />
                 <div className="min-w-0">
                   <p className="font-black text-sm truncate">{displayName}</p>
                   <p className="text-[10px] font-bold text-soft-blue uppercase tracking-widest flex items-center gap-2">
@@ -300,18 +324,10 @@ export default function Sidebar() {
               showUserDetails && "nav-pill-active border-transparent shadow-lg"
             )}
           >
-            {profile?.avatar_url ? (
-              <img 
-                src={`${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}`} 
-                alt="Profile" 
-                className="w-7 h-7 rounded-full object-cover border-2 border-surface shadow-sm" 
-                referrerPolicy="no-referrer" 
-              />
-            ) : (
-              <div className="w-7 h-7 bg-brand-bg rounded-full flex items-center justify-center">
-                <UserIcon className="w-4 h-4 text-text-dim" />
-              </div>
-            )}
+            <Avatar 
+              url={profile?.avatar_url ? `${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}` : undefined}
+              className="w-7 h-7 rounded-full border-2 border-surface shadow-sm"
+            />
             <div className="flex flex-col min-w-0">
               <span className="text-[10px] font-black uppercase tracking-widest leading-none truncate">
                 {displayNameShort}

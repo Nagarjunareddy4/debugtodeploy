@@ -1,9 +1,32 @@
+# DebugToDeploy - robots.txt
+# Last updated: 2026-05-02
+
+# Allow all crawlers
 User-agent: *
 Allow: /
-Allow: /p/*
+Allow: /pricing
+Allow: /auth
+Allow: /p/
+
+# Block private/authenticated routes
 Disallow: /dashboard
 Disallow: /settings
 Disallow: /checkout
+Disallow: /roadmap
+Disallow: /labs
+Disallow: /mock-interviews
+Disallow: /certificates
+Disallow: /portfolio
+Disallow: /learning
 Disallow: /api/
 
+# Specific bot rules
+User-agent: GPTBot
+Allow: /
+Allow: /pricing
+
+User-agent: Googlebot
+Allow: /
+
+# Sitemap location
 Sitemap: https://www.debugtodeploy.com/sitemap.xml

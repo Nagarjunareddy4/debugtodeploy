@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  ShieldCheck, 
-  CreditCard, 
-  ChevronRight, 
-  ArrowLeft, 
-  Smartphone, 
-  Building2, 
-  Lock, 
+import {
+  ShieldCheck,
+  CreditCard,
+  ChevronRight,
+  ArrowLeft,
+  Smartphone,
+  Building2,
+  Lock,
   CheckCircle2,
   XCircle,
   Loader2,
@@ -69,6 +69,8 @@ export default function Checkout() {
   const amount = location.state?.amount || 6;
   const period = location.state?.period || 'month';
   const amountINR = location.state?.amountINR || (period === 'month' ? 499 : 4499);
+  // Tracks whether user actually opened the Razorpay modal (to distinguish dismiss vs error)
+  const razorpayOpenedRef = React.useRef(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -94,10 +96,12 @@ export default function Checkout() {
   const handlePay = async () => {
     setLoading(true);
     setPaymentStatus('processing');
-    
+    setErrorMessage(null);
+    razorpayOpenedRef.current = false;
+
     const res = await loadRazorpay();
     if (!res) {
-      setErrorMessage('Razorpay SDK failed to load. Check your internet connection.');
+      setErrorMessage('Razorpay SDK failed to load. Please check your internet connection and try again.');
       setLoading(false);
       setPaymentStatus('failed');
       return;
@@ -105,27 +109,29 @@ export default function Checkout() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Session expired. Please log in again.');
+      }
       const planId = period === 'month' ? 'pro_monthly' : 'pro_yearly';
 
       // Create subscription
       const subscriptionRes = await fetch('/api/subscription/create', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           planId,
           paymentMethod: selectedMethod,
-          autopayConsent: true  // Razorpay Subscriptions always require recurring mandate
+          autopayConsent: true
         })
       });
 
       const subscriptionData = await subscriptionRes.json();
-      console.log('[Checkout] Subscription Data:', subscriptionData);
-      
+
       if (!subscriptionData.razorpay_subscription_id) {
-        throw new Error(subscriptionData.error || 'Failed to create subscription in Razorpay');
+        throw new Error(subscriptionData.error || 'Failed to create subscription. Please try again.');
       }
 
       const options = {
@@ -138,9 +144,9 @@ export default function Checkout() {
           try {
             const verifyRes = await fetch('/api/subscription/verify', {
               method: 'POST',
-              headers: { 
+              headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session?.access_token}`
+                'Authorization': `Bearer ${session.access_token}`
               },
               body: JSON.stringify({
                 razorpay_subscription_id: response.razorpay_subscription_id,
@@ -150,17 +156,21 @@ export default function Checkout() {
             });
 
             const verifyData = await verifyRes.json();
-            
+
             if (verifyData.status === 'ok') {
               setPaymentStatus('success');
               setTimeout(() => {
                 navigate('/dashboard', { state: { paymentSuccess: true } });
               }, 3000);
             } else {
+              // Show the specific server error (may include refund info)
+              const errMsg = verifyData.error || 'Subscription activation failed. Please contact support.';
+              setErrorMessage(errMsg);
               setPaymentStatus('failed');
             }
           } catch (err) {
             console.error('Verification error:', err);
+            setErrorMessage('Verification request failed. Please contact support with your payment ID.');
             setPaymentStatus('failed');
           } finally {
             setLoading(false);
@@ -172,25 +182,30 @@ export default function Checkout() {
           contact: '',
         },
         modal: {
-          ondismiss: function() {
+          ondismiss: function () {
             setLoading(false);
-            setPaymentStatus('failed');
+            // Only show failed if Razorpay was opened (user explicitly dismissed)
+            // Don't show overlay — just reset to idle so user can retry
+            setPaymentStatus('idle');
           },
           backdrop_close: false,
           escape: false,
           handle_back: true
         },
-        theme: { 
+        theme: {
           color: '#3B82F6',
           backdrop_color: '#0A0F1C',
         },
       };
 
       const paymentObject = new (window as any).Razorpay(options);
+      razorpayOpenedRef.current = true;
       paymentObject.open();
+      // Reset status to idle after opening (processing shown only briefly before modal appears)
+      setPaymentStatus('idle');
     } catch (err: any) {
       console.error('Subscription error:', err);
-      setErrorMessage(err.message || 'Transmission interrupted. Please try again.');
+      setErrorMessage(err.message || 'Unable to initiate payment. Please try again.');
       setPaymentStatus('failed');
       setLoading(false);
     }
@@ -200,20 +215,24 @@ export default function Checkout() {
     <div className="max-w-4xl mx-auto space-y-10 pb-24 px-6">
       <AnimatePresence>
         {(paymentStatus === 'success' || paymentStatus === 'failed') && (
-          <PaymentOverlay 
-            status={paymentStatus} 
+          <PaymentOverlay
+            status={paymentStatus}
             errorMessage={errorMessage}
             onRetry={() => {
               setPaymentStatus('idle');
+              setErrorMessage(null);
               handlePay();
             }}
-            onClose={() => setPaymentStatus('idle')}
+            onClose={() => {
+              setPaymentStatus('idle');
+              setErrorMessage(null);
+            }}
           />
         )}
       </AnimatePresence>
-      
+
       <header className="flex items-center justify-between">
-        <button 
+        <button
           onClick={() => navigate('/pricing')}
           className="flex items-center gap-2 text-text-dim hover:text-text-main font-black uppercase tracking-widest text-xs transition-all"
         >
@@ -242,15 +261,15 @@ export default function Checkout() {
                 onClick={() => setSelectedMethod(method.id)}
                 className={cn(
                   "playful-card p-6 cursor-pointer border-2 transition-all flex items-center gap-6 group",
-                  selectedMethod === method.id 
-                    ? `bg-surface border-${method.color} shadow-2xl ring-4 ring-${method.color}/10` 
+                  selectedMethod === method.id
+                    ? `bg-surface border-${method.color} shadow-2xl ring-4 ring-${method.color}/10`
                     : "bg-surface/50 border-border hover:border-text-main/20"
                 )}
               >
                 <div className={cn(
                   "w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-lg",
-                  selectedMethod === method.id 
-                    ? `bg-${method.color} text-white scale-110` 
+                  selectedMethod === method.id
+                    ? `bg-${method.color} text-white scale-110`
                     : "bg-brand-bg text-text-dim group-hover:text-text-main"
                 )}>
                   <method.icon className="w-6 h-6" />
@@ -261,8 +280,8 @@ export default function Checkout() {
                 </div>
                 <div className={cn(
                   "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
-                  selectedMethod === method.id 
-                    ? `border-${method.color} bg-${method.color}` 
+                  selectedMethod === method.id
+                    ? `border-${method.color} bg-${method.color}`
                     : "border-border"
                 )}>
                   {selectedMethod === method.id && <CheckCircle2 className="w-4 h-4 text-white" />}
@@ -286,8 +305,8 @@ export default function Checkout() {
                     <label className="text-[10px] font-black uppercase tracking-widest text-text-dim">Enter UPI ID</label>
                     <span className="text-[9px] font-bold text-soft-purple">Direct App Redirect Available</span>
                   </div>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="username@okaxis"
                     className="w-full bg-surface border-4 border-border rounded-2xl px-6 py-4 font-black outline-none focus:border-soft-purple transition-all shadow-inner placeholder:opacity-30"
                   />
@@ -296,7 +315,7 @@ export default function Checkout() {
                   {/* UPI Logo */}
                   <div className="bg-white px-3 py-1.5 rounded-lg flex items-center justify-center shadow-sm border border-border/50">
                     <svg viewBox="0 0 100 24" className="h-5 object-contain fill-[#5F259F]">
-                      <path d="M12.4 2.1l-4.4 19.8h-4.2l4.4-19.8h4.2zm6.6 0l-4.4 19.8h-4.2l4.4-19.8h4.2zm6.6 0l-4.4 19.8h-4.2l4.4-19.8h4.2zm30 0c-3.5 0-6.1 2.3-6.1 5.8 0 4.1 3.5 6 6.5 6 1.4 0 2.2-.2 2.2-.2v4c-.8.1-1.6.2-2.5.2-3.8 0-6.6-1.5-6.6-5.8 0-5.8 4.3-10.2 10.2-10.2 2 0 3.6.4 4.5.8l-1.4 3.4c-.8-.4-2-.8-3.3-.8h-3.5zm11.4 0h4.2l-4.4 19.8h-4.2l4.4-19.8zm11.2 0h4.2l-4.4 19.8h-4.2l4.4-19.8z"/>
+                      <path d="M12.4 2.1l-4.4 19.8h-4.2l4.4-19.8h4.2zm6.6 0l-4.4 19.8h-4.2l4.4-19.8h4.2zm6.6 0l-4.4 19.8h-4.2l4.4-19.8h4.2zm30 0c-3.5 0-6.1 2.3-6.1 5.8 0 4.1 3.5 6 6.5 6 1.4 0 2.2-.2 2.2-.2v4c-.8.1-1.6.2-2.5.2-3.8 0-6.6-1.5-6.6-5.8 0-5.8 4.3-10.2 10.2-10.2 2 0 3.6.4 4.5.8l-1.4 3.4c-.8-.4-2-.8-3.3-.8h-3.5zm11.4 0h4.2l-4.4 19.8h-4.2l4.4-19.8zm11.2 0h4.2l-4.4 19.8h-4.2l4.4-19.8z" />
                     </svg>
                     <span className="text-[10px] font-black ml-1 text-[#5F259F]">UPI</span>
                   </div>
@@ -304,8 +323,8 @@ export default function Checkout() {
                   {/* GPay Logo */}
                   <div className="bg-white px-3 py-1.5 rounded-lg flex items-center justify-center shadow-sm border border-border/50">
                     <svg viewBox="0 0 40 16" className="h-5 object-contain">
-                      <path fill="#4285F4" d="M5.5 8.1v2.3h3.5c-.1 1-.5 1.7-1 2.2-.6.6-1.5.9-2.5.9-2.2 0-3.9-1.8-3.9-4s1.7-4 3.9-4c1.1 0 1.9.4 2.6 1l1.6-1.6C8.7 1.9 7.2 1.1 5.5 1.1 2.5 1.1 0 3.6 0 6.6s2.5 5.5 5.5 5.5c1.6 0 2.8-.5 3.7-1.5.9-.9 1.2-2.3 1.2-3.4 0-.3 0-.6-.1-.9h-4.8z"/>
-                      <path fill="#34A853" d="M14.6 4.3h-1.1v7.3h1.1V4.3z"/>
+                      <path fill="#4285F4" d="M5.5 8.1v2.3h3.5c-.1 1-.5 1.7-1 2.2-.6.6-1.5.9-2.5.9-2.2 0-3.9-1.8-3.9-4s1.7-4 3.9-4c1.1 0 1.9.4 2.6 1l1.6-1.6C8.7 1.9 7.2 1.1 5.5 1.1 2.5 1.1 0 3.6 0 6.6s2.5 5.5 5.5 5.5c1.6 0 2.8-.5 3.7-1.5.9-.9 1.2-2.3 1.2-3.4 0-.3 0-.6-.1-.9h-4.8z" />
+                      <path fill="#34A853" d="M14.6 4.3h-1.1v7.3h1.1V4.3z" />
                     </svg>
                     <span className="text-[10px] font-black ml-1 text-slate-900">GPay</span>
                   </div>
@@ -313,7 +332,7 @@ export default function Checkout() {
                   {/* PhonePe Logo */}
                   <div className="bg-white px-3 py-1.5 rounded-lg flex items-center justify-center shadow-sm border border-border/50">
                     <svg viewBox="0 0 24 24" className="h-5 w-5 fill-[#5F259F]">
-                      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 22C6.486 22 2 17.514 2 12S6.486 2 12 2s10 4.486 10 10-4.486 10-10 10zm-1-15h2v6h-2zm0 8h2v2h-2z"/>
+                      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 22C6.486 22 2 17.514 2 12S6.486 2 12 2s10 4.486 10 10-4.486 10-10 10zm-1-15h2v6h-2zm0 8h2v2h-2z" />
                     </svg>
                     <span className="text-[10px] font-black ml-1 text-[#5F259F]">PhonePe</span>
                   </div>
@@ -332,8 +351,8 @@ export default function Checkout() {
                 <div className="space-y-4">
                   <label className="text-[10px] font-black uppercase tracking-widest text-text-dim">Card Number</label>
                   <div className="relative">
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="0000 0000 0000 0000"
                       className="w-full bg-surface border-4 border-border rounded-2xl px-6 py-4 font-black outline-none focus:border-soft-blue transition-all shadow-inner placeholder:opacity-30"
                     />
@@ -343,16 +362,16 @@ export default function Checkout() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-4">
                     <label className="text-[10px] font-black uppercase tracking-widest text-text-dim">Expiry Date</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="MM / YY"
                       className="w-full bg-surface border-4 border-border rounded-2xl px-6 py-4 font-black outline-none focus:border-soft-blue transition-all shadow-inner placeholder:opacity-30"
                     />
                   </div>
                   <div className="space-y-4">
                     <label className="text-[10px] font-black uppercase tracking-widest text-text-dim">CVV</label>
-                    <input 
-                      type="password" 
+                    <input
+                      type="password"
                       placeholder="***"
                       maxLength={3}
                       className="w-full bg-surface border-4 border-border rounded-2xl px-6 py-4 font-black outline-none focus:border-soft-blue transition-all shadow-inner placeholder:opacity-30"
@@ -372,7 +391,7 @@ export default function Checkout() {
               >
                 <div className="space-y-4">
                   <label className="text-[10px] font-black uppercase tracking-widest text-text-dim">Select Your Bank</label>
-                  <select 
+                  <select
                     className="w-full bg-surface border-4 border-border rounded-2xl px-6 py-4 font-black outline-none focus:border-soft-green transition-all shadow-inner appearance-none cursor-pointer"
                   >
                     <option value="">Choose a bank...</option>
@@ -405,10 +424,10 @@ export default function Checkout() {
             <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
               <Zap className="w-32 h-32" />
             </div>
-            
+
             <div className="relative z-10 space-y-6">
               <h3 className="text-2xl font-black tracking-tighter italic">Order Summary</h3>
-              
+
               <div className="space-y-4 pt-4 border-t border-surface/10">
                 <div className="flex justify-between items-center">
                   <div className="space-y-1">
@@ -417,7 +436,7 @@ export default function Checkout() {
                   </div>
                   <span className="font-black text-lg">${amount}</span>
                 </div>
-                
+
                 <div className="flex justify-between items-center pt-4 border-t border-surface/10">
                   <span className="text-sm font-bold text-surface/60">Subtotal</span>
                   <span className="font-black">${amount}</span>
@@ -450,7 +469,7 @@ export default function Checkout() {
                     {paymentStatus === 'processing' && <Loader2 className="w-4 h-4 mt-0.5 animate-spin" />}
                     {paymentStatus === 'success' && <CheckCircle2 className="w-4 h-4 mt-0.5" />}
                     {paymentStatus === 'failed' && <XCircle className="w-4 h-4 mt-0.5" />}
-                    
+
                     <div className="flex-1">
                       <p className="text-[10px] font-black uppercase tracking-widest">
                         {paymentStatus === 'processing' && "Processing Link..."}
@@ -508,34 +527,35 @@ function PaymentOverlay({ status, errorMessage, onRetry, onClose }: { status: 's
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-surface/95 backdrop-blur-xl"
+      className="fixed top-0 left-0 w-full h-full min-h-[100dvh] z-[100] flex items-center justify-center bg-surface/95 backdrop-blur-xl p-4 overflow-y-auto overflow-x-hidden"
     >
-      <button 
+      <button
         onClick={onClose}
-        className="absolute top-6 right-6 md:top-10 md:right-10 z-[110] p-3 bg-text-main/5 hover:bg-text-main/10 rounded-full transition-all text-text-main hover:rotate-90 hover:scale-110 duration-300"
+        className="absolute top-4 right-4 md:top-8 md:right-8 z-[110] p-3 bg-text-main/5 hover:bg-text-main/10 rounded-full transition-all text-text-main hover:rotate-90 hover:scale-110 duration-300"
+        aria-label="Close"
       >
-        <X className="w-6 h-6" />
+        <X className="w-5 h-5 md:w-6 md:h-6" />
       </button>
-      
+
       {/* Background Particles Simulation */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[...Array(20)].map((_, i) => (
           <motion.div
             key={i}
-            initial={{ 
+            initial={{
               opacity: 0,
-              x: Math.random() * window.innerWidth,
-              y: Math.random() * window.innerHeight 
+              x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 400),
+              y: Math.random() * (typeof window !== 'undefined' ? window.innerHeight : 400)
             }}
-            animate={{ 
+            animate={{
               opacity: [0, 0.3, 0],
               y: [null, Math.random() * -500],
               x: [null, Math.random() * (Math.random() > 0.5 ? 200 : -200)]
             }}
-            transition={{ 
-              duration: Math.random() * 3 + 2, 
+            transition={{
+              duration: Math.random() * 3 + 2,
               repeat: Infinity,
-              ease: "linear" 
+              ease: "linear"
             }}
             className={cn(
               "absolute w-1 h-1 rounded-full",
@@ -545,7 +565,7 @@ function PaymentOverlay({ status, errorMessage, onRetry, onClose }: { status: 's
         ))}
       </div>
 
-      <div className="relative text-center max-w-xl px-10">
+      <div className="relative text-center w-full max-w-xl px-4 sm:px-10 my-auto">
         <AnimatePresence mode="wait">
           {status === 'success' ? (
             <motion.div
@@ -553,19 +573,19 @@ function PaymentOverlay({ status, errorMessage, onRetry, onClose }: { status: 's
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", damping: 15 }}
-              className="space-y-8"
+              className="space-y-6 md:space-y-8"
             >
               <div className="relative flex justify-center">
                 <motion.div
                   initial={{ rotate: -20 }}
                   animate={{ rotate: 0 }}
                   transition={{ duration: 0.5 }}
-                  className="bg-soft-blue/10 p-8 rounded-full border border-soft-blue/20"
+                  className="bg-soft-blue/10 p-6 md:p-8 rounded-full border border-soft-blue/20"
                 >
-                  <Handshake className="w-20 h-20 text-soft-blue" />
+                  <Handshake className="w-14 h-14 md:w-20 md:h-20 text-soft-blue" />
                 </motion.div>
                 <motion.div
-                  animate={{ 
+                  animate={{
                     scale: [1, 1.2, 1],
                     opacity: [0.5, 1, 0.5]
                   }}
@@ -574,12 +594,12 @@ function PaymentOverlay({ status, errorMessage, onRetry, onClose }: { status: 's
                 />
               </div>
 
-              <div className="space-y-4">
-                <motion.h2 
+              <div className="space-y-3">
+                <motion.h2
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.3 }}
-                  className="text-5xl font-black tracking-tighter text-text-main"
+                  className="text-3xl md:text-5xl font-black tracking-tighter text-text-main"
                 >
                   WELCOME TO THE SQUAD, <span className="text-soft-blue">CAPTAIN!</span>
                 </motion.h2>
@@ -611,39 +631,52 @@ function PaymentOverlay({ status, errorMessage, onRetry, onClose }: { status: 's
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", damping: 15 }}
-              className="space-y-8"
+              className="space-y-6 md:space-y-8"
             >
               <div className="relative flex justify-center">
                 <motion.div
-                  animate={{ 
+                  animate={{
                     x: [0, -5, 5, -5, 5, 0],
                   }}
                   transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}
-                  className="bg-soft-red/10 p-8 rounded-full border border-soft-red/20"
+                  className="bg-soft-red/10 p-6 md:p-8 rounded-full border border-soft-red/20"
                 >
-                  <AlertCircle className="w-20 h-20 text-soft-red" />
+                  <AlertCircle className="w-14 h-14 md:w-20 md:h-20 text-soft-red" />
                 </motion.div>
                 <div className="absolute inset-0 bg-soft-red/20 blur-3xl -z-10 rounded-full" />
               </div>
 
-              <div className="space-y-4">
-                <motion.h2 
-                  className="text-5xl font-black tracking-tighter text-text-main"
+              <div className="space-y-3">
+                <motion.h2
+                  className="text-3xl md:text-5xl font-black tracking-tighter text-text-main"
                 >
                   TRANSMISSION <span className="text-soft-red">FAILED.</span>
                 </motion.h2>
-                <p className="text-text-dim font-bold tracking-widest uppercase text-xs">
+                <p className="text-text-dim font-bold tracking-widest uppercase text-xs leading-relaxed">
                   {errorMessage || "Signal lost during handshake. Transaction terminated."}
                 </p>
+                {errorMessage?.includes('refund') && (
+                  <p className="text-soft-green text-xs font-bold mt-2 bg-soft-green/10 px-4 py-2 rounded-2xl border border-soft-green/20">
+                    ✓ A refund has been automatically initiated.
+                  </p>
+                )}
               </div>
 
-              <button
-                onClick={onRetry}
-                className="group flex items-center gap-3 mx-auto px-8 py-4 bg-text-main text-surface rounded-full font-black uppercase tracking-widest text-xs hover:scale-105 active:scale-95 transition-all"
-              >
-                <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
-                Retry Uplink
-              </button>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                  onClick={onRetry}
+                  className="group flex items-center gap-3 mx-auto px-6 md:px-8 py-3 md:py-4 bg-text-main text-surface rounded-full font-black uppercase tracking-widest text-xs hover:scale-105 active:scale-95 transition-all"
+                >
+                  <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+                  Retry Payment
+                </button>
+                <a
+                  href="mailto:support@debugtodeploy.com"
+                  className="flex items-center gap-2 mx-auto px-6 md:px-8 py-3 md:py-4 bg-brand-bg border border-border text-text-dim rounded-full font-black uppercase tracking-widest text-xs hover:border-text-main hover:text-text-main transition-all"
+                >
+                  Contact Support
+                </a>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -651,3 +684,4 @@ function PaymentOverlay({ status, errorMessage, onRetry, onClose }: { status: 's
     </motion.div>
   );
 }
+

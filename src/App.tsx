@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import { Toaster } from 'react-hot-toast';
 import { Brain, Sparkles, Zap, ShieldCheck, Terminal as TerminalIcon, Map } from 'lucide-react';
 import Sidebar from './components/layout/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -124,6 +125,13 @@ export default function App() {
 
       // Check if we need to generate dynamic curriculum
       if (latestProfile) {
+        // If the user hasn't generated a roadmap yet, they are still in onboarding.
+        // Do not generate default curriculum and do not hijack the screen.
+        if (!latestProfile.roadmap_data || latestProfile.roadmap_data === '{}' || latestProfile.roadmap_data === '{"stages":[]}') {
+          setIsGenerating(false);
+          return;
+        }
+
         let roadmapGoal = 'DevOps Engineering';
         let experienceLevel = 'intermediate';
         let currentVersion: string | undefined;
@@ -215,6 +223,19 @@ export default function App() {
           </Routes>
         )}
       </div>
+      <Toaster 
+        position="bottom-right" 
+        toastOptions={{
+          className: 'playful-card text-xs font-bold shadow-2xl',
+          style: {
+            background: 'var(--color-surface)',
+            color: 'var(--color-text-main)',
+            border: '4px solid var(--color-border)',
+            borderRadius: '1.5rem',
+            padding: '16px',
+          },
+        }} 
+      />
     </Router>
   );
 }

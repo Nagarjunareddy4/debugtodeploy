@@ -4,7 +4,7 @@ import { supabase } from './supabase';
 // Limits are stored in localStorage, keyed by action + date/week/month id.
 
 const FREE_LIMITS: Record<string, number> = {
-  roadmap: 1,    // 1 roadmap generation per week
+  roadmap: 2,    // 2 roadmap generations per week
   search: 2,     // 2 AI searches per day
   lab: Infinity, // Structural limit (1st lab only) handles this now
   interview: 1,  // 1 interview per week
@@ -97,7 +97,7 @@ export function getLimitMessage(action: string, isPro: boolean = false): string 
   }
 
   const messages: Record<string, string> = {
-    roadmap: `Weekly limit of 1 AI Roadmap generation reached. Upgrade to Pro for 100 generations/month.`,
+    roadmap: `Weekly limit of 2 AI Roadmap generations reached. Upgrade to Pro for 100 generations/month.`,
     search: `Daily limit of 2 AI Assistant searches reached. Come back tomorrow or Upgrade to Pro for unlimited search.`,
     lab: `Weekly limit of 2 Cloud Labs reached. Upgrade to Pro to unlock unlimited practical environments.`,
     interview: `Weekly limit of 1 Mock Interview reached. Upgrade to Pro for unlimited interview practice.`,
