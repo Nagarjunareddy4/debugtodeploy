@@ -35,6 +35,23 @@ export default function Learning() {
 
   useEffect(() => {
     fetchDocs();
+
+    // Real-time subscription to profile changes
+    const channel = supabase
+      .channel('learning-profile-sync')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload) => {
+        if (payload.new) {
+          if (payload.new.generated_docs) {
+            setDocs(payload.new.generated_docs);
+          }
+          if (payload.new.read_docs_ids) {
+            setReadDocs(payload.new.read_docs_ids);
+          }
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const fetchDocs = async () => {

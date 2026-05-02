@@ -31,19 +31,32 @@ export default function Certificates() {
       }
       setUser(user);
 
-      const { data: profile } = await supabase.from('profiles').select('roadmap_data, generated_certificates, roadmap_hash').eq('id', user.id).single();
-      
-      if (profile) {
-        if (profile.generated_certificates && profile.generated_certificates.length > 0) {
-          setCertificates(profile.generated_certificates);
-          setLoading(false);
+      const fetchProfileData = async () => {
+        const { data: profile } = await supabase.from('profiles').select('roadmap_data, generated_certificates, roadmap_hash').eq('id', user.id).single();
+        if (profile) {
+          if (profile.generated_certificates && profile.generated_certificates.length > 0) {
+            setCertificates(profile.generated_certificates);
+            setLoading(false);
+          } else {
+            generateCertificates(user.id, profile.roadmap_data, profile);
+          }
         } else {
-          // Trigger generation
-          generateCertificates(user.id, profile.roadmap_data, profile);
+          setLoading(false);
         }
-      } else {
-        setLoading(false);
-      }
+      };
+
+      await fetchProfileData();
+
+      const channel = supabase
+        .channel('certificates-profile-sync')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload) => {
+          if (payload.new && payload.new.generated_certificates) {
+            setCertificates(payload.new.generated_certificates);
+          }
+        })
+        .subscribe();
+
+      return () => { supabase.removeChannel(channel); };
     };
     init();
   }, []);

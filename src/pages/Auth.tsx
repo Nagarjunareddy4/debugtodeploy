@@ -451,13 +451,13 @@ export default function Auth() {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-white/5 transition-colors cursor-pointer z-10"
                   >
-                    <AnimatePresence mode="wait">
+                    <AnimatePresence mode="wait" initial={false}>
                       <motion.span
                         key={showPassword ? 'show' : 'hide'}
                         initial={{ scale: 0.5, opacity: 0, rotate: -20 }}
                         animate={{ scale: 1, opacity: 1, rotate: 0 }}
                         exit={{ scale: 0.5, opacity: 0, rotate: 20 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        transition={{ type: "spring", stiffness: 700, damping: 30 }}
                         className="text-xl select-none"
                       >
                         {showPassword ? '👁️' : '🙈'}

@@ -298,6 +298,18 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
     return () => { document.body.style.overflow = ''; };
   }, [topicPanel]);
 
+  // Safety prompt: Prevent refresh or navigation during roadmap generation
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (loading) {
+        e.preventDefault();
+        e.returnValue = ''; // Standard way to show browser confirmation
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [loading]);
+
   const handleTopicClick = async (label: string, url: string) => {
     // Open panel immediately with loading state
     setTopicPanel({ label, url, content: null, loading: true });
@@ -562,10 +574,13 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
             className="btn-pill bg-text-main text-surface w-full py-5 sm:py-6 text-sm sm:text-xl flex items-center justify-center gap-3 sm:gap-4 shadow-2xl hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed flex-wrap text-center"
           >
             {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin flex-shrink-0" />
-                <span className="animate-pulse italic">Architecting Growth Path...</span>
-              </>
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin flex-shrink-0" />
+                  <span className="animate-pulse italic">Architecting Growth Path...</span>
+                </div>
+                <span className="text-[10px] font-bold text-surface/60 animate-pulse">Please do not refresh or go back</span>
+              </div>
             ) : isBlocked ? (
               <>
                 <Lock className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />

@@ -523,6 +523,14 @@ export default function Checkout() {
 
 // Cinematic Overlay for Success/Failure
 function PaymentOverlay({ status, errorMessage, onRetry, onClose }: { status: 'success' | 'failed', errorMessage: string | null, onRetry: () => void, onClose: () => void }) {
+  // Body scroll lock when overlay is active
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
