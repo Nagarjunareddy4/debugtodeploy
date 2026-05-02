@@ -76,6 +76,19 @@ function sanitizeInput(input: string): string {
   return input.replace(/[<>{}|[\]\\]/g, '').slice(0, 100).trim();
 }
 
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+  } catch {
+    // Continue without auth — proxy will reject if required
+  }
+  return headers;
+}
+
 export async function generateUserDocs(userId: string, roadmapGoal: string, roadmapHash?: string): Promise<GeneratedDoc[] | null> {
   try {
     const cleanGoal = sanitizeInput(roadmapGoal);
@@ -93,9 +106,7 @@ For each resource, provide:
 
     const res = await fetch('/api/openai-proxy?path=v1/chat/completions', {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json'
-      },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [

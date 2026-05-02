@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Compass, Sparkles, CheckCircle2, Loader2, ChevronRight, Zap, Target, BookOpen, RefreshCw, Lock, X, ExternalLink, Brain } from 'lucide-react';
-import { cn, getObjectHash } from '../lib/utils';
+import { cn, getObjectHash, usePageTitle } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
 import { updateReadinessScore } from '../lib/readiness';
@@ -27,6 +27,7 @@ interface RoadmapData {
 }
 
 export default function Roadmap() {
+  usePageTitle('AI Roadmap');
   const location = useLocation();
   const navigate = useNavigate();
   const hasTriggeredRef = useRef(false);
@@ -39,6 +40,7 @@ export default function Roadmap() {
   const [showUpdateConfirm, setShowUpdateConfirm] = useState(false);
   const [hasExistingRoadmap, setHasExistingRoadmap] = useState(false);
   const [limitError, setLimitError] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [completedTasks, setCompletedTasks] = useState<string[]>([]);
   const [serverLimitBlocked, setServerLimitBlocked] = useState(false);
   const [topicPanel, setTopicPanel] = useState<{ label: string; url: string; content: string | null; loading: boolean } | null>(null);
@@ -83,14 +85,17 @@ export default function Roadmap() {
       if (state?.triggerUpdate && state?.newGoal && !hasTriggeredRef.current) {
         hasTriggeredRef.current = true;
         const targetGoal = state.newGoal;
+        const targetExperience = (state.newExperience || 'beginner').toLowerCase();
+        
         setGoal(targetGoal);
+        setExperience(targetExperience);
         
         // Clean up state so refresh doesn't re-trigger
         navigate(location.pathname, { replace: true, state: {} });
         
         // Short delay to ensure state updates and then generate
         setTimeout(() => {
-          generateRoadmap(targetGoal, experience, currentIsPro);
+          generateRoadmap(targetGoal, targetExperience, currentIsPro);
         }, 100);
       }
     };
@@ -139,14 +144,38 @@ export default function Roadmap() {
       return;
     }
 
+    // Validate goal is DevOps/SRE/Cloud related
+    const relevantKeywords = [
+      'devops', 'sre', 'cloud', 'platform', 'infrastructure', 'reliability',
+      'automation', 'linux', 'kubernetes', 'k8s', 'docker', 'aws', 'azure',
+      'gcp', 'terraform', 'ansible', 'jenkins', 'cicd', 'ci/cd', 'architect',
+      'engineer', 'admin', 'operations', 'security', 'devsecops', 'deploy',
+      'container', 'microservice', 'monitoring', 'observability', 'network'
+    ];
+    const goalLower = activeGoal.toLowerCase();
+    const isRelevantGoal = relevantKeywords.some(kw => goalLower.includes(kw));
+    if (!isRelevantGoal) {
+      setGenerateError('Target Destination must be related to DevOps, SRE, or Cloud Engineering (e.g. "DevOps Engineer", "Cloud Architect").');
+      return;
+    }
+
     setLoading(true);
     setLimitError(null);
+    setGenerateError(null);
     setShowUpdateConfirm(false);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setGenerateError('Your session has expired. Please log out and log back in.');
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch('/api/openai-proxy?path=v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
@@ -184,12 +213,26 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
         }),
       });
 
+      if (response.status === 401) {
+        setGenerateError('Authentication failed. Please log out and log back in to continue.');
+        return;
+      }
+      if (response.status === 429) {
+        setGenerateError('You have reached the request limit. Please wait a moment before trying again.');
+        return;
+      }
+
       const data = await response.json();
-      if (data.error) throw new Error(data.error.message);
+      if (data.error) throw new Error(typeof data.error === 'string' ? data.error : data.error.message || 'AI service error.');
 
       const text = data.choices?.[0]?.message?.content || '{}';
       const clean = text.replace(/```json|```/g, '').trim();
-      const parsed: RoadmapData = JSON.parse(clean);
+      let parsed: RoadmapData;
+      try {
+        parsed = JSON.parse(clean);
+      } catch {
+        throw new Error('The AI returned an unexpected format. Please try again.');
+      }
       const finalRoadmap: RoadmapData = {
         goal: activeGoal,
         experience: activeExperience,
@@ -211,7 +254,7 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
       await regenerateDependentRecommendations(finalRoadmap, roadmapHash);
     } catch (error: any) {
       console.error(error);
-      alert(`Failed to generate roadmap: ${error.message || 'Verify your OpenAI API key.'}`);
+      setGenerateError(error.message || 'Failed to generate roadmap. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -259,9 +302,15 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
     // Open panel immediately with loading state
     setTopicPanel({ label, url, content: null, loading: true });
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
       const res = await fetch('/api/openai-proxy?path=v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [
@@ -303,7 +352,7 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
               initial={{ y: 60, opacity: 0, scale: 0.96 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 60, opacity: 0, scale: 0.96 }}
-              transition={{ type: 'spring', damping: 22, stiffness: 260 }}
+              transition={{ type: 'spring', damping: 22, stiffness: 260 } as const}
               onClick={e => e.stopPropagation()}
               className="w-full max-w-2xl max-h-[85vh] bg-surface rounded-[2.5rem] border-2 border-soft-blue/20 shadow-3xl flex flex-col overflow-hidden"
             >
@@ -430,7 +479,7 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
                   Keep Current
                 </button>
                 <button
-                  onClick={generateRoadmap}
+                  onClick={() => generateRoadmap()}
                   className="flex-1 py-3 bg-text-main text-surface rounded-full font-black text-sm hover:bg-soft-orange transition-colors"
                 >
                   {isBlocked ? '🔒 Locked' : 'Generate New'}
@@ -440,6 +489,21 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
           </motion.div>
         )}
       </AnimatePresence>
+
+      {generateError && (
+        <div className="flex items-start gap-3 p-4 bg-soft-red/10 border-2 border-soft-red/30 rounded-3xl text-soft-red font-bold text-sm">
+          <X className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-black text-sm">{generateError}</p>
+            <button
+              onClick={() => setGenerateError(null)}
+              className="text-xs underline mt-1 opacity-70 hover:opacity-100"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       {limitError && (
         <div className="flex items-center gap-3 p-4 bg-soft-orange/10 border-2 border-soft-orange/30 rounded-3xl text-soft-orange font-bold text-sm">

@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '../lib/cropImage';
+import { Avatar } from '../components/ui/Avatar';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -323,13 +324,10 @@ export default function Settings() {
                   className="absolute inset-0 rounded-full border-4 border-dashed border-soft-blue/40"
                 />
                 <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-soft-blue p-0.5 bg-brand-bg">
-                  {profile.avatar_url ? (
-                    <img src={`${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}`} alt="Profile" className="w-full h-full rounded-full object-cover" referrerPolicy="no-referrer" />
-                  ) : (
-                    <div className="w-full h-full bg-brand-bg rounded-full flex items-center justify-center">
-                      <User className="w-12 h-12 text-text-dim" />
-                    </div>
-                  )}
+                  <Avatar 
+                    url={profile.avatar_url ? `${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}` : undefined}
+                    className="w-full h-full rounded-full"
+                  />
                 </div>
               </div>
 
@@ -413,11 +411,9 @@ export default function Settings() {
                   >
                     <X className="w-4 h-4" />
                   </button>
-                  <img
-                    src={`${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}`}
-                    alt="Profile"
-                    className="w-72 h-72 rounded-full object-cover border-4 border-soft-blue shadow-2xl"
-                    referrerPolicy="no-referrer"
+                  <Avatar
+                    url={profile.avatar_url ? `${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}` : undefined}
+                    className="w-72 h-72 rounded-full border-4 border-soft-blue shadow-2xl"
                   />
                 </div>
               </motion.div>

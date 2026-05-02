@@ -10,10 +10,10 @@ import {
   Pause,
   Play,
   Trash2,
-  Toggle2,
+  ToggleRight,
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { cn } from '../lib/utils';
+import { supabase } from '../../lib/supabase';
+import { cn } from '../../lib/utils';
 
 interface Subscription {
   id: string;
@@ -202,7 +202,7 @@ export default function SubscriptionManager() {
                   : 'bg-border text-text-dim hover:bg-border/50'
               )}
             >
-              <Toggle2 className="w-5 h-5" />
+                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ToggleRight className="w-4 h-4" />}
             </button>
           </div>
         </div>
@@ -250,7 +250,7 @@ export default function SubscriptionManager() {
                 disabled={actionLoading}
                 className="flex items-center justify-center gap-2 p-3 bg-soft-blue/10 text-soft-blue border border-soft-blue/20 rounded-lg font-black text-xs uppercase tracking-wider hover:bg-soft-blue/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Toggle2 className="w-4 h-4" />}
+                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ToggleRight className="w-4 h-4" />}
                 Autopay
               </button>
               <button

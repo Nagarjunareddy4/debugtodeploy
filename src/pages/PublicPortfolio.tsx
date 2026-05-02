@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
+import { Avatar } from '../components/ui/Avatar';
 
 export default function PublicPortfolio() {
   const { username } = useParams();
@@ -146,19 +147,11 @@ export default function PublicPortfolio() {
             </div>
             
             <div className="relative z-10 flex flex-col items-center text-center space-y-6">
-              <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-soft-blue p-1 bg-brand-bg">
-                {profile?.avatar_url ? (
-                  <img 
-                    src={profile.avatar_url} 
-                    alt="Avatar" 
-                    className="w-full h-full rounded-full object-cover" 
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-soft-blue/10 flex items-center justify-center">
-                    <Terminal className="w-12 h-12 text-soft-blue" />
-                  </div>
-                )}
+              <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-soft-blue p-1 bg-brand-bg flex items-center justify-center">
+                <Avatar 
+                  url={profile?.avatar_url}
+                  className="w-full h-full rounded-full"
+                />
               </div>
               
               <div>

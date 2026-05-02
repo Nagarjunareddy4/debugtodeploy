@@ -4,31 +4,100 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Primary SEO Meta Tags -->
+  <title>AI DevOps Roadmap & Cloud Engineering Labs | DebugToDeploy</title>
+  <meta name="title" content="AI DevOps Roadmap & Cloud Engineering Labs | DebugToDeploy" />
   <meta name="description"
-    content="DebugToDeploy: The AI-accelerated learning platform for DevOps, SRE, and Cloud Engineers. Master production infrastructure with interactive sandboxes." />
+    content="Master DevOps and Cloud Engineering with AI-powered personalized roadmaps, interactive cloud sandboxes, and professional portfolio building. Transition to SRE and Cloud Architect roles with DebugToDeploy's hands-on platform." />
   <meta name="keywords"
-    content="DevOps, SRE, Cloud Engineering, AI Roadmap, Cloud Sandbox, Interactive Labs, Tech Portfolio" />
+    content="devops roadmap ai, cloud engineering career, site reliability engineer training, sre learning path, kubernetes labs, terraform practice, cloud sandbox, devops portfolio builder, devsecops roadmap, cloud architect training, debug to deploy, debugtodeploy" />
+  <meta name="robots" content="index, follow" />
+  <meta name="author" content="DebugToDeploy" />
+  <link rel="canonical" href="https://www.debugtodeploy.com/" />
+  <meta name="theme-color" content="#0F172A" />
 
-  <!-- Open Graph / Facebook -->
+  <!-- Open Graph / Facebook / LinkedIn -->
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://debugtodeploy.com/" />
-  <meta property="og:title" content="DebugToDeploy | Master DevOps with AI" />
+  <meta property="og:url" content="https://www.debugtodeploy.com/" />
+  <meta property="og:site_name" content="DebugToDeploy" />
+  <meta property="og:title" content="AI DevOps Roadmap & Cloud Engineering Labs | DebugToDeploy" />
   <meta property="og:description"
-    content="Accelerate your engineering career with AI-powered roadmaps, interactive cloud labs, and professional portfolios." />
-  <meta property="og:image" content="https://debugtodeploy.com/og-image.png" />
+    content="Accelerate your engineering career with AI-powered personalized roadmaps, interactive cloud labs, and professional portfolios. Master Kubernetes, AWS, and Terraform." />
+  <meta property="og:image" content="https://www.debugtodeploy.com/og-image.png" />
+  <meta property="og:image:alt" content="DebugToDeploy AI Learning Platform" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="en_US" />
 
-  <!-- Twitter -->
-  <meta property="twitter:card" content="summary_large_image" />
-  <meta property="twitter:url" content="https://debugtodeploy.com/" />
-  <meta property="twitter:title" content="DebugToDeploy | Master DevOps with AI" />
-  <meta property="twitter:description"
-    content="Accelerate your engineering career with AI-powered roadmaps, interactive cloud labs, and professional portfolios." />
-  <meta property="twitter:image" content="https://debugtodeploy.com/og-image.png" />
+  <!-- Twitter / X Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://www.debugtodeploy.com/" />
+  <meta name="twitter:title" content="AI DevOps Roadmap & Cloud Engineering Labs | DebugToDeploy" />
+  <meta name="twitter:description"
+    content="Accelerate your engineering career with AI-powered personalized roadmaps and hands-on cloud labs. Master SRE and DevOps workflows." />
+  <meta name="twitter:image" content="https://www.debugtodeploy.com/og-image.png" />
+  <meta name="twitter:image:alt" content="DebugToDeploy AI Learning Platform" />
 
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/favicon.svg" />
+
+  <!-- Structured Data: WebSite (enables Google sitelinks search) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "DebugToDeploy",
+    "url": "https://www.debugtodeploy.com/",
+    "description": "AI-accelerated learning platform for DevOps, SRE, and Cloud Engineers.",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://www.debugtodeploy.com/?q={search_term_string}"
+      },
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+
+  <!-- Structured Data: SoftwareApplication -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "DebugToDeploy",
+    "applicationCategory": "EducationalApplication",
+    "operatingSystem": "Web",
+    "url": "https://www.debugtodeploy.com/",
+    "description": "AI-powered DevOps and Cloud Engineering learning platform with personalized roadmaps, interactive labs, mock interviews, and professional portfolios.",
+    "offers": [
+      {
+        "@type": "Offer",
+        "name": "Free Plan",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      {
+        "@type": "Offer",
+        "name": "Pro Monthly",
+        "price": "6",
+        "priceCurrency": "USD",
+        "billingIncrement": "P1M"
+      }
+    ]
+  }
+  </script>
+
+  <!-- Content Security Policy -->
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://cdn.razorpay.com https://va.vercel-scripts.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://api.razorpay.com https://lumberjack.razorpay.com https://vitals.vercel-insights.com https://formspree.io; frame-src https://api.razorpay.com https://checkout.razorpay.com; img-src 'self' data: blob: https://*.supabase.co https://*.razorpay.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;">
-  <title>Debug to Deploy</title>
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://cdn.razorpay.com https://va.vercel-scripts.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://lumberjack.razorpay.com https://vitals.vercel-insights.com https://formspree.io; frame-src https://api.razorpay.com https://checkout.razorpay.com; img-src 'self' data: blob: https://*.supabase.co https://*.razorpay.com https://*.googleusercontent.com https://*.githubusercontent.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;">
 </head>
 
 <body>

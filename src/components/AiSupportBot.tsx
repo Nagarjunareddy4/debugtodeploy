@@ -69,9 +69,13 @@ export default function AiSupportBot() {
       4. Be interactive, one-to-one, and professional.
       5. If complex, say: 'Please submit a Support Request on our Support page so our squad can assist you directly.'`;
 
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch('/api/openai-proxy?path=v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [

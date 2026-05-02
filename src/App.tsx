@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import { Toaster } from 'react-hot-toast';
 import { Brain, Sparkles, Zap, ShieldCheck, Terminal as TerminalIcon, Map } from 'lucide-react';
 import Sidebar from './components/layout/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -20,7 +21,8 @@ import ResetPassword from './pages/ResetPassword';
 import Support from './pages/Support';
 import AiSupportBot from './components/AiSupportBot';
 import { supabase } from './lib/supabase';
-import { getObjectHash } from './lib/utils';
+import { cn, getObjectHash } from './lib/utils';
+import { syncUsageStats } from './lib/usageLimit';
 import { generateUserCurriculum, generateUserDocs, generateUserCertificates, isAllContentStale } from './lib/generator';
 // Map icon strings to components for loading animation
 const iconMap: Record<string, any> = {
@@ -42,6 +44,7 @@ export default function App() {
       setSession(session);
       setLoading(false);
       if (session?.user) {
+        syncUsageStats();
         syncProfile(session.user);
       }
     });
@@ -51,6 +54,7 @@ export default function App() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session?.user) {
+        syncUsageStats();
         syncProfile(session.user);
       }
     });
@@ -124,6 +128,13 @@ export default function App() {
 
       // Check if we need to generate dynamic curriculum
       if (latestProfile) {
+        // If the user hasn't generated a roadmap yet, they are still in onboarding.
+        // Do not generate default curriculum and do not hijack the screen.
+        if (!latestProfile.roadmap_data || latestProfile.roadmap_data === '{}' || latestProfile.roadmap_data === '{"stages":[]}') {
+          setIsGenerating(false);
+          return;
+        }
+
         let roadmapGoal = 'DevOps Engineering';
         let experienceLevel = 'intermediate';
         let currentVersion: string | undefined;
@@ -175,11 +186,12 @@ export default function App() {
   return (
     <Router>
       <div className="flex min-h-screen">
+        <a href="#main-content" className="skip-link">Skip to main content</a>
         {session ? (
           <>
             <Sidebar />
             <div className="flex-1 flex flex-col overflow-hidden">
-              <main className="flex-1 p-8 overflow-y-auto main-content">
+              <main id="main-content" className="flex-1 p-8 overflow-y-auto main-content">
                 <Routes>
                   <Route path="/p/:username" element={<PublicPortfolio />} />
                   <Route path="/" element={<Dashboard />} />
@@ -215,6 +227,19 @@ export default function App() {
           </Routes>
         )}
       </div>
+      <Toaster 
+        position="bottom-right" 
+        toastOptions={{
+          className: 'playful-card text-xs font-bold shadow-2xl',
+          style: {
+            background: 'var(--color-surface)',
+            color: 'var(--color-text-main)',
+            border: '4px solid var(--color-border)',
+            borderRadius: '1.5rem',
+            padding: '16px',
+          },
+        }} 
+      />
     </Router>
   );
 }
