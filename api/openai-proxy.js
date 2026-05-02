@@ -36,6 +36,7 @@ export default async function handler(req) {
   // Verify token with Supabase
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return new Response(JSON.stringify({ error: 'Server configuration error.' }), {
@@ -104,6 +105,49 @@ export default async function handler(req) {
       status: 403,
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+
+  // --- Server-side rate limiting (security hardening) ---
+  try {
+    const dbKey = supabaseServiceKey || supabaseAnonKey;
+    const profileRes = await fetch(
+      `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=subscription_status,last_roadmap_generated_at`,
+      {
+        headers: {
+          apikey: dbKey,
+          Authorization: `Bearer ${dbKey}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (profileRes.ok) {
+      const profiles = await profileRes.json();
+      const profile = profiles?.[0];
+
+      if (profile && profile.subscription_status !== 'pro') {
+        // Detect roadmap generation requests by checking prompt content
+        const promptContent = JSON.stringify(body?.messages || []).toLowerCase();
+        const isRoadmapRequest = promptContent.includes('roadmap') && promptContent.includes('stages');
+
+        if (isRoadmapRequest && profile.last_roadmap_generated_at) {
+          const lastGen = new Date(profile.last_roadmap_generated_at);
+          const now = new Date();
+          const diffDays = (now.getTime() - lastGen.getTime()) / (1000 * 60 * 60 * 24);
+          if (diffDays < 3) {
+            return new Response(JSON.stringify({
+              error: 'Free tier: Roadmap generation is limited. Please wait before generating again, or upgrade to Pro.'
+            }), {
+              status: 429,
+              headers: { 'Content-Type': 'application/json' },
+            });
+          }
+        }
+      }
+    }
+  } catch (rateLimitErr) {
+    // Non-blocking: if rate limit check fails, allow the request through
+    console.warn('Rate limit check failed (non-blocking):', rateLimitErr);
   }
 
   // --- OpenAI API Key ---

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Compass, Sparkles, CheckCircle2, Loader2, ChevronRight, Zap, Target, BookOpen, RefreshCw, Lock, X, ExternalLink, Brain } from 'lucide-react';
-import { cn, getObjectHash } from '../lib/utils';
+import { cn, getObjectHash, usePageTitle } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
 import { updateReadinessScore } from '../lib/readiness';
@@ -27,6 +27,7 @@ interface RoadmapData {
 }
 
 export default function Roadmap() {
+  usePageTitle('AI Roadmap');
   const location = useLocation();
   const navigate = useNavigate();
   const hasTriggeredRef = useRef(false);
@@ -140,6 +141,21 @@ export default function Roadmap() {
 
     if (isLimitReached('roadmap', activeIsPro)) {
       setLimitError(getLimitMessage('roadmap', activeIsPro));
+      return;
+    }
+
+    // Validate goal is DevOps/SRE/Cloud related
+    const relevantKeywords = [
+      'devops', 'sre', 'cloud', 'platform', 'infrastructure', 'reliability',
+      'automation', 'linux', 'kubernetes', 'k8s', 'docker', 'aws', 'azure',
+      'gcp', 'terraform', 'ansible', 'jenkins', 'cicd', 'ci/cd', 'architect',
+      'engineer', 'admin', 'operations', 'security', 'devsecops', 'deploy',
+      'container', 'microservice', 'monitoring', 'observability', 'network'
+    ];
+    const goalLower = activeGoal.toLowerCase();
+    const isRelevantGoal = relevantKeywords.some(kw => goalLower.includes(kw));
+    if (!isRelevantGoal) {
+      setGenerateError('Target Destination must be related to DevOps, SRE, or Cloud Engineering (e.g. "DevOps Engineer", "Cloud Architect").');
       return;
     }
 
@@ -336,7 +352,7 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
               initial={{ y: 60, opacity: 0, scale: 0.96 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 60, opacity: 0, scale: 0.96 }}
-              transition={{ type: 'spring', damping: 22, stiffness: 260 }}
+              transition={{ type: 'spring', damping: 22, stiffness: 260 } as const}
               onClick={e => e.stopPropagation()}
               className="w-full max-w-2xl max-h-[85vh] bg-surface rounded-[2.5rem] border-2 border-soft-blue/20 shadow-3xl flex flex-col overflow-hidden"
             >
@@ -463,7 +479,7 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
                   Keep Current
                 </button>
                 <button
-                  onClick={generateRoadmap}
+                  onClick={() => generateRoadmap()}
                   className="flex-1 py-3 bg-text-main text-surface rounded-full font-black text-sm hover:bg-soft-orange transition-colors"
                 >
                   {isBlocked ? '🔒 Locked' : 'Generate New'}

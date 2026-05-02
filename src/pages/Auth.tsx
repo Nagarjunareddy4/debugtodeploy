@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { usePageTitle } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { LogIn, UserPlus, AlertCircle, Github, Chrome, Rocket, Sparkles, ShieldCheck, Zap, Brain } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { toast } from 'react-hot-toast';
 
 export default function Auth() {
+  usePageTitle('Sign In');
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [identifier, setIdentifier] = useState(''); // email or username
   const [password, setPassword] = useState('');
@@ -86,6 +88,20 @@ export default function Auth() {
 
         if (emailTaken) {
           throw new Error('This email is already registered. Please sign in instead.');
+        }
+
+        // Password strength validation
+        if (password.length < 8) {
+          throw new Error('Password must be at least 8 characters long.');
+        }
+        if (!/[A-Z]/.test(password)) {
+          throw new Error('Password must contain at least one uppercase letter.');
+        }
+        if (!/[0-9]/.test(password)) {
+          throw new Error('Password must contain at least one number.');
+        }
+        if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+          throw new Error('Password must contain at least one special character (!@#$%^&*...).');
         }
 
         const { data, error } = await supabase.auth.signUp({
@@ -195,7 +211,7 @@ export default function Auth() {
           transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
           className="absolute -bottom-[10%] -right-[10%] w-[60%] h-[60%] bg-soft-purple/10 rounded-full blur-[120px]"
         />
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.03]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(147,197,253,0.04)_1px,transparent_1px)] bg-[length:20px_20px]" />
       </div>
 
       <motion.div

@@ -7,9 +7,10 @@ import toast from 'react-hot-toast';
 
 interface OnboardingModalProps {
   isOpen: boolean;
+  onDismiss?: () => void;
 }
 
-export default function OnboardingModal({ isOpen }: OnboardingModalProps) {
+export default function OnboardingModal({ isOpen, onDismiss }: OnboardingModalProps) {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [experience, setExperience] = useState('Beginner');
@@ -21,11 +22,11 @@ export default function OnboardingModal({ isOpen }: OnboardingModalProps) {
 
   const handleDismiss = () => {
     localStorage.setItem('hasSeenOnboarding', 'true');
-    // We need a way to tell the parent (Dashboard) that we've dismissed it
-    // since 'isOpen' is controlled by 'isNewUser' in Dashboard.
-    // The easiest way is to reload or just wait for the state change if we had a prop.
-    // For now, let's just force a refresh or assume the user will navigate.
-    window.location.reload(); 
+    if (onDismiss) {
+      onDismiss();
+    } else {
+      window.location.reload();
+    }
   };
 
   const handleComplete = () => {

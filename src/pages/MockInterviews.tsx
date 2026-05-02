@@ -61,7 +61,7 @@ export default function MockInterviews() {
   const [roadmapGoal, setRoadmapGoal] = useState('AI roadmap');
   const [sessionQuestions, setSessionQuestions] = useState<string[]>([]);
   const [isPro, setIsPro] = useState(false);
-  const [interviewScenarios, setInterviewScenarios] = useState<GeneratedInterview[]>([]);
+  const [interviewScenarios, setInterviewScenarios] = useState<(GeneratedInterview & { sessionState?: any })[]>([]);
   const [loading, setLoading] = useState(true);
   const [interviewScores, setInterviewScores] = useState<Record<string, number>>({});
   const [userAnswer, setUserAnswer] = useState('');
@@ -493,6 +493,7 @@ Be specific, constructive, and encouraging.`;
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
+            transition={{ type: 'spring', stiffness: 100 } as const}
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
           >
             {interviewScenarios.length === 0 ? (
@@ -565,6 +566,7 @@ Be specific, constructive, and encouraging.`;
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.05 }}
+            transition={{ type: 'spring', stiffness: 100 } as const}
             className="space-y-6"
           >
             {/* Mode selector + header */}

@@ -6,7 +6,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { Joyride, Step } from 'react-joyride';
 import { supabase } from '../lib/supabase';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
-import { cn } from '../lib/utils';
+import { cn, usePageTitle } from '../lib/utils';
 import OnboardingModal from '../components/OnboardingModal';
 import { Avatar } from '../components/ui/Avatar';
 import { toast } from 'react-hot-toast';
@@ -47,12 +47,12 @@ export default function Dashboard() {
   const [quickGoal, setQuickGoal] = useState('');
   const [isUpdatingGoal, setIsUpdatingGoal] = useState(false);
   const [runTour, setRunTour] = useState(false);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
 
   const tourSteps: Step[] = [
     {
       target: '.tour-step-search',
       content: 'Start here! Ask our AI expert anything about DevOps or Cloud Engineering.',
-      disableBeacon: true,
     },
     {
       target: '.tour-step-lab',
@@ -202,10 +202,12 @@ export default function Dashboard() {
     setIsSearching(true);
     setAiResponse(null);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch('/api/openai-proxy?path=v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
@@ -265,8 +267,10 @@ export default function Dashboard() {
   const displayName = profile?.full_name || profile?.username || profile?.email?.split('@')[0] || 'Engineer';
   const firstName = displayName.split(' ')[0];
   const isPro = profile?.subscription_status === 'pro';
+  usePageTitle('Dashboard');
   const searchesLeft = getRemainingUsage('search', isPro);
   const isNewUser = !profileLoading && 
+    !onboardingDismissed &&
     profile && 
     !localStorage.getItem('hasSeenOnboarding') &&
     (!profile?.roadmap_data || profile.roadmap_data === '{}' || profile.roadmap_data === '{"stages":[]}');
@@ -294,7 +298,7 @@ export default function Dashboard() {
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100 } }
+    visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100 } as const }
   };
 
   return (
@@ -308,8 +312,6 @@ export default function Dashboard() {
         steps={tourSteps}
         run={runTour}
         continuous
-        showProgress
-        showSkipButton
         styles={{
           options: {
             primaryColor: '#3B82F6',
@@ -337,9 +339,9 @@ export default function Dashboard() {
             fontSize: '10px',
             color: '#64748B',
           }
-        }}
+        } as any}
       />
-      <OnboardingModal isOpen={isNewUser} />
+      <OnboardingModal isOpen={isNewUser} onDismiss={() => setOnboardingDismissed(true)} />
 
       <AnimatePresence>
         {showSuccess && (

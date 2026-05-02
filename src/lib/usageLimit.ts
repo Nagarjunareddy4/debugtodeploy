@@ -58,6 +58,47 @@ export function getUsageCount(action: string, isPro: boolean = false): number {
   return parseInt(localStorage.getItem(key) || '0', 10);
 }
 
+export async function syncUsageStats(): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('subscription_status, last_roadmap_generated_at')
+      .eq('id', user.id)
+      .single();
+
+    const isPro = profile?.subscription_status === 'pro';
+    
+    // Fetch detailed usage stats if table exists
+    const { data: stats } = await supabase
+      .from('usage_tracking')
+      .select('action, usage_key, count')
+      .eq('user_id', user.id);
+
+    if (stats) {
+      stats.forEach(stat => {
+        localStorage.setItem(stat.usage_key, String(stat.count));
+      });
+    }
+
+    // Special handling for roadmap cooldown which is server-side driven
+    if (profile?.last_roadmap_generated_at) {
+      const lastGen = new Date(profile.last_roadmap_generated_at);
+      const now = new Date();
+      const diffDays = (now.getTime() - lastGen.getTime()) / (1000 * 60 * 60 * 24);
+      if (diffDays < 7 && !isPro) {
+        // Force the roadmap count to be at least the limit to block client-side UI
+        const key = weekKey('roadmap');
+        localStorage.setItem(key, '2');
+      }
+    }
+  } catch (err) {
+    console.warn('Usage sync failed:', err);
+  }
+}
+
 export async function incrementUsage(action: string, isPro: boolean = false): Promise<void> {
   if (isPro) return; 
   const key = usageKey(action, isPro);
@@ -69,11 +110,15 @@ export async function incrementUsage(action: string, isPro: boolean = false): Pr
   // Background sync to Database (Hardening)
   const { data: { user } } = await supabase.auth.getUser();
   if (user) {
-    await supabase.rpc('increment_usage_stats', { 
-      u_id: user.id, 
-      u_action: action, 
-      u_key: key 
-    }).catch(err => console.warn('Usage sync failed:', err));
+    try {
+      await supabase.rpc('increment_usage_stats', { 
+        u_id: user.id, 
+        u_action: action, 
+        u_key: key 
+      });
+    } catch (err) {
+      console.warn('Usage sync failed:', err);
+    }
   }
 }
 
@@ -97,7 +142,7 @@ export function getLimitMessage(action: string, isPro: boolean = false): string 
   }
 
   const messages: Record<string, string> = {
-    roadmap: `Weekly limit of 2 AI Roadmap generations reached. Upgrade to Pro for 100 generations/month.`,
+    roadmap: `Weekly limit of 2 AI Roadmap generations reached. Upgrade to Pro for unlimited access.`,
     search: `Daily limit of 2 AI Assistant searches reached. Come back tomorrow or Upgrade to Pro for unlimited search.`,
     lab: `Weekly limit of 2 Cloud Labs reached. Upgrade to Pro to unlock unlimited practical environments.`,
     interview: `Weekly limit of 1 Mock Interview reached. Upgrade to Pro for unlimited interview practice.`,

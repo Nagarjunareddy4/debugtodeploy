@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { Check, Zap, Star, Shield, Rocket, ArrowRight, CreditCard, Sparkles, Crown } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, usePageTitle } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 
 interface Plan {
@@ -17,6 +17,7 @@ interface Plan {
 }
 
 export default function Pricing() {
+  usePageTitle('Pricing');
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<any>(null);

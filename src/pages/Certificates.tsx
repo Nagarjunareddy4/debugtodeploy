@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Award, Cloud, ShieldCheck, Zap, Terminal, ExternalLink, Loader2, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { generateUserCertificates, GeneratedCertificate } from '../lib/generator';
-import { cn, getObjectHash } from '../lib/utils';
+import { cn, getObjectHash, usePageTitle } from '../lib/utils';
 import { isLimitReached, incrementUsage, getLimitMessage } from '../lib/usageLimit';
 
 const iconMap: Record<string, any> = {
@@ -15,6 +15,7 @@ const iconMap: Record<string, any> = {
 };
 
 export default function Certificates() {
+  usePageTitle('Certifications');
   const [certificates, setCertificates] = useState<GeneratedCertificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);

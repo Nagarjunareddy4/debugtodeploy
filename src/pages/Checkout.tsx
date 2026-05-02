@@ -21,7 +21,7 @@ import {
   RefreshCw,
   X
 } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, usePageTitle } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 
 interface PaymentMethod {
@@ -57,6 +57,7 @@ const paymentMethods: PaymentMethod[] = [
 ];
 
 export default function Checkout() {
+  usePageTitle('Secure Checkout');
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedMethod, setSelectedMethod] = useState<string>('upi');

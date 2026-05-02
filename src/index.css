@@ -33,6 +33,14 @@
     min-height: 100vh;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
+
+  :focus-visible {
+    @apply outline-none ring-4 ring-soft-blue ring-offset-4 ring-offset-brand-bg;
+  }
+
+  .skip-link {
+    @apply sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-6 focus:py-3 focus:bg-text-main focus:text-surface focus:rounded-full focus:font-black focus:uppercase focus:tracking-widest focus:shadow-2xl;
+  }
 }
 
 @layer components {

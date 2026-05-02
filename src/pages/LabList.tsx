@@ -13,7 +13,7 @@ import {
   Brain
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { cn } from '../lib/utils';
+import { cn, usePageTitle } from '../lib/utils';
 import { GeneratedLab } from '../lib/generator';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
 
@@ -28,6 +28,7 @@ const iconMap: Record<string, any> = {
 };
 
 export default function LabList() {
+  usePageTitle('Cloud Sandbox');
   const navigate = useNavigate();
   const [completedLabsCount, setCompletedLabsCount] = useState(0);
   const [labsData, setLabsData] = useState<GeneratedLab[]>([]);
