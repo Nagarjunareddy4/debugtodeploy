@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Compass, Sparkles, CheckCircle2, Loader2, ChevronRight, Zap, Target, BookOpen, RefreshCw, Lock, X, ExternalLink, Brain } from 'lucide-react';
+import { Compass, Sparkles, CheckCircle2, Loader2, ChevronRight, Zap, Target, BookOpen, RefreshCw, Lock, X, ExternalLink, Brain, AlertTriangle } from 'lucide-react';
 import { cn, getObjectHash, usePageTitle } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
@@ -523,6 +523,34 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
           {limitError}
         </div>
       )}
+
+      <AnimatePresence>
+        {loading && (
+          <motion.div
+            initial={{ height: 0, opacity: 0, marginBottom: 0 }}
+            animate={{ height: 'auto', opacity: 1, marginBottom: 24 }}
+            exit={{ height: 0, opacity: 0, marginBottom: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="flex items-center gap-4 p-4 sm:p-6 bg-soft-orange/10 border-4 border-soft-orange/30 rounded-[2rem] text-soft-orange shadow-xl relative overflow-hidden group">
+               <motion.div 
+                 animate={{ opacity: [0.05, 0.15, 0.05] }}
+                 transition={{ duration: 2, repeat: Infinity }}
+                 className="absolute inset-0 bg-soft-orange"
+               />
+               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-soft-orange/20 rounded-2xl flex items-center justify-center shrink-0 relative z-10">
+                  <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
+               </div>
+               <div className="space-y-1 relative z-10">
+                  <h4 className="font-black text-xs sm:text-base uppercase tracking-tighter">AI Synthesis in Progress</h4>
+                  <p className="text-[8px] sm:text-[10px] font-bold opacity-80 leading-relaxed uppercase tracking-widest">
+                    Critical logic being synchronized. **Please do not refresh or navigate away** to prevent sequence corruption.
+                  </p>
+               </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {/* Config panel — always visible so user can change params */}
