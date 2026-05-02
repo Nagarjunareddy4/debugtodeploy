@@ -101,6 +101,19 @@ export default function Sidebar() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  // Body scroll lock on mobile when sidebar is open
+  useEffect(() => {
+    const isMobile = window.innerWidth < 1024;
+    if (isOpen && isMobile) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
   const fetchProfile = async (id: string) => {
     // Get both the profile row AND auth metadata in parallel
     const [{ data }, { data: { user } }] = await Promise.all([

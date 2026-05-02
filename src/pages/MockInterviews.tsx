@@ -73,45 +73,71 @@ export default function MockInterviews() {
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        supabase.from('profiles').select('*').eq('id', user.id).single().then(({ data }) => {
-          if (data) {
-            setProfile(data);
-            setIsPro(data.subscription_status === 'pro');
-            if (data.generated_interviews) {
-              const interviews = data.generated_interviews as (GeneratedInterview & { sessionState?: any })[];
-              setInterviewScenarios(interviews);
-              
-              // Check if there's an active session in any scenario
-              const activeSession = interviews.find(i => i.sessionState?.isActive);
-              if (activeSession) {
-                setSelectedScenario(activeSession);
-                setSessionQuestions(activeSession.sessionState.questions);
-                setCurrentQuestion(activeSession.sessionState.currentIndex);
-                setHistory(activeSession.sessionState.history || []);
-                setCompletedQuestions(new Set(activeSession.sessionState.completedIndices || []));
-                setActiveTab('session');
-              }
-            }
-            if (data.interview_scores) {
-              setInterviewScores(data.interview_scores);
-            }
-            if (data.roadmap_data) {
-              try {
-                const roadmap = typeof data.roadmap_data === 'string' ? JSON.parse(data.roadmap_data) : data.roadmap_data;
-                setRoadmapGoal(roadmap.goal || roadmap.title || 'AI roadmap');
-              } catch {
-                setRoadmapGoal('AI roadmap');
-              }
+    const fetchAndSubscribe = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const fetchProfileData = async () => {
+        const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+        if (data) {
+          setProfile(data);
+          setIsPro(data.subscription_status === 'pro');
+          if (data.generated_interviews) {
+            setInterviewScenarios(data.generated_interviews);
+            const activeSession = (data.generated_interviews as any[]).find(i => i.sessionState?.isActive);
+            if (activeSession) {
+              setSelectedScenario(activeSession);
+              setSessionQuestions(activeSession.sessionState.questions);
+              setCurrentQuestion(activeSession.sessionState.currentIndex);
+              setHistory(activeSession.sessionState.history || []);
+              setCompletedQuestions(new Set(activeSession.sessionState.completedIndices || []));
+              setActiveTab('session');
             }
           }
-          setLoading(false);
-        });
-      } else {
+          if (data.interview_scores) setInterviewScores(data.interview_scores);
+          if (data.roadmap_data) {
+            try {
+              const roadmap = typeof data.roadmap_data === 'string' ? JSON.parse(data.roadmap_data) : data.roadmap_data;
+              setRoadmapGoal(roadmap.goal || roadmap.title || 'AI roadmap');
+            } catch { }
+          }
+        }
         setLoading(false);
-      }
-    });
+      };
+
+      await fetchProfileData();
+
+      // Real-time subscription to profile changes
+      const channel = supabase
+        .channel('interviews-profile-sync')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload) => {
+          if (payload.new) {
+            setIsPro(payload.new.subscription_status === 'pro');
+            if (payload.new.generated_interviews) {
+              setInterviewScenarios(payload.new.generated_interviews);
+            }
+            if (payload.new.roadmap_data) {
+              try {
+                const roadmap = typeof payload.new.roadmap_data === 'string' ? JSON.parse(payload.new.roadmap_data) : payload.new.roadmap_data;
+                setRoadmapGoal(roadmap.goal || roadmap.title || 'AI roadmap');
+              } catch { }
+            }
+          }
+        })
+        .subscribe();
+
+      return channel;
+    };
+
+    let channelRef: any;
+    fetchAndSubscribe().then(channel => { channelRef = channel; });
+
+    return () => {
+      if (channelRef) supabase.removeChannel(channelRef);
+    };
   }, []);
 
   const speak = (text: string) => {

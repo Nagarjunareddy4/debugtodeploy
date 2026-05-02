@@ -37,6 +37,33 @@ export default function LabList() {
 
   useEffect(() => {
     fetchUserData();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) fetchUserData();
+    });
+
+    // Real-time subscription to profile changes for curriculum updates
+    const channel = supabase
+      .channel('lablist-profile-sync')
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'profiles' 
+      }, (payload) => {
+        if (payload.new) {
+          setCompletedLabsCount(payload.new.labs_completed || 0);
+          setIsPro(payload.new.subscription_status === 'pro');
+          if (payload.new.generated_labs) {
+            setLabsData(payload.new.generated_labs);
+          }
+        }
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchUserData = async () => {
