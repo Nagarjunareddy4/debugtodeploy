@@ -5,10 +5,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { LogIn, UserPlus, AlertCircle, Github, Chrome, Rocket, Sparkles, ShieldCheck, Zap, Brain } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { toast } from 'react-hot-toast';
+import ConsentCheckbox from '../components/ConsentCheckbox';
+import { saveUserConsent } from '../lib/consent';
 
 export default function Auth() {
   usePageTitle('Sign In');
-  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot' | 'verify'>('login');
   const [identifier, setIdentifier] = useState(''); // email or username
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -21,6 +23,8 @@ export default function Auth() {
   const [emailTaken, setEmailTaken] = useState(false);
   const [checking, setChecking] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptedConsent, setAcceptedConsent] = useState(false);
+  const [highlightConsent, setHighlightConsent] = useState(false);
 
   // Real-time availability checks (debounced)
   useEffect(() => {
@@ -55,6 +59,20 @@ export default function Auth() {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (authMode === 'signup' && !acceptedConsent) {
+      toast.error('Please accept the Privacy Policy and Terms & Conditions to continue.', {
+        icon: '🛡️',
+        style: {
+          borderRadius: '1rem',
+          background: '#0F172A',
+          color: '#fff',
+          border: '1px solid rgba(255,255,255,0.1)'
+        }
+      });
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setMessage(null);
@@ -123,12 +141,16 @@ export default function Auth() {
           throw error;
         }
 
+        if (data.user) {
+          // Consent is handled by the initial state, but we save it upon signup
+          await saveUserConsent(data.user.id);
+        }
+
         if (data.session) {
           await supabase.auth.signOut({ scope: 'global' });
         }
 
-        toast.success('Account created successfully! Please sign in.');
-        setAuthMode('login');
+        setAuthMode('verify');
         setPassword('');
       } else if (authMode === 'forgot') {
         if (!identifier.includes('@')) {
@@ -155,10 +177,14 @@ export default function Auth() {
         });
 
         if (error) throw error;
-        setMessage('Reset link sent! Please check your email.');
+        setMessage('Reset link sent! Valid for 30 minutes. Please check your inbox.');
       }
     } catch (err: any) {
-      setError(err.message);
+      if (err.message?.toLowerCase().includes('email not confirmed')) {
+        setAuthMode('verify');
+      } else {
+        setError(err.message);
+      }
     } finally {
       clearTimeout(timeout);
       setLoading(false);
@@ -169,6 +195,7 @@ export default function Auth() {
     setLoading(true);
     setError(null);
     const timeout = setTimeout(() => setLoading(false), 5000);
+
 
     try {
       // Clear any cached sessions to force fresh login
@@ -220,9 +247,8 @@ export default function Auth() {
         animate={{ opacity: 1, y: 0 }}
         className="relative z-10 w-full max-w-[calc(100vw-2rem)] xl:max-w-[70rem] min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-8 lg:gap-0 bg-white/90 dark:bg-[#0D172A]/70 backdrop-blur-2xl border border-slate-200/60 dark:border-white/10 shadow-[0_32px_128px_-16px_rgba(15,23,42,0.22)] rounded-[2rem] sm:rounded-[3rem] overflow-auto my-4 md:my-8"
       >
-        {/* Left Side: Branding & Features (Hidden on mobile or integrated) */}
+        {/* Left Side: Branding & Features */}
         <div className="hidden lg:flex flex-col justify-between p-16 bg-[#0B0F1A] text-white relative overflow-hidden">
-          {/* Decorative elements for left panel */}
           <div className="absolute top-0 right-0 w-80 h-80 bg-soft-blue/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
           <div className="absolute bottom-0 left-0 w-80 h-80 bg-soft-purple/20 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
 
@@ -285,11 +311,9 @@ export default function Auth() {
 
         {/* Right Side: Auth Form */}
         <div className="p-6 sm:p-10 lg:p-16 flex flex-col justify-center">
-          {/* Mobile Logo Only */}
           <motion.div
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
             className="lg:hidden flex flex-col items-center mb-8 group cursor-pointer"
           >
             <motion.div
@@ -306,251 +330,315 @@ export default function Auth() {
 
           <div className="mb-8 text-center lg:text-left">
             <h2 className="text-3xl font-black tracking-tight mb-2">
-              {authMode === 'login' ? "Welcome Back" : authMode === 'signup' ? "Start Journey" : "Reset Access"}
+              {authMode === 'login' ? "Welcome Back" : authMode === 'signup' ? "Start Journey" : authMode === 'forgot' ? "Reset Access" : "Verify Email"}
             </h2>
             <p className="text-text-dim font-bold text-sm">
               {authMode === 'login'
                 ? "Continue your ascent to DevOps mastery."
                 : authMode === 'signup'
                   ? "Join the elite fleet of infrastructure architects."
-                  : "We'll send a recovery beacon to your registered email."}
+                  : authMode === 'forgot'
+                    ? "We'll send a recovery beacon to your registered email."
+                    : "Check your inbox to activate your clearance."}
             </p>
           </div>
 
-          {authMode !== 'forgot' && (
-            <>
-              <div className="grid grid-cols-2 gap-4 mb-8">
-                <motion.button
-                  whileHover={{ y: -4, backgroundColor: "rgba(255,255,255,0.05)" }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => signInWithSocial('google')}
-                  disabled={loading}
-                  className="flex items-center justify-center gap-3 px-6 py-4 bg-white/5 border-2 border-white/5 rounded-3xl text-sm font-black uppercase tracking-widest hover:border-soft-blue/30 transition-all disabled:opacity-50"
-                >
-                  <Chrome className="w-5 h-5 text-soft-blue" /> Google
-                </motion.button>
-                <motion.button
-                  whileHover={{ y: -4, backgroundColor: "rgba(255,255,255,0.05)" }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => signInWithSocial('github')}
-                  disabled={loading}
-                  className="flex items-center justify-center gap-3 px-6 py-4 bg-white/5 border-2 border-white/5 rounded-3xl text-sm font-black uppercase tracking-widest hover:border-soft-purple/30 transition-all disabled:opacity-50"
-                >
-                  <Github className="w-5 h-5 text-soft-purple" /> GitHub
-                </motion.button>
+          {authMode === 'verify' ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center space-y-6 py-8"
+            >
+              <div className="w-20 h-20 bg-soft-blue/10 rounded-full flex items-center justify-center mx-auto border border-soft-blue/20">
+                <ShieldCheck className="w-10 h-10 text-soft-blue" />
               </div>
+              <div className="space-y-4">
+                <h3 className="text-xl font-black tracking-tight text-white">Action Required</h3>
+                <p className="text-text-dim text-sm font-bold leading-relaxed">
+                  We've sent a verification link to <span className="text-soft-blue">{identifier || 'your email'}</span>.<br/>
+                  Please click the link in the email to activate your account and gain access to the platform.
+                </p>
+              </div>
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setAuthMode('login')}
+                className="w-full mt-6 bg-white/5 border border-white/10 text-white flex items-center justify-center py-4 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-colors"
+              >
+                Back to Login
+              </motion.button>
+            </motion.div>
+          ) : (
+            <>
+              {authMode !== 'forgot' && (
+                <div className="space-y-4 mb-8">
+                  <AnimatePresence>
+                    {authMode === 'signup' && !acceptedConsent && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="flex items-center justify-center gap-2 mb-2"
+                      >
+                        <ShieldCheck className="w-3 h-3 text-soft-blue animate-blink" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-soft-blue animate-blink">
+                          Please check the policy box below to continue
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <motion.button
+                      whileHover={{ y: -4, backgroundColor: "rgba(255,255,255,0.05)" }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => signInWithSocial('google')}
+                      disabled={loading}
+                      className={cn(
+                        "flex items-center justify-center gap-3 px-6 py-4 border-2 rounded-3xl text-sm font-black uppercase tracking-widest transition-all",
+                        loading 
+                          ? "opacity-50 cursor-not-allowed text-white/30" 
+                          : "bg-white/5 border-white/5 hover:border-soft-blue/30 cursor-pointer text-white"
+                      )}
+                    >
+                      <Chrome className="w-5 h-5 text-soft-blue" /> Google
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ y: -4, backgroundColor: "rgba(255,255,255,0.05)" }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => signInWithSocial('github')}
+                      disabled={loading}
+                      className={cn(
+                        "flex items-center justify-center gap-3 px-6 py-4 border-2 rounded-3xl text-sm font-black uppercase tracking-widest transition-all",
+                        loading 
+                          ? "opacity-50 cursor-not-allowed text-white/30" 
+                          : "bg-white/5 border-white/5 hover:border-soft-purple/30 cursor-pointer text-white"
+                      )}
+                    >
+                      <Github className="w-5 h-5 text-soft-purple" /> GitHub
+                    </motion.button>
+                  </div>
 
-              <div className="relative mb-8">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t-2 border-white/5"></div>
+                  <div className="relative mb-8">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t-2 border-white/5"></div>
+                    </div>
+                    <div className="relative flex justify-center text-[10px] uppercase font-black tracking-[0.4em]">
+                      <span className="bg-[#0D172A] lg:bg-transparent px-4 text-text-dim leading-none">Credentials</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="relative flex justify-center text-[10px] uppercase font-black tracking-[0.4em]">
-                  <span className="bg-brand-bg lg:bg-transparent px-4 text-text-dim leading-none">Credentials</span>
+              )}
+
+              <form onSubmit={handleAuth} className="space-y-6">
+
+                <AnimatePresence mode="wait">
+                  {authMode === 'signup' && (
+                    <motion.div
+                      key="signup-fields"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="space-y-6 overflow-hidden"
+                    >
+                      <div className="space-y-2">
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black ml-4">Full Name</label>
+                        <input
+                          type="text"
+                          required
+                          className="w-full bg-white/5 border-2 border-white/5 rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm text-white"
+                          placeholder="John Smith"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center px-4">
+                          <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black">Username</label>
+                          {username.length >= 3 && !checking && (
+                            <span className={cn("text-[9px] font-black uppercase tracking-widest", usernameTaken ? "text-soft-red" : "text-soft-green")}>
+                              {usernameTaken ? '• Taken' : '• Available'}
+                            </span>
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          required
+                          className={cn(
+                            "w-full bg-white/5 border-2 rounded-3xl px-8 py-4 outline-hidden transition-all font-mono font-bold text-sm text-white",
+                            username.length >= 3 && !checking && (usernameTaken ? "border-soft-red/50" : "border-soft-green/50"),
+                            (!username) && "border-white/5"
+                          )}
+                          placeholder="devops_master"
+                          value={username}
+                          onChange={(e) => setUsername(e.target.value)}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center px-4">
+                    <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black">
+                      {authMode === 'signup' ? 'Email Address' : authMode === 'forgot' ? 'Registered Email' : 'Identity (Email/Username)'}
+                    </label>
+                    {authMode === 'signup' && identifier.includes('@') && !checking && (
+                      <span className={cn("text-[9px] font-black uppercase tracking-widest", emailTaken ? "text-soft-red" : "text-soft-green")}>
+                        {emailTaken ? '• Registered' : '• Unique'}
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    type={authMode === 'login' ? "text" : "email"}
+                    required
+                    className={cn(
+                      "w-full bg-white/5 border-2 rounded-3xl px-8 py-4 outline-hidden transition-all font-bold text-sm text-white",
+                      authMode === 'signup' && identifier.includes('@') && !checking && (emailTaken ? "border-soft-red/50" : "border-soft-green/50"),
+                      (!identifier || authMode !== 'signup') && "border-white/5"
+                    )}
+                    placeholder="engineer@debugtodeploy.com"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                  />
                 </div>
+
+                {authMode !== 'forgot' && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center px-4">
+                      <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black">Password</label>
+                      {authMode === 'login' && (
+                        <button
+                          type="button"
+                          onClick={() => setAuthMode('forgot')}
+                          className="text-[9px] font-black uppercase tracking-widest text-soft-blue hover:text-white transition-colors"
+                        >
+                          Forgot Password?
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative group/pass">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        className="w-full bg-white/5 border-2 border-white/5 rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm text-white pr-14"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-white/5 transition-colors cursor-pointer z-10"
+                      >
+                        <AnimatePresence mode="wait" initial={false}>
+                          <motion.span
+                            key={showPassword ? 'show' : 'hide'}
+                            initial={{ scale: 0.5, opacity: 0, rotate: -20 }}
+                            animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                            exit={{ scale: 0.5, opacity: 0, rotate: 20 }}
+                            transition={{ type: "spring", stiffness: 700, damping: 30 }}
+                            className="text-xl select-none"
+                          >
+                            {showPassword ? '👁️' : '🙈'}
+                          </motion.span>
+                        </AnimatePresence>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {authMode === 'signup' && (
+                  <div className={cn("transition-all duration-500", highlightConsent && "scale-105 ring-4 ring-soft-blue/20 rounded-2xl")}>
+                    <ConsentCheckbox 
+                      checked={acceptedConsent} 
+                      onChange={setAcceptedConsent} 
+                      disabled={loading}
+                    />
+                  </div>
+                )}
+
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="space-y-4"
+                  >
+                    <div className="flex items-center gap-3 p-5 bg-soft-red/10 border-2 border-soft-red/20 rounded-[2rem] text-soft-red font-bold text-xs">
+                      <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                      <p className="leading-relaxed">{error}</p>
+                    </div>
+                    {emailNotRegistered && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthMode('signup');
+                          setError(null);
+                          setEmailNotRegistered(false);
+                        }}
+                        className="w-full py-4 bg-soft-blue/10 border-2 border-soft-blue/20 rounded-[2rem] text-soft-blue font-black text-[10px] uppercase tracking-[0.2em] hover:bg-soft-blue/20 transition-all flex items-center justify-center gap-2"
+                      >
+                        <UserPlus className="w-4 h-4" /> Join the Squad Instead
+                      </button>
+                    )}
+                  </motion.div>
+                )}
+
+                {message && (
+                  <div className="flex items-center gap-3 p-5 bg-soft-green/10 border-2 border-soft-green/20 rounded-[2rem] text-soft-green font-bold text-xs">
+                    <ShieldCheck className="w-5 h-5 flex-shrink-0" />
+                    <p className="leading-relaxed">{message}</p>
+                  </div>
+                )}
+
+                <motion.button
+                  type="submit"
+                  disabled={loading || (authMode === 'signup' && !acceptedConsent)}
+                  whileHover={!loading && (authMode !== 'signup' || acceptedConsent) ? { scale: 1.02 } : {}}
+                  whileTap={!loading && (authMode !== 'signup' || acceptedConsent) ? { scale: 0.98 } : {}}
+                  className={cn(
+                    "w-full flex items-center justify-center gap-3 py-6 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all group",
+                    loading || (authMode === 'signup' && !acceptedConsent)
+                      ? "bg-white/10 text-white/30 cursor-not-allowed shadow-none"
+                      : "bg-text-main text-surface shadow-2xl shadow-soft-blue/20 hover:bg-soft-blue"
+                  )}
+                >
+                  {loading ? (
+                    <div className="w-6 h-6 border-4 border-surface/30 border-t-surface rounded-full animate-spin" />
+                  ) : authMode === 'login' ? (
+                    <><LogIn className="w-5 h-5 group-hover:translate-x-1 transition-transform" /> START LEARNING</>
+                  ) : authMode === 'signup' ? (
+                    <><UserPlus className="w-5 h-5 group-hover:scale-110 transition-transform" /> JOIN THE SQUAD</>
+                  ) : (
+                    <><Sparkles className="w-5 h-5 group-hover:animate-pulse" /> SEND RECOVERY LINK</>
+                  )}
+                </motion.button>
+              </form>
+
+              <div className="mt-8 pt-6 border-t border-white/5 text-center lg:text-left space-y-4">
+                <p className="text-xs font-bold text-white">
+                  <span className="text-text-dim">
+                    {authMode === 'login' ? "New to the fleet?" : authMode === 'signup' ? "Already an architect?" : "Remembered your key?"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode(authMode === 'signup' ? 'login' : authMode === 'forgot' ? 'login' : 'signup');
+                      setError(null);
+                      setMessage(null);
+                    }}
+                    className="ml-2 text-soft-blue hover:text-white transition-colors underline underline-offset-4 decoration-2"
+                  >
+                    {authMode === 'login' ? "CREATE ACCOUNT" : authMode === 'signup' ? "SIGN IN" : "BACK TO LOGIN"}
+                  </button>
+                </p>
               </div>
             </>
           )}
-
-          <form onSubmit={handleAuth} className="space-y-6">
-            <AnimatePresence mode="wait">
-              {authMode === 'signup' && (
-                <motion.div
-                  key="signup-fields"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="space-y-6 overflow-hidden"
-                >
-                  <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black ml-4">Full Name</label>
-                    <input
-                      type="text"
-                      required
-                      className="w-full bg-white/5 border-2 border-white/5 rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm"
-                      placeholder="John Smith"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center px-4">
-                      <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black">Username</label>
-                      {authMode === 'signup' && username.length >= 3 && !checking && (
-                        <span className={cn("text-[9px] font-black uppercase tracking-widest", usernameTaken ? "text-soft-red" : "text-soft-green")}>
-                          {usernameTaken ? '• Taken' : '• Available'}
-                        </span>
-                      )}
-                    </div>
-                    <input
-                      type="text"
-                      required
-                      className={cn(
-                        "w-full bg-white/5 border-2 rounded-3xl px-8 py-4 outline-hidden transition-all font-mono font-bold text-sm",
-                        authMode === 'signup' && username.length >= 3 && !checking && (usernameTaken ? "border-soft-red/50" : "border-soft-green/50"),
-                        (!username || authMode !== 'signup') && "border-white/5"
-                      )}
-                      placeholder="devops_master"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                    />
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div className="space-y-2">
-              <div className="flex justify-between items-center px-4">
-                <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black">
-                  {authMode === 'signup' ? 'Email Address' : authMode === 'forgot' ? 'Registered Email' : 'Identity (Email/Username)'}
-                </label>
-                {authMode === 'signup' && identifier.includes('@') && !checking && (
-                  <span className={cn("text-[9px] font-black uppercase tracking-widest", emailTaken ? "text-soft-red" : "text-soft-green")}>
-                    {emailTaken ? '• Registered' : '• Unique'}
-                  </span>
-                )}
-              </div>
-              <input
-                type={authMode === 'login' ? "text" : "email"}
-                required
-                className={cn(
-                  "w-full bg-white/5 border-2 rounded-3xl px-8 py-4 outline-hidden transition-all font-bold text-sm",
-                  authMode === 'signup' && identifier.includes('@') && !checking && (emailTaken ? "border-soft-red/50" : "border-soft-green/50"),
-                  (!identifier || authMode !== 'signup') && "border-white/5"
-                )}
-                placeholder={authMode === 'signup' ? "engineer@debugtodeploy.com" : "engineer@debugtodeploy.com"}
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-              />
-            </div>
-
-            {authMode !== 'forgot' && (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center px-4">
-                  <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black">Password</label>
-                  {authMode === 'login' && (
-                    <button
-                      type="button"
-                      onClick={() => setAuthMode('forgot')}
-                      className="text-[9px] font-black uppercase tracking-widest text-soft-blue hover:text-white transition-colors"
-                    >
-                      Forgot Password?
-                    </button>
-                  )}
-                </div>
-                <div className="relative group/pass">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    required
-                    className="w-full bg-white/5 border-2 border-white/5 rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm pr-14"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-white/5 transition-colors cursor-pointer z-10"
-                  >
-                    <AnimatePresence mode="wait" initial={false}>
-                      <motion.span
-                        key={showPassword ? 'show' : 'hide'}
-                        initial={{ scale: 0.5, opacity: 0, rotate: -20 }}
-                        animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                        exit={{ scale: 0.5, opacity: 0, rotate: 20 }}
-                        transition={{ type: "spring", stiffness: 700, damping: 30 }}
-                        className="text-xl select-none"
-                      >
-                        {showPassword ? '👁️' : '🙈'}
-                      </motion.span>
-                    </AnimatePresence>
-                  </button>
-                  <div className="absolute inset-0 rounded-3xl bg-soft-blue/5 opacity-0 group-focus-within/pass:opacity-100 transition-opacity pointer-events-none" />
-                </div>
-              </div>
-            )}
-
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="space-y-4"
-              >
-                <div className="flex items-center gap-3 p-5 bg-soft-red/10 border-2 border-soft-red/20 rounded-[2rem] text-soft-red font-bold text-xs">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                  <p className="leading-relaxed">{error}</p>
-                </div>
-
-                {emailNotRegistered && (
-                  <motion.button
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    type="button"
-                    onClick={() => {
-                      setAuthMode('signup');
-                      setError(null);
-                      setEmailNotRegistered(false);
-                    }}
-                    className="w-full py-4 bg-soft-blue/10 border-2 border-soft-blue/20 rounded-[2rem] text-soft-blue font-black text-[10px] uppercase tracking-[0.2em] hover:bg-soft-blue/20 transition-all flex items-center justify-center gap-2"
-                  >
-                    <UserPlus className="w-4 h-4" /> Join the Squad Instead
-                  </motion.button>
-                )}
-              </motion.div>
-            )}
-
-            {message && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex items-center gap-3 p-5 bg-soft-green/10 border-2 border-soft-green/20 rounded-[2rem] text-soft-green font-bold text-xs"
-              >
-                <ShieldCheck className="w-5 h-5 flex-shrink-0" />
-                <p className="leading-relaxed">{message}</p>
-              </motion.div>
-            )}
-
-            <motion.button
-              type="submit"
-              disabled={loading}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full bg-text-main text-surface flex items-center justify-center gap-3 py-6 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] shadow-2xl shadow-soft-blue/20 transition-all hover:bg-soft-blue group"
-            >
-              {loading ? (
-                <div className="w-6 h-6 border-4 border-surface/30 border-t-surface rounded-full animate-spin" />
-              ) : authMode === 'login' ? (
-                <><LogIn className="w-5 h-5 group-hover:translate-x-1 transition-transform" /> START DEPLOYING</>
-              ) : authMode === 'signup' ? (
-                <><UserPlus className="w-5 h-5 group-hover:scale-110 transition-transform" /> JOIN THE SQUAD</>
-              ) : (
-                <><Sparkles className="w-5 h-5 group-hover:animate-pulse" /> SEND RECOVERY LINK</>
-              )}
-            </motion.button>
-          </form>
-
-          {/* Footer Toggle */}
-          <div className="mt-8 pt-6 border-t border-white/5 text-center lg:text-left space-y-4">
-            <p className="text-xs font-bold">
-              <span className="text-text-dim">
-                {authMode === 'login' ? "New to the fleet?" : authMode === 'signup' ? "Already an architect?" : "Remembered your key?"}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMode(authMode === 'signup' ? 'login' : authMode === 'forgot' ? 'login' : 'signup');
-                  setError(null);
-                  setMessage(null);
-                }}
-                className="ml-2 text-soft-blue hover:text-white transition-colors underline underline-offset-4 decoration-2"
-              >
-                {authMode === 'login' ? "CREATE ACCOUNT" : authMode === 'signup' ? "SIGN IN" : "BACK TO LOGIN"}
-              </button>
-            </p>
-          </div>
         </div>
       </motion.div>
 
-      {/* Bottom Credits */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

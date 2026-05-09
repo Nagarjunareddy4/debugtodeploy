@@ -1,0 +1,79 @@
+{
+  "expo": {
+    "name": "DebugToDeploy",
+    "slug": "debugtodeploy-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/logo.jpg",
+    "scheme": "debugtodeploy",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/logo.jpg",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0B"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.debugtodeploy.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/logo.jpg",
+        "backgroundColor": "#0A0A0B"
+      },
+      "package": "com.debugtodeploy.app",
+      "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.INTERNET"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/logo.jpg"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/logo.jpg",
+          "color": "#00D2FF"
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/logo.jpg",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0A0A0B"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "2.1.0",
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "minSdkVersion": 24,
+            "enableProguardInReleaseBuilds": true
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c4ae150a-2326-43d8-ba8f-803107821a5e"
+      },
+      "router": {}
+    },
+    "owner": "naga_4"
+  }
+}

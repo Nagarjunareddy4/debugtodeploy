@@ -11,6 +11,8 @@ export default function Support() {
   const [feedbackComment, setFeedbackComment] = useState('');
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [profile, setProfile] = useState<any>(null);
+  const [selectedSubject, setSelectedSubject] = useState('Technical Issue / Bug');
+  const [customSubject, setCustomSubject] = useState('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -92,7 +94,7 @@ export default function Support() {
           transition={{ delay: 0.2 }}
           className="text-text-dim font-bold uppercase tracking-widest text-sm max-w-2xl"
         >
-          Facing a transmission error or need a technical brief? Our squad is on standby to assist you with your deployment journey.
+          Facing a transmission error or need a technical brief? Our squad is on standby to assist you with your learning journey.
         </motion.p>
       </motion.header>
 
@@ -111,10 +113,11 @@ export default function Support() {
             <h3 className="text-xl font-black mb-2">Email Dispatch</h3>
             <p className="text-text-dim text-sm font-bold mb-4">Direct uplink to our support engineers for complex technical issues.</p>
             <a
-              href="mailto:nagarjunareddy9995@gmail.com"
-              className="text-soft-blue font-black text-sm uppercase tracking-widest hover:underline flex items-center gap-2 break-all"
+              href="mailto:debugtodeploy@gmail.com"
+              className="mt-6 flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-soft-blue/30 transition-all group/btn"
             >
-              nagarjunareddy9995@gmail.com <ArrowRight className="w-4 h-4 shrink-0" />
+              <span className="text-[11px] sm:text-sm font-bold break-all pr-2">debugtodeploy@gmail.com</span>
+              <ArrowRight className="w-4 h-4 shrink-0" />
             </a>
           </div>
 
@@ -242,15 +245,51 @@ export default function Support() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-dim ml-2">Subject</label>
-                    <select name="subject" className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 font-bold outline-none focus:border-soft-blue transition-colors appearance-none">
-                      <option>Technical Issue / Bug</option>
-                      <option>Subscription / Payment Inquiry</option>
-                      <option>Account Access</option>
-                      <option>Feature Request</option>
-                      <option>Other</option>
-                    </select>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-text-dim ml-2">Subject Category</label>
+                      <select 
+                        name="subject_category" 
+                        value={selectedSubject}
+                        onChange={(e) => setSelectedSubject(e.target.value)}
+                        className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 font-bold outline-none focus:border-soft-blue transition-colors appearance-none cursor-pointer"
+                      >
+                        <option>Technical Issue / Bug</option>
+                        <option>Subscription / Payment Inquiry</option>
+                        <option>Account Access</option>
+                        <option>Feature Request</option>
+                        <option>Other / Custom</option>
+                      </select>
+                    </div>
+
+                    <AnimatePresence>
+                      {selectedSubject === 'Other / Custom' && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="space-y-2 overflow-hidden"
+                        >
+                          <label className="text-[10px] font-black uppercase tracking-widest text-soft-blue ml-2">Custom Subject</label>
+                          <input 
+                            type="text"
+                            name="custom_subject"
+                            required
+                            placeholder="Enter your specific subject..."
+                            value={customSubject}
+                            onChange={(e) => setCustomSubject(e.target.value)}
+                            className="w-full bg-brand-bg border-2 border-soft-blue/30 rounded-2xl px-6 py-4 font-bold outline-none focus:border-soft-blue transition-colors"
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Hidden input to combine subjects for Formspree */}
+                    <input 
+                      type="hidden" 
+                      name="subject" 
+                      value={selectedSubject === 'Other / Custom' ? customSubject : selectedSubject} 
+                    />
                   </div>
 
                   <div className="space-y-2">

@@ -199,7 +199,13 @@ export default function Sidebar() {
 
             {profile && profile.subscription_status !== 'pro' && (
               <div className="px-2 mt-8">
-                <div className="relative overflow-hidden rounded-3xl p-6 border-2 border-soft-orange/30 group cursor-pointer transition-all hover:border-soft-orange" onClick={() => navigate('/pricing')}>
+                <div 
+                  className="relative overflow-hidden rounded-3xl p-6 border-2 border-soft-orange/30 group cursor-pointer transition-all hover:border-soft-orange" 
+                  onClick={() => {
+                    navigate('/pricing');
+                    setIsOpen(false);
+                  }}
+                >
                   <div className="absolute inset-0 bg-linear-to-br from-soft-orange/10 to-soft-purple/10 group-hover:opacity-100 opacity-50 transition-opacity" />
                   <div className="absolute top-0 right-0 w-24 h-24 bg-soft-orange/20 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform" />
                   

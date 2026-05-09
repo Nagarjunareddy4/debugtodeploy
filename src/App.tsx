@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Toaster } from 'react-hot-toast';
 import { Brain, Sparkles, Zap, ShieldCheck, Terminal as TerminalIcon, Map } from 'lucide-react';
@@ -19,7 +19,11 @@ import Portfolio from './pages/Portfolio';
 import PublicPortfolio from './pages/PublicPortfolio';
 import ResetPassword from './pages/ResetPassword';
 import Support from './pages/Support';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
 import AiSupportBot from './components/AiSupportBot';
+import SplashScreen from './components/common/SplashScreen';
+import ConsentModal from './components/ConsentModal';
 import { supabase } from './lib/supabase';
 import { cn, getObjectHash } from './lib/utils';
 import { syncUsageStats } from './lib/usageLimit';
@@ -36,35 +40,52 @@ const iconMap: Record<string, any> = {
 export default function App() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-      if (session?.user) {
-        syncUsageStats();
-        syncProfile(session.user);
-      }
+      checkSession(session);
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session?.user) {
-        syncUsageStats();
-        syncProfile(session.user);
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        // Force navigation to reset password and bypass normal auth checks temporarily
+        window.location.hash = ''; // Clear hash just in case
+        window.history.replaceState({}, document.title, '/reset-password');
+        setSession(session); // We need the session to update the password
+        setLoading(false);
+        return;
       }
+      checkSession(session);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
+  const checkSession = async (session: any) => {
+    // Enforce email verification for email signups
+    if (session?.user && session.user.app_metadata?.provider === 'email' && !session.user.email_confirmed_at) {
+      await supabase.auth.signOut();
+      setSession(null);
+      setLoading(false);
+      return;
+    }
+
+    setSession(session);
+    setLoading(false);
+    if (session?.user) {
+      syncUsageStats();
+      syncProfile(session.user);
+    }
+  };
+
   // Update loading step continuously while generating
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: any;
     if (isGenerating) {
       interval = setInterval(() => {
         setLoadingStep((prev) => (prev + 1) % 5);
@@ -177,72 +198,96 @@ export default function App() {
     }
   };
 
-  if (loading) return null;
-
-  if (isGenerating) {
-    return <GenerationScreen />;
-  }
+  if (loading && !showSplash) return null;
 
   return (
-    <Router>
-      <div className="flex min-h-screen">
-        <a href="#main-content" className="skip-link">Skip to main content</a>
-        {session ? (
-          <>
-            <Sidebar />
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <main id="main-content" className="flex-1 p-8 overflow-y-auto main-content">
-                <Routes>
-                  <Route path="/p/:username" element={<PublicPortfolio />} />
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/roadmap" element={<Roadmap />} />
-                  <Route path="/portfolio" element={<Portfolio />} />
-                  <Route path="/labs" element={<LabList />} />
-                  <Route path="/labs/:id" element={<LabDetail />} />
-                  <Route path="/interviews" element={<MockInterviews />} />
-                  <Route path="/certificates" element={<Certificates />} />
-                  <Route path="/learning" element={<Learning />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/pricing" element={<Pricing />} />
-                  <Route path="/checkout" element={<Checkout />} />
-                  <Route path="/support" element={<Support />} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="*" element={<Navigate to="/" />} />
-                </Routes>
-              </main>
-              <AiSupportBot />
-              <footer className="shrink-0 border-t border-border bg-surface/50 backdrop-blur-sm py-3 px-8">
-                <p className="text-center text-[9px] text-text-dim/50 font-bold tracking-widest">
-                  © {new Date().getFullYear()} Nagarjunareddy Annapureddy. All rights reserved.
-                </p>
-              </footer>
-            </div>
-          </>
+    <>
+      {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
+      {!showSplash && (
+        isGenerating ? (
+          <GenerationScreen />
         ) : (
-          <Routes>
-            <Route path="/p/:username" element={<PublicPortfolio />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="*" element={<Navigate to="/auth" />} />
-          </Routes>
-        )}
-      </div>
-      <Toaster 
-        position="bottom-right" 
-        toastOptions={{
-          className: 'playful-card text-xs font-bold shadow-2xl',
-          style: {
-            background: 'var(--color-surface)',
-            color: 'var(--color-text-main)',
-            border: '4px solid var(--color-border)',
-            borderRadius: '1.5rem',
-            padding: '16px',
-          },
-        }} 
-      />
-    </Router>
+          <Router>
+            <div className="flex min-h-screen">
+              <a href="#main-content" className="skip-link">Skip to main content</a>
+              
+              <Routes>
+                {/* Top-level standalone routes (No Sidebar ever) */}
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/p/:username" element={<PublicPortfolio />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/terms" element={<Terms />} />
+
+                {/* Conditional Layouts based on Auth */}
+                <Route path="*" element={
+                  session ? (
+                    <>
+                      <Sidebar />
+                      <div className="flex-1 flex flex-col overflow-hidden">
+                        <main id="main-content" className="flex-1 p-8 overflow-y-auto main-content">
+                          <Routes>
+                            <Route path="/" element={<Dashboard />} />
+                            <Route path="/roadmap" element={<Roadmap />} />
+                            <Route path="/portfolio" element={<Portfolio />} />
+                            <Route path="/labs" element={<LabList />} />
+                            <Route path="/labs/:id" element={<LabDetail />} />
+                            <Route path="/interviews" element={<MockInterviews />} />
+                            <Route path="/certificates" element={<Certificates />} />
+                            <Route path="/learning" element={<Learning />} />
+                            <Route path="/settings" element={<Settings />} />
+                            <Route path="/pricing" element={<Pricing />} />
+                            <Route path="/checkout" element={<Checkout />} />
+                            <Route path="/support" element={<Support />} />
+                            <Route path="*" element={<Navigate to="/" />} />
+                          </Routes>
+                        </main>
+                        <AiSupportBot />
+                        <footer className="shrink-0 border-t border-border bg-surface/50 backdrop-blur-sm py-3 px-8">
+                          <p className="text-center text-[9px] text-text-dim/50 font-bold tracking-widest">
+                            © {new Date().getFullYear()} Nagarjunareddy Annapureddy. All rights reserved.
+                          </p>
+                        </footer>
+                      </div>
+                    </>
+                  ) : (
+                    <Routes>
+                      <Route path="/auth" element={<Auth />} />
+                      <Route path="*" element={<Navigate to="/auth" />} />
+                    </Routes>
+                  )
+                } />
+              </Routes>
+              <ConditionalConsentModal session={session} />
+            </div>
+            <Toaster 
+              position="bottom-right" 
+              toastOptions={{
+                className: 'playful-card text-xs font-bold shadow-2xl',
+                style: {
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text-main)',
+                  border: '4px solid var(--color-border)',
+                  borderRadius: '1.5rem',
+                  padding: '16px',
+                },
+              }} 
+            />
+          </Router>
+        )
+      )}
+    </>
   );
 }
+
+function ConditionalConsentModal({ session }: { session: any }) {
+  const location = useLocation();
+  const isLegalPage = ['/privacy', '/terms'].includes(location.pathname);
+  
+  if (!session || isLegalPage) return null;
+  return <ConsentModal />;
+}
+
+
 
 function GenerationScreen() {
   const [activeFeature, setActiveFeature] = useState(0);

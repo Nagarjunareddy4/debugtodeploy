@@ -112,14 +112,15 @@
   100% { transform: translateX(-50%) translateY(-50%) rotate(360deg); }
 }
 
-@keyframes flicker {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(0.95); }
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
-.animate-flicker {
-  animation: flicker 2s ease-in-out infinite;
+.animate-blink {
+  animation: blink 1.2s ease-in-out infinite;
 }
+
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar { width: 6px; }

@@ -222,7 +222,14 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
         return;
       }
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseErr) {
+        // This catches Vercel 500 HTML error pages ("An error occurred with this application.")
+        throw new Error('The server timed out or returned an invalid response while generating the roadmap. Please try again.');
+      }
+
       if (data.error) throw new Error(typeof data.error === 'string' ? data.error : data.error.message || 'AI service error.');
 
       const text = data.choices?.[0]?.message?.content || '{}';
