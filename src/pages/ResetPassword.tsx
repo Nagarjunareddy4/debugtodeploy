@@ -12,6 +12,56 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [isExpired, setIsExpired] = useState(false);
+  const [checkingLink, setCheckingLink] = useState(true);
+
+  useEffect(() => {
+    const checkLinkExpiration = async () => {
+      setCheckingLink(true);
+      
+      // Get the current session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        // If no session, the link might be invalid or already used/expired by Supabase
+        setIsExpired(true);
+        setCheckingLink(false);
+        return;
+      }
+
+      try {
+        // Call the RPC to get the recovery_sent_at timestamp
+        const { data, error: rpcError } = await supabase.rpc('get_recovery_info');
+        
+        if (rpcError) throw rpcError;
+
+        if (data && data[0]?.recovery_sent_at) {
+          const sentAt = new Date(data[0].recovery_sent_at).getTime();
+          const now = new Date().getTime();
+          const diffMinutes = (now - sentAt) / (1000 * 60);
+
+          if (diffMinutes > 30) {
+            setIsExpired(true);
+            // Sign out because this session is technically "expired" by our rules
+            await supabase.auth.signOut();
+          }
+        } else {
+          // If no recovery_sent_at found but we have a session, 
+          // it might be a normal session (not from a recovery link).
+          // We should probably redirect to auth if they didn't come from a recovery event.
+          // But for now, let's just assume if it's missing, the link is invalid.
+          setIsExpired(true);
+        }
+      } catch (err) {
+        console.error('Error checking link expiration:', err);
+        setIsExpired(true);
+      } finally {
+        setCheckingLink(false);
+      }
+    };
+
+    checkLinkExpiration();
+  }, []);
 
   // Password Policy Checks
   const hasMinLength = password.length >= 12;
@@ -41,7 +91,16 @@ export default function ResetPassword() {
 
 
       setSuccess(true);
-      setTimeout(() => navigate('/auth'), 3000);
+      setTimeout(() => {
+        // Attempt to deep link back to the mobile app if on mobile
+        if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
+          window.location.href = 'debugtodeploy://';
+          // Fallback to web login after a short delay if app isn't installed
+          setTimeout(() => navigate('/auth'), 1000);
+        } else {
+          navigate('/auth');
+        }
+      }, 3000);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -68,7 +127,37 @@ export default function ResetPassword() {
           <p className="text-text-dim font-bold text-sm">Forge a stronger key for your DevOps vault.</p>
         </div>
 
-        {success ? (
+        {checkingLink ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-4">
+            <div className="w-12 h-12 border-4 border-soft-blue/30 border-t-soft-blue rounded-full animate-spin" />
+            <p className="text-text-dim font-bold text-xs uppercase tracking-widest">Validating Recovery Beacon...</p>
+          </div>
+        ) : isExpired ? (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center space-y-8 py-4"
+          >
+            <div className="w-20 h-20 bg-soft-red/10 rounded-full flex items-center justify-center mx-auto border border-soft-red/20">
+              <XCircle className="w-10 h-10 text-soft-red" />
+            </div>
+            <div className="space-y-4">
+              <h3 className="text-xl font-black tracking-tight text-soft-red">Link Expired</h3>
+              <p className="text-text-dim text-sm font-bold leading-relaxed">
+                Security protocols require reset links to be used within 30 minutes. 
+                This beacon has gone dark.
+              </p>
+            </div>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate('/auth')}
+              className="w-full py-6 bg-white/5 border border-white/10 text-white rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] hover:bg-white/10 transition-colors"
+            >
+              Request New Link
+            </motion.button>
+          </motion.div>
+        ) : success ? (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
