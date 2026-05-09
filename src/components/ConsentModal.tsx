@@ -84,7 +84,7 @@ export default function ConsentModal() {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-lg bg-[#0D172A] border border-white/10 rounded-[2.5rem] shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)] overflow-hidden my-auto"
+            className="relative w-full max-w-lg bg-surface border border-border rounded-[2.5rem] shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)] overflow-hidden my-auto"
           >
             {/* Decoration */}
             <div className="absolute top-0 right-0 w-40 h-40 bg-soft-blue/10 rounded-full blur-[60px] -translate-y-1/2 translate-x-1/2" />
@@ -95,12 +95,12 @@ export default function ConsentModal() {
                 <ShieldCheck className="w-10 h-10 text-soft-blue" />
               </div>
               
-              <h2 className="text-3xl font-black tracking-tight text-white mb-4">
+              <h2 className="text-3xl font-black tracking-tight text-text-main mb-4">
                 Policy Update Required
               </h2>
               
               <p className="text-text-dim font-bold text-sm leading-relaxed mb-8">
-                We've updated our <span className="text-white">Privacy Policy</span> and <span className="text-white">Terms of Service</span> to better protect your data and enhance our AI features. Please review and accept them to continue using DebugToDeploy.
+                We've updated our <span className="text-text-main">Privacy Policy</span> and <span className="text-text-main">Terms of Service</span> to better protect your data and enhance our AI features. Please review and accept them to continue using DebugToDeploy.
               </p>
               
               <div className="w-full mb-8 text-left">
@@ -127,7 +127,7 @@ export default function ConsentModal() {
                   w-full flex items-center justify-center gap-3 py-5 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all
                   ${accepted && !loading 
                     ? "bg-text-main text-surface shadow-xl shadow-soft-blue/20 hover:bg-soft-blue" 
-                    : "bg-white/10 text-white/20 cursor-not-allowed"}
+                    : "bg-surface text-text-dim/20 cursor-not-allowed border border-border"}
                 `}
               >
                 {loading ? (

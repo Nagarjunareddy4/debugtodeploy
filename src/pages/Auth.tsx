@@ -353,7 +353,7 @@ export default function Auth() {
                 <ShieldCheck className="w-10 h-10 text-soft-blue" />
               </div>
               <div className="space-y-4">
-                <h3 className="text-xl font-black tracking-tight text-white">Action Required</h3>
+                <h3 className="text-xl font-black tracking-tight text-text-main">Action Required</h3>
                 <p className="text-text-dim text-sm font-bold leading-relaxed">
                   We've sent a verification link to <span className="text-soft-blue">{identifier || 'your email'}</span>.<br/>
                   Please click the link in the email to activate your account and gain access to the platform.
@@ -364,7 +364,7 @@ export default function Auth() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setAuthMode('login')}
-                className="w-full mt-6 bg-white/5 border border-white/10 text-white flex items-center justify-center py-4 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-colors"
+                className="w-full mt-6 bg-surface border border-border text-text-main flex items-center justify-center py-4 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-soft-blue/10 transition-colors"
               >
                 Back to Login
               </motion.button>
@@ -398,8 +398,8 @@ export default function Auth() {
                       className={cn(
                         "flex items-center justify-center gap-3 px-6 py-4 border-2 rounded-3xl text-sm font-black uppercase tracking-widest transition-all",
                         loading 
-                          ? "opacity-50 cursor-not-allowed text-white/30" 
-                          : "bg-white/5 border-white/5 hover:border-soft-blue/30 cursor-pointer text-white"
+                          ? "opacity-50 cursor-not-allowed text-text-dim/30" 
+                          : "bg-surface border-border hover:border-soft-blue/30 cursor-pointer text-text-main"
                       )}
                     >
                       <Chrome className="w-5 h-5 text-soft-blue" /> Google
@@ -412,8 +412,8 @@ export default function Auth() {
                       className={cn(
                         "flex items-center justify-center gap-3 px-6 py-4 border-2 rounded-3xl text-sm font-black uppercase tracking-widest transition-all",
                         loading 
-                          ? "opacity-50 cursor-not-allowed text-white/30" 
-                          : "bg-white/5 border-white/5 hover:border-soft-purple/30 cursor-pointer text-white"
+                          ? "opacity-50 cursor-not-allowed text-text-dim/30" 
+                          : "bg-surface border-border hover:border-soft-purple/30 cursor-pointer text-text-main"
                       )}
                     >
                       <Github className="w-5 h-5 text-soft-purple" /> GitHub
@@ -425,7 +425,7 @@ export default function Auth() {
                       <div className="w-full border-t-2 border-white/5"></div>
                     </div>
                     <div className="relative flex justify-center text-[10px] uppercase font-black tracking-[0.4em]">
-                      <span className="bg-[#0D172A] lg:bg-transparent px-4 text-text-dim leading-none">Credentials</span>
+                      <span className="bg-brand-bg lg:bg-transparent px-4 text-text-dim leading-none">Credentials</span>
                     </div>
                   </div>
                 </div>
@@ -447,7 +447,7 @@ export default function Auth() {
                         <input
                           type="text"
                           required
-                          className="w-full bg-white/5 border-2 border-white/5 rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm text-white"
+                          className="w-full bg-surface border-2 border-border rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm text-text-main"
                           placeholder="John Smith"
                           value={fullName}
                           onChange={(e) => setFullName(e.target.value)}
@@ -466,9 +466,9 @@ export default function Auth() {
                           type="text"
                           required
                           className={cn(
-                            "w-full bg-white/5 border-2 rounded-3xl px-8 py-4 outline-hidden transition-all font-mono font-bold text-sm text-white",
+                            "w-full bg-surface border-2 rounded-3xl px-8 py-4 outline-hidden transition-all font-mono font-bold text-sm text-text-main",
                             username.length >= 3 && !checking && (usernameTaken ? "border-soft-red/50" : "border-soft-green/50"),
-                            (!username) && "border-white/5"
+                            (!username) && "border-border"
                           )}
                           placeholder="devops_master"
                           value={username}
@@ -494,9 +494,9 @@ export default function Auth() {
                     type={authMode === 'login' ? "text" : "email"}
                     required
                     className={cn(
-                      "w-full bg-white/5 border-2 rounded-3xl px-8 py-4 outline-hidden transition-all font-bold text-sm text-white",
+                      "w-full bg-surface border-2 rounded-3xl px-8 py-4 outline-hidden transition-all font-bold text-sm text-text-main",
                       authMode === 'signup' && identifier.includes('@') && !checking && (emailTaken ? "border-soft-red/50" : "border-soft-green/50"),
-                      (!identifier || authMode !== 'signup') && "border-white/5"
+                      (!identifier || authMode !== 'signup') && "border-border"
                     )}
                     placeholder="engineer@debugtodeploy.com"
                     value={identifier}
@@ -512,7 +512,7 @@ export default function Auth() {
                         <button
                           type="button"
                           onClick={() => setAuthMode('forgot')}
-                          className="text-[9px] font-black uppercase tracking-widest text-soft-blue hover:text-white transition-colors"
+                          className="text-[9px] font-black uppercase tracking-widest text-soft-blue hover:text-text-main transition-colors"
                         >
                           Forgot Password?
                         </button>
@@ -522,7 +522,7 @@ export default function Auth() {
                       <input
                         type={showPassword ? "text" : "password"}
                         required
-                        className="w-full bg-white/5 border-2 border-white/5 rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm text-white pr-14"
+                        className="w-full bg-surface border-2 border-border rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm text-text-main pr-14"
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -600,7 +600,7 @@ export default function Auth() {
                   className={cn(
                     "w-full flex items-center justify-center gap-3 py-6 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all group",
                     loading || (authMode === 'signup' && !acceptedConsent)
-                      ? "bg-white/10 text-white/30 cursor-not-allowed shadow-none"
+                      ? "bg-surface text-text-dim/30 cursor-not-allowed shadow-none border border-border"
                       : "bg-text-main text-surface shadow-2xl shadow-soft-blue/20 hover:bg-soft-blue"
                   )}
                 >
@@ -617,7 +617,7 @@ export default function Auth() {
               </form>
 
               <div className="mt-8 pt-6 border-t border-white/5 text-center lg:text-left space-y-4">
-                <p className="text-xs font-bold text-white">
+                <p className="text-xs font-bold text-text-main">
                   <span className="text-text-dim">
                     {authMode === 'login' ? "New to the fleet?" : authMode === 'signup' ? "Already an architect?" : "Remembered your key?"}
                   </span>
@@ -628,7 +628,7 @@ export default function Auth() {
                       setError(null);
                       setMessage(null);
                     }}
-                    className="ml-2 text-soft-blue hover:text-white transition-colors underline underline-offset-4 decoration-2"
+                    className="ml-2 text-soft-blue hover:text-text-main transition-colors underline underline-offset-4 decoration-2"
                   >
                     {authMode === 'login' ? "CREATE ACCOUNT" : authMode === 'signup' ? "SIGN IN" : "BACK TO LOGIN"}
                   </button>

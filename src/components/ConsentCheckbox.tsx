@@ -15,7 +15,7 @@ export default function ConsentCheckbox({ checked, onChange, disabled }: Consent
       "flex items-start gap-4 p-4 rounded-2xl transition-all border-2",
       checked 
         ? "bg-soft-blue/5 border-soft-blue/20" 
-        : "bg-white/5 border-white/5 hover:border-white/10",
+        : "bg-surface border-border hover:border-soft-blue/10",
       disabled && "opacity-50 cursor-not-allowed"
     )}>
       <div className="relative flex items-center pt-0.5">
@@ -25,10 +25,10 @@ export default function ConsentCheckbox({ checked, onChange, disabled }: Consent
           checked={checked}
           onChange={(e) => onChange(e.target.checked)}
           disabled={disabled}
-          className="peer h-5 w-5 cursor-pointer appearance-none rounded-lg border-2 border-white/20 bg-white/5 transition-all checked:border-soft-blue checked:bg-soft-blue focus:outline-none disabled:cursor-not-allowed"
+          className="peer h-5 w-5 cursor-pointer appearance-none rounded-lg border-2 border-border bg-surface transition-all checked:border-soft-blue checked:bg-soft-blue focus:outline-none disabled:cursor-not-allowed"
         />
         <ShieldCheck 
-          className="pointer-events-none absolute left-0.5 top-0.5 h-4 w-4 text-white opacity-0 transition-opacity peer-checked:opacity-100" 
+          className="pointer-events-none absolute left-0.5 top-0.5 h-4 w-4 text-surface opacity-0 transition-opacity peer-checked:opacity-100" 
         />
       </div>
       
@@ -41,7 +41,7 @@ export default function ConsentCheckbox({ checked, onChange, disabled }: Consent
           href="/privacy" 
           target="_blank" 
           rel="noopener noreferrer"
-          className="text-soft-blue hover:text-white transition-colors inline-flex items-center gap-1 underline underline-offset-2"
+          className="text-soft-blue hover:text-text-main transition-colors inline-flex items-center gap-1 underline underline-offset-2"
           onClick={(e) => e.stopPropagation()}
         >
           Privacy Policy
@@ -51,7 +51,7 @@ export default function ConsentCheckbox({ checked, onChange, disabled }: Consent
           href="/terms" 
           target="_blank" 
           rel="noopener noreferrer"
-          className="text-soft-blue hover:text-white transition-colors inline-flex items-center gap-1 underline underline-offset-2"
+          className="text-soft-blue hover:text-text-main transition-colors inline-flex items-center gap-1 underline underline-offset-2"
           onClick={(e) => e.stopPropagation()}
         >
           Terms & Conditions

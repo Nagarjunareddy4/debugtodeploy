@@ -152,7 +152,7 @@ export default function ResetPassword() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => navigate('/auth')}
-              className="w-full py-6 bg-white/5 border border-white/10 text-white rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] hover:bg-white/10 transition-colors"
+              className="w-full py-6 bg-surface border border-border text-text-main rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] hover:bg-soft-blue/10 transition-colors"
             >
               Request New Link
             </motion.button>
@@ -179,7 +179,7 @@ export default function ResetPassword() {
                 <input
                   type="password"
                   required
-                  className="w-full bg-white/5 border-2 border-white/5 rounded-3xl px-8 py-4 outline-none focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm"
+                  className="w-full bg-surface border-2 border-border rounded-3xl px-8 py-4 outline-none focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm text-text-main"
                   placeholder="••••••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -191,7 +191,7 @@ export default function ResetPassword() {
                 <input
                   type="password"
                   required
-                  className="w-full bg-white/5 border-2 border-white/5 rounded-3xl px-8 py-4 outline-none focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm"
+                  className="w-full bg-surface border-2 border-border rounded-3xl px-8 py-4 outline-none focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm text-text-main"
                   placeholder="••••••••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -200,7 +200,7 @@ export default function ResetPassword() {
             </div>
 
             {/* Validation Checklist */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-6 bg-white/5 rounded-3xl border border-white/5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-6 bg-surface rounded-3xl border border-border">
               <ValidationItem isValid={hasMinLength} text="Min 12 Chars" />
               <ValidationItem isValid={hasUppercase} text="One Uppercase" />
               <ValidationItem isValid={hasNumber} text="Contains Number" />
@@ -224,7 +224,7 @@ export default function ResetPassword() {
                 "w-full py-6 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl",
                 isFormValid 
                   ? "bg-text-main text-surface hover:bg-soft-blue" 
-                  : "bg-white/5 text-text-dim cursor-not-allowed border border-white/5"
+                  : "bg-surface text-text-dim/30 cursor-not-allowed border border-border"
               )}
             >
               {loading ? (
