@@ -11,8 +11,8 @@ import { cn, useMeta } from '../lib/utils';
 
 export default function Landing({ session }: { session: any }) {
   useMeta(
-    'Master DevOps & Cloud Engineering', 
-    'Accelerate your engineering career with AI-powered roadmaps, interactive cloud labs, and professional technical portfolios.',
+    'DebugToDeploy | Master DevOps & Cloud Engineering', 
+    'DebugToDeploy is the AI-powered career accelerator for DevOps engineers. Master Kubernetes, AWS, and Terraform with personalized roadmaps and live cloud labs.',
     '/dashboard-mockup.png'
   );
 
@@ -54,9 +54,9 @@ export default function Landing({ session }: { session: any }) {
             transition={{ delay: 0.1 }}
             className="text-5xl md:text-8xl font-black italic tracking-tighter mb-8 leading-[0.9]"
           >
-            Accelerate Your <br />
+            DebugToDeploy: <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-soft-blue to-soft-purple">
-              DevOps Career
+              DevOps Accelerator
             </span>
           </motion.h1>
 
