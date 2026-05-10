@@ -44,7 +44,7 @@ export default function Landing({ session }: { session: any }) {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-soft-blue/10 border border-soft-blue/20 mb-8"
           >
             <Sparkles className="w-4 h-4 text-soft-blue" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-soft-blue">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-soft-blue">
               The AI-Powered DevOps Career Accelerator
             </span>
           </motion.div>
@@ -204,7 +204,7 @@ export default function Landing({ session }: { session: any }) {
                 </li>
               ))}
             </ul>
-            <button onClick={() => openAuth('signup')} className="btn-pill bg-white text-brand-bg px-10 py-5 text-sm uppercase tracking-widest hover:bg-soft-green transition-colors">
+            <button onClick={() => openAuth('signup')} className="btn-pill bg-white text-[#0B0F1A] px-10 py-5 text-sm uppercase tracking-widest hover:bg-soft-green transition-colors">
               Access All Labs
             </button>
           </div>
@@ -227,12 +227,12 @@ export default function Landing({ session }: { session: any }) {
                 </div>
              </div>
              {/* Floating badge */}
-             <div className="absolute -bottom-10 -left-10 playful-card bg-surface text-brand-bg border-4 border-soft-blue rotate-[-5deg] p-4">
+             <div className="absolute -bottom-10 -left-10 playful-card bg-surface border-4 border-soft-blue rotate-[-5deg] p-4">
                 <div className="flex items-center gap-3">
                     <Zap className="w-8 h-8 text-soft-orange" />
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-text-dim leading-none mb-1">Instant Access</p>
-                        <p className="text-lg font-black italic">0.2s Boot Time</p>
+                        <p className="text-lg font-black italic text-text-main">0.2s Boot Time</p>
                     </div>
                 </div>
              </div>
@@ -331,7 +331,7 @@ export default function Landing({ session }: { session: any }) {
               {/* Pro Tier */}
               <div className="playful-card border-4 border-soft-purple relative overflow-hidden bg-soft-purple/5 shadow-2xl shadow-soft-purple/10 p-12 flex flex-col items-center text-center">
                 <div className="absolute top-6 right-6">
-                   <div className="chip bg-soft-purple text-brand-bg shadow-lg shadow-soft-purple/20">Fleet Captain</div>
+                   <div className="chip bg-soft-purple text-[#0F172A] shadow-lg shadow-soft-purple/20">Fleet Captain</div>
                 </div>
                 <div className="mb-8">
                   <h3 className="text-2xl font-black italic mb-2">Fleet Captain (Pro)</h3>
@@ -444,7 +444,7 @@ export default function Landing({ session }: { session: any }) {
           <h2 className="text-5xl md:text-7xl font-black italic tracking-tighter text-surface leading-[0.9]">Ready to Become an <br /> <span className="text-soft-blue">Architect?</span></h2>
           <p className="text-surface/60 font-bold text-xl max-w-xl mx-auto">Join the 5,000+ engineers who are building the future of infrastructure.</p>
           <div className="flex flex-col sm:flex-row justify-center gap-6">
-            <button onClick={() => openAuth('signup')} className="btn-pill bg-soft-blue text-brand-bg px-12 py-6 text-base uppercase tracking-widest hover:bg-white transition-colors">
+            <button onClick={() => openAuth('signup')} className="btn-pill bg-soft-blue text-[#0F172A] px-12 py-6 text-base uppercase tracking-widest hover:bg-white transition-colors">
               Start Free Journey
             </button>
             <button onClick={() => openAuth('login')} className="btn-pill bg-transparent border-4 border-surface/20 text-surface px-12 py-6 text-base uppercase tracking-widest hover:border-surface transition-colors">
