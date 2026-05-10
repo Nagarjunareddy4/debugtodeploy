@@ -215,11 +215,25 @@ export default function Dashboard() {
           messages: [
             { 
               role: 'system', 
-              content: 'You are a strict DevOps and SRE expert. ONLY answer queries related to Cloud, DevOps, SRE, Infrastructure, CI/CD, and related technologies. If the user asks something unrelated, politely inform them that you are a DevOps assistant.' 
+              content: `You are the Official DebugToDeploy AI Guide. You help users master DevOps and navigate all platform features.
+              
+              PLATFORM FEATURES & UPDATES:
+              - AI Roadmaps: Personalized learning paths. PRO users can EXPORT these as high-quality PDFs.
+              - Exporting: Roadmap exports include a "DebugToDeploy" brand watermark for professional authenticity.
+              - Achievement Badges: Premium 3D trophies that unlock automatically upon completing Roadmap stages or Cloud Labs.
+              - Cloud Labs: Live AWS/K8s sandboxes to solve production-grade infrastructure issues.
+              - ATS Resume Builder: Generates professional resumes. Users can use "Edit Mode" to modify any text inline. Pro users can export these.
+              - Public Portfolio: A high-end technical profile showing verified 3D achievements and career artifacts.
+              - Pro Plan ($6/mo): Unlocks unlimited roadmaps, exports, and unlimited AI search/audits.
+              
+              HOW TO ANSWER:
+              - For platform questions (badges, exporting, editing resumes, roadmaps), give specific and helpful guidance based on the features above.
+              - For technical DevOps/SRE questions, provide expert-level, concise answers.
+              - Keep responses under 180 words.`
             },
             { role: 'user', content: searchQuery }
           ],
-          max_tokens: 400,
+          max_tokens: 500,
         }),
       });
       const data = await response.json();
