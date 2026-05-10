@@ -15,12 +15,15 @@ import {
   Sparkles,
   ChevronRight,
   ChevronLeft,
-  SkipForward
+  SkipForward,
+  Brain,
+  X
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 import { GeneratedLab, GeneratedLabStep } from '../lib/generator';
 import { updateReadinessScore } from '../lib/readiness';
+import { trackEvent } from '../lib/analytics';
 import Terminal from '../components/lab/Terminal';
 
 export default function LabDetail() {
@@ -40,6 +43,9 @@ export default function LabDetail() {
   const [isRunning, setIsRunning] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [latestLogs, setLatestLogs] = useState<{ type: 'output' | 'error' | 'success', text: string }[]>([]);
+  const [showAiHelp, setShowAiHelp] = useState(false);
+  const [aiHelpLoading, setAiHelpLoading] = useState(false);
+  const [aiHelpContent, setAiHelpContent] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLab();
@@ -81,6 +87,9 @@ export default function LabDetail() {
       }
     }
     setLoading(false);
+    if (lab) {
+      trackEvent('lab_started', { lab_id: id, lab_title: lab.title });
+    }
   };
 
   if (loading) return <div className="p-8">Loading lab details...</div>;
@@ -192,12 +201,55 @@ export default function LabDetail() {
       }
 
       await updateReadinessScore(user.id);
+      trackEvent('lab_completed', { lab_id: id, lab_title: lab.title, xp_gained: xpGain });
     } catch (err: any) {
       console.error('Error saving lab completion:', err);
       alert(`Could not save lab progress: ${err.message}`);
     } finally {
       setCompleting(false);
       navigate('/labs');
+    }
+  };
+
+  const getAiHelp = async () => {
+    setAiHelpLoading(true);
+    setShowAiHelp(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/openai-proxy?path=v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { 
+              role: 'system', 
+              content: 'You are a DevOps Lab Assistant. Help the user fix their code or explain the current step. Be concise and technical.' 
+            },
+            { 
+              role: 'user', 
+              content: `I am stuck on Step ${stepIndex + 1}: "${currentStep.title}" in the lab "${lab.title}".
+              Current Instructions: ${currentStep.description}
+              My current code:
+              \`\`\`yaml
+              ${currentCode}
+              \`\`\`
+              The last output was: ${latestLogs.map(l => l.text).join('\n')}
+              Please help me identify the bug and explain how to fix it.` 
+            }
+          ],
+          max_tokens: 500,
+        }),
+      });
+      const data = await response.json();
+      setAiHelpContent(data.choices?.[0]?.message?.content || 'No response from AI.');
+    } catch (err: any) {
+      setAiHelpContent('Failed to get AI help. Please try again.');
+    } finally {
+      setAiHelpLoading(false);
     }
   };
 
@@ -252,44 +304,84 @@ export default function LabDetail() {
         </div>
       </header>
 
-      <div className="px-2">
-        <div className={cn("bg-brand-bg/50 border-2 border-border rounded-2xl px-4 py-3")}>
-          <p className="text-sm font-bold text-text-main">{currentStep.description}</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-0" style={{ minHeight: '60vh' }}>
-        <div className="playful-card flex flex-col p-0 border-none bg-surface shadow-2xl relative" style={{ minHeight: '300px' }}>
-          <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-border bg-brand-bg/20">
-            <Code2 className="w-4 h-4 text-text-dim" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-text-dim">IDE: manifest.yaml</span>
-          </div>
-          <div className="flex-1 overflow-hidden relative">
-             <div className="absolute inset-y-0 left-0 w-12 bg-brand-bg/30 border-r-2 border-border flex flex-col items-center py-4 font-mono text-[10px] text-text-dim opacity-50 select-none">
-                {Array.from({ length: 15 }).map((_, i) => <div key={i}>{i+1}</div>)}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 px-2" style={{ minHeight: '70vh' }}>
+        {/* Left Sidebar: Instructions */}
+        <div className="lg:col-span-3 space-y-6">
+          <div className="playful-card bg-surface border-none shadow-2xl p-8 space-y-6 sticky top-4">
+             <div className="flex items-center gap-3 text-soft-blue">
+                <TerminalIcon className="w-5 h-5" />
+                <h3 className="font-black uppercase tracking-widest text-xs">Guided Instructions</h3>
              </div>
-             <textarea 
-               value={currentCode}
-               onChange={(e) => setCurrentCode(e.target.value)}
-               readOnly={currentSuccess}
-               className="w-full h-full pl-16 pr-8 py-4 bg-transparent resize-none font-mono text-sm leading-relaxed outline-hidden focus:bg-brand-bg/5 transition-colors"
-             />
+             <div className="space-y-4">
+                <h4 className="text-xl font-black italic">{currentStep.title}</h4>
+                <div className="prose prose-sm text-text-dim font-bold leading-relaxed">
+                   {currentStep.description}
+                </div>
+             </div>
+             
+             <div className="pt-6 border-t border-border space-y-4">
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-text-dim">
+                   <Sparkles className="w-3 h-3 text-soft-orange" /> Troubleshooting Help
+                </div>
+                <button 
+                  onClick={getAiHelp}
+                  className="w-full py-3 rounded-xl bg-soft-orange/10 border-2 border-soft-orange/30 text-soft-orange font-black text-[10px] uppercase tracking-widest hover:bg-soft-orange hover:text-white transition-all flex items-center justify-center gap-2"
+                >
+                   Ask AI Assistant
+                </button>
+             </div>
+
+             <div className="pt-4 space-y-2">
+                <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-text-dim italic">
+                   <span>Progress</span>
+                   <span>{Math.round(((stepIndex + 1) / totalSteps) * 100)}%</span>
+                </div>
+                <div className="h-1.5 w-full bg-border rounded-full overflow-hidden">
+                   <div className="h-full bg-soft-blue transition-all duration-500" style={{ width: `${((stepIndex + 1) / totalSteps) * 100}%` }} />
+                </div>
+             </div>
           </div>
         </div>
-        <div className="flex flex-col p-0 border-none relative overflow-hidden" style={{ minHeight: '300px' }}>
-          <Terminal 
-            isUnlocked={isLabUnlocked} 
-            isRealPro={isPro}
-            currentLab={lab} 
-            currentCode={currentCode}
-            externalLogs={latestLogs}
-            onCommand={(cmd) => {
-              // Optional: Logic to automatically check success based on commands
-              if (cmd === 'kubectl apply -f deployment.yaml') {
-                runCode();
-              }
-            }} 
-          />
+
+        {/* Center: IDE & Terminal */}
+        <div className="lg:col-span-9 grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div className="playful-card flex flex-col p-0 border-none bg-surface shadow-2xl relative overflow-hidden" style={{ minHeight: '400px' }}>
+            <div className="flex items-center justify-between px-6 py-4 border-b-2 border-border bg-brand-bg/20">
+              <div className="flex items-center gap-3">
+                <Code2 className="w-4 h-4 text-text-dim" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-text-dim">manifest.yaml</span>
+              </div>
+              {currentSuccess && (
+                <div className="flex items-center gap-2 text-soft-green font-black text-[10px] uppercase">
+                   <CheckCircle className="w-3 h-3" /> Validated
+                </div>
+              )}
+            </div>
+            <div className="flex-1 overflow-hidden relative">
+               <div className="absolute inset-y-0 left-0 w-12 bg-brand-bg/30 border-r-2 border-border flex flex-col items-center py-4 font-mono text-[10px] text-text-dim opacity-50 select-none">
+                  {Array.from({ length: 20 }).map((_, i) => <div key={i}>{i+1}</div>)}
+               </div>
+               <textarea 
+                 value={currentCode}
+                 onChange={(e) => setCurrentCode(e.target.value)}
+                 readOnly={currentSuccess}
+                 className="w-full h-full pl-16 pr-8 py-4 bg-transparent resize-none font-mono text-sm leading-relaxed outline-none focus:bg-brand-bg/5 transition-colors"
+               />
+            </div>
+          </div>
+          <div className="flex flex-col p-0 border-none relative overflow-hidden" style={{ minHeight: '400px' }}>
+            <Terminal 
+              isUnlocked={isLabUnlocked} 
+              isRealPro={isPro}
+              currentLab={lab} 
+              currentCode={currentCode}
+              externalLogs={latestLogs}
+              onCommand={(cmd) => {
+                if (cmd === 'kubectl apply -f deployment.yaml') {
+                  runCode();
+                }
+              }} 
+            />
           
           <AnimatePresence>
             {currentSuccess && !allDone && (
@@ -342,8 +434,9 @@ export default function LabDetail() {
           </AnimatePresence>
         </div>
       </div>
+    </div>
 
-      <div className="px-2 flex justify-between items-center py-1">
+    <div className="px-2 flex justify-between items-center py-1">
         <button
           onClick={goPrev}
           disabled={stepIndex === 0}
@@ -359,6 +452,60 @@ export default function LabDetail() {
           Next Step <ChevronRight className="w-4 h-4" />
         </button>
       </div>
+
+      {/* AI Help Modal */}
+      <AnimatePresence>
+        {showAiHelp && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="playful-card max-w-2xl w-full bg-surface border-none shadow-2xl p-10 space-y-8 relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 p-8 opacity-5">
+                <Sparkles className="w-32 h-32 text-soft-orange" />
+              </div>
+              <div className="flex items-center justify-between">
+                 <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-soft-orange/10 rounded-2xl flex items-center justify-center text-soft-orange">
+                       <Brain className="w-6 h-6" />
+                    </div>
+                    <div>
+                       <h3 className="text-2xl font-black italic">AI Troubleshooting</h3>
+                       <p className="text-[10px] font-black uppercase tracking-widest text-text-dim">Analyzing your current configuration...</p>
+                    </div>
+                 </div>
+                 <button onClick={() => setShowAiHelp(false)} className="p-2 hover:bg-border rounded-full transition-all">
+                    <X className="w-6 h-6" />
+                 </button>
+              </div>
+              
+              <div className="p-6 bg-brand-bg rounded-[2rem] border-2 border-border min-h-[200px] max-h-[400px] overflow-y-auto">
+                 {aiHelpLoading ? (
+                   <div className="flex flex-col items-center justify-center h-full gap-4 py-12">
+                      <RefreshCw className="w-8 h-8 text-soft-orange animate-spin" />
+                      <p className="text-xs font-black uppercase tracking-widest text-text-dim animate-pulse">Running diagnostic check...</p>
+                   </div>
+                 ) : (
+                   <div className="prose prose-sm text-text-main font-bold leading-relaxed">
+                      {aiHelpContent?.split('\n').map((line, i) => <p key={i}>{line}</p>)}
+                   </div>
+                 )}
+              </div>
+
+              <div className="flex justify-end gap-4">
+                 <button 
+                   onClick={() => setShowAiHelp(false)}
+                   className="px-8 py-3 bg-text-main text-surface rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-all"
+                 >
+                   Got it, thanks!
+                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

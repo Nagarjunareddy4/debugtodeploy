@@ -182,18 +182,90 @@ export default function PublicPortfolio() {
             </div>
           </div>
 
-          <div className="playful-card p-8 bg-linear-to-br from-soft-blue to-soft-purple text-white border-none shadow-xl">
-            <h4 className="text-lg font-black italic mb-4 flex items-center gap-2">
-              <Shield className="w-5 h-5" /> Verified Skills
+          <div className="playful-card p-8 bg-surface border-none shadow-2xl space-y-6">
+            <h4 className="text-lg font-black italic mb-2 flex items-center gap-2">
+              <Star className="w-5 h-5 text-soft-orange fill-soft-orange" /> Verified Achievements
             </h4>
-            <div className="space-y-3">
-              {['Kubernetes Mastery', 'CI/CD Pipelines', 'Cloud Native Security'].map((skill, i) => (
-                <div key={i} className="flex items-center gap-3 bg-white/10 p-3 rounded-2xl border border-white/10">
-                  <div className="w-2 h-2 bg-soft-green rounded-full shadow-[0_0_10px_var(--color-soft-green)]" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">{skill}</span>
-                  <CheckCircle2 className="w-4 h-4 ml-auto text-soft-green" />
-                </div>
-              ))}
+            <div className="grid grid-cols-2 gap-4">
+               {(function() {
+                 const roadmapData = typeof profile?.roadmap_data === 'string' 
+                   ? JSON.parse(profile.roadmap_data) 
+                   : profile?.roadmap_data;
+                   
+                 const completedTasks = profile?.completed_roadmap_tasks || [];
+                 
+                 const roadmapBadges = roadmapData?.stages?.map((stage: any, sIdx: number) => {
+                   const stageTasks = stage.tasks || [];
+                   const isEarned = stageTasks.length > 0 && stageTasks.every((task: any, tIdx: number) => {
+                     const taskId = `${stage.id || `stage-${sIdx + 1}`}-task-${tIdx}`;
+                     return completedTasks.includes(taskId);
+                   });
+                   
+                   return {
+                     name: stage.label,
+                     earned: isEarned,
+                     date: isEarned ? 'Verified' : 'In Progress'
+                   };
+                 }) || [];
+
+                 const finalBadges = roadmapBadges.length > 0 
+                   ? roadmapBadges
+                   : [
+                       { name: 'Docker Pilot', earned: (profile?.labs_completed || 0) >= 1, date: '1 Lab' },
+                       { name: 'K8s Healer', earned: (profile?.labs_completed || 0) >= 3, date: '3 Labs' },
+                       { name: 'Cloud Native', earned: (profile?.labs_completed || 0) >= 5, date: '5 Labs' },
+                       { name: 'SRE Master', earned: (profile?.level || 1) >= 5, date: 'Level 5' }
+                     ];
+
+                 return finalBadges.map((badge, i) => (
+                   <motion.div 
+                     key={i} 
+                     whileHover={{ scale: 1.05, rotateY: 5, rotateX: -5 }}
+                     className={cn(
+                       "flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all relative overflow-hidden group",
+                       badge.earned 
+                         ? "bg-brand-bg/50 border-soft-orange/20" 
+                         : "bg-brand-bg opacity-30 border-border grayscale"
+                     )}
+                   >
+                      <div className="relative w-12 h-12 flex items-center justify-center drop-shadow-xl">
+                         <img 
+                           src={(function() {
+                             const name = badge.name.toLowerCase();
+                             if (name.includes('docker') || name.includes('container')) 
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Whale/3D/whale_3d.png';
+                             if (name.includes('k8s') || name.includes('kubernetes') || name.includes('orchestration'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Steering%20Wheel/3D/steering_wheel_3d.png';
+                             if (name.includes('git') || name.includes('version') || name.includes('github') || name.includes('gitlab'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Link/3D/link_3d.png';
+                             if (name.includes('monitor') || name.includes('metric') || name.includes('log') || name.includes('grafana') || name.includes('prometheus'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bar%20Chart/3D/bar_chart_3d.png';
+                             if (name.includes('cloud') || name.includes('aws') || name.includes('azure') || name.includes('gcp') || name.includes('infra'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cloud/3D/cloud_3d.png';
+                             if (name.includes('security') || name.includes('protect') || name.includes('vault') || name.includes('auth'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Shield/3D/shield_3d.png';
+                             if (name.includes('pipeline') || name.includes('cicd') || name.includes('deploy') || name.includes('action'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Rocket/3D/rocket_3d.png';
+                             if (name.includes('network') || name.includes('api') || name.includes('service') || name.includes('dns'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Globe%20with%20Meridians/3D/globe_with_meridians_3d.png';
+                             if (name.includes('automate') || name.includes('script') || name.includes('python') || name.includes('bash'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Robot/3D/robot_3d.png';
+                             return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Trophy/3D/trophy_3d.png';
+                           })().replace(/ /g, '%20')} 
+                           alt={badge.name}
+                           onError={(e) => {
+                             (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Trophy/3D/trophy_3d.png';
+                           }}
+                           className="w-full h-full object-contain"
+                         />
+                      </div>
+                      <div className="text-center">
+                         <p className="text-[8px] font-black uppercase truncate w-full">{badge.name}</p>
+                         <p className="text-[6px] font-bold text-text-dim uppercase">{badge.date}</p>
+                      </div>
+                   </motion.div>
+                 ));
+               })()}
             </div>
           </div>
         </div>

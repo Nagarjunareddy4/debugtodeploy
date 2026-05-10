@@ -154,21 +154,27 @@ export default function OnboardingModal({ isOpen, onDismiss }: OnboardingModalPr
               <div className="space-y-4">
                 <label className="text-[10px] font-black uppercase tracking-widest text-text-dim ml-2">What is your ultimate career goal?</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {['DevOps Engineer', 'Cloud Architect', 'Site Reliability Eng.', 'Platform Engineer'].map(g => (
+                  {[
+                    { label: 'DevOps Engineer', color: 'soft-blue' },
+                    { label: 'Cloud Engineer', color: 'soft-green' },
+                    { label: 'Kubernetes Engineer', color: 'soft-purple' },
+                    { label: 'SRE Engineer', color: 'soft-orange' },
+                    { label: 'Platform Engineer', color: 'soft-blue' }
+                  ].map(g => (
                     <button
-                      key={g}
+                      key={g.label}
                       onClick={() => {
-                        setGoal(g);
+                        setGoal(g.label);
                         setIsCustomGoal(false);
                       }}
                       className={cn(
                         "p-4 rounded-2xl border-2 font-bold text-sm transition-all text-left",
-                        !isCustomGoal && goal === g 
-                          ? "bg-soft-purple/10 border-soft-purple text-soft-purple" 
+                        !isCustomGoal && goal === g.label 
+                          ? `bg-${g.color}/10 border-${g.color} text-${g.color}` 
                           : "bg-surface border-border text-text-dim hover:border-text-dim/30"
                       )}
                     >
-                      {g}
+                      {g.label}
                     </button>
                   ))}
                   <button
@@ -176,7 +182,7 @@ export default function OnboardingModal({ isOpen, onDismiss }: OnboardingModalPr
                     className={cn(
                       "p-4 rounded-2xl border-2 font-bold text-sm transition-all text-left",
                       isCustomGoal 
-                        ? "bg-soft-purple/10 border-soft-purple text-soft-purple" 
+                        ? "bg-text-main/10 border-text-main text-text-main" 
                         : "bg-surface border-border text-text-dim hover:border-text-dim/30"
                     )}
                   >

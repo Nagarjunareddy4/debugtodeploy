@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Toaster } from 'react-hot-toast';
 import { Brain, Sparkles, Zap, ShieldCheck, Terminal as TerminalIcon, Map } from 'lucide-react';
@@ -21,6 +21,8 @@ import ResetPassword from './pages/ResetPassword';
 import Support from './pages/Support';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import Landing from './pages/Landing';
+import PublicProfile from './pages/PublicProfile';
 import AiSupportBot from './components/AiSupportBot';
 import SplashScreen from './components/common/SplashScreen';
 import ConsentModal from './components/ConsentModal';
@@ -238,6 +240,7 @@ export default function App() {
                             <Route path="/pricing" element={<Pricing />} />
                             <Route path="/checkout" element={<Checkout />} />
                             <Route path="/support" element={<Support />} />
+                            <Route path="/p/:id" element={<PublicProfile />} />
                             <Route path="*" element={<Navigate to="/" />} />
                           </Routes>
                         </main>
@@ -250,10 +253,15 @@ export default function App() {
                       </div>
                     </>
                   ) : (
-                    <Routes>
-                      <Route path="/auth" element={<Auth />} />
-                      <Route path="*" element={<Navigate to="/auth" />} />
-                    </Routes>
+                    <div className="w-full flex-1 flex flex-col">
+                      <Routes>
+                        <Route path="/" element={<Landing session={session} />} />
+                        <Route path="/ref/:username" element={<ReferralCapture />} />
+                        <Route path="/auth" element={<Auth />} />
+                        <Route path="/p/:id" element={<PublicProfile />} />
+                        <Route path="*" element={<Navigate to="/" />} />
+                      </Routes>
+                    </div>
                   )
                 } />
               </Routes>
@@ -422,4 +430,18 @@ function GenerationScreen() {
       </div>
     </div>
   );
+}
+
+function ReferralCapture() {
+  const { username } = useParams();
+  
+  useEffect(() => {
+    if (username) {
+      localStorage.setItem('referred_by', username);
+    }
+  }, [username]);
+
+  // Redirect to home which will show the landing page
+  // The user can then click "Start Free" to open the Auth modal
+  return <Navigate to="/?auth=signup" replace />;
 }
