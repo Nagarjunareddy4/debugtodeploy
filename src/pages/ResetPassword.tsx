@@ -154,7 +154,7 @@ export default function ResetPassword() {
               onClick={() => navigate('/auth')}
               className="w-full py-6 bg-surface border border-border text-text-main rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] hover:bg-soft-blue/10 transition-colors"
             >
-              Request New Link
+              Back to Login
             </motion.button>
           </motion.div>
         ) : success ? (

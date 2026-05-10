@@ -3,7 +3,8 @@ import { motion } from 'motion/react';
 import { 
   Rocket, Brain, Zap, ShieldCheck, Terminal as TerminalIcon, 
   Map, CheckCircle2, ChevronRight, Star, ArrowRight,
-  Sparkles, Cloud, Users, Award, Play, Github
+  Sparkles, Cloud, Users, Award, Play, Github,
+  Facebook, Instagram, Twitter
 } from 'lucide-react';
 import LandingNavbar from '../components/layout/LandingNavbar';
 import AuthModal from '../components/layout/AuthModal';
@@ -52,10 +53,10 @@ export default function Landing({ session }: { session: any }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-5xl md:text-8xl font-black italic tracking-tighter mb-8 leading-[0.9]"
+            className="text-3xl sm:text-5xl md:text-8xl font-black italic tracking-tight md:tracking-tighter mb-8 leading-[1.1] md:leading-[0.9] overflow-visible"
           >
-            DebugToDeploy: <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-soft-blue to-soft-purple">
+            DebugToDeploy: <br className="hidden md:block" />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-soft-blue to-soft-purple block md:inline mt-2 md:mt-0">
               DevOps Accelerator
             </span>
           </motion.h1>
@@ -489,11 +490,42 @@ export default function Landing({ session }: { session: any }) {
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim text-center md:text-left">© {new Date().getFullYear()} DebugToDeploy. Developed by Nagarjuna Reddy Annapureddy.</p>
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim">All Rights Reserved.</p>
             </div>
-            <div className="flex items-center gap-8">
-               <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-text-dim hover:text-text-main transition-colors">
-                 <Github className="w-6 h-6" />
-               </a>
-               <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-[10px] font-black uppercase tracking-widest text-soft-blue hover:underline">
+            <div className="flex items-center gap-6">
+               {[
+                 { icon: Facebook, link: "https://www.facebook.com/profile.php?id=61589307951543", color: "bg-blue-600 text-white", label: "Facebook" },
+                 { icon: Twitter, link: "https://x.com/DebugToDeploy", color: "bg-text-main text-surface", label: "Twitter" },
+                 { icon: Instagram, link: "https://www.instagram.com/debugtodeploy?igsh=MTlxcmoyNG9obWN1OA==", color: "bg-pink-600 text-white", label: "Instagram" }
+               ].map((social, i) => (
+                 <motion.a
+                   key={i}
+                   href={social.link}
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   whileHover={{ 
+                     y: -8, 
+                     rotateX: -15, 
+                     rotateY: 15,
+                     scale: 1.1,
+                     boxShadow: "0 20px 40px rgba(0,0,0,0.3)"
+                   }}
+                   whileTap={{ scale: 0.9, rotateX: 0, rotateY: 0 }}
+                   className={cn(
+                     "w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all border-2 border-white/10 relative group",
+                     social.color
+                   )}
+                   style={{ transformStyle: 'preserve-3d' }}
+                 >
+                   <social.icon className="w-5 h-5 relative z-10" />
+                   <div className="absolute inset-0 rounded-2xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                 </motion.a>
+               ))}
+               
+               <div className="w-px h-8 bg-border mx-4" />
+
+               <button 
+                 onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} 
+                 className="text-[10px] font-black uppercase tracking-widest text-soft-blue hover:underline whitespace-nowrap"
+               >
                  Back to Top
                </button>
             </div>
