@@ -290,6 +290,10 @@ export default function Dashboard() {
     !localStorage.getItem('hasSeenOnboarding') &&
     (!profile?.roadmap_data || profile.roadmap_data === '{}' || profile.roadmap_data === '{"stages":[]}');
   const hasNoActivity = weeklyData.reduce((acc, curr) => acc + curr.xp, 0) === 0;
+  const currentWeeklyXp = weeklyData.reduce((acc, curr) => acc + curr.xp, 0);
+  const currentWeeklyLabs = weeklyData.reduce((acc, curr) => acc + curr.labs, 0);
+  const weeklyXpGoal = 1000;
+  const weeklyLabsGoal = 5;
 
   useEffect(() => {
     // Only run tour if profile loaded, not a new user (new users see onboarding modal and redirect),
@@ -754,20 +758,26 @@ export default function Dashboard() {
             <div className="space-y-6 flex-1">
                <div className="space-y-2">
                   <div className="flex justify-between text-[10px] font-black uppercase">
-                     <span>Complete 5 Labs</span>
-                     <span>3/5</span>
+                     <span>Complete {weeklyLabsGoal} Labs</span>
+                     <span>{currentWeeklyLabs}/{weeklyLabsGoal}</span>
                   </div>
                   <div className="h-2 w-full bg-surface/20 rounded-full overflow-hidden">
-                     <div className="h-full bg-soft-green transition-all duration-700" style={{ width: '60%' }} />
+                     <div 
+                        className="h-full bg-soft-green transition-all duration-700" 
+                        style={{ width: `${Math.min((currentWeeklyLabs / weeklyLabsGoal) * 100, 100)}%` }} 
+                     />
                   </div>
                </div>
                <div className="space-y-2">
                   <div className="flex justify-between text-[10px] font-black uppercase">
-                     <span>Earn 1,000 XP</span>
-                     <span>450/1000</span>
+                     <span>Earn {weeklyXpGoal.toLocaleString()} XP</span>
+                     <span>{currentWeeklyXp.toLocaleString()}/{weeklyXpGoal}</span>
                   </div>
                   <div className="h-2 w-full bg-surface/20 rounded-full overflow-hidden">
-                     <div className="h-full bg-soft-blue transition-all duration-700" style={{ width: '45%' }} />
+                     <div 
+                        className="h-full bg-soft-blue transition-all duration-700" 
+                        style={{ width: `${Math.min((currentWeeklyXp / weeklyXpGoal) * 100, 100)}%` }} 
+                     />
                   </div>
                </div>
                <div className="p-4 bg-surface/10 rounded-2xl border border-surface/20">
