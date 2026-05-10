@@ -267,6 +267,15 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
     }
   };
 
+  const handleExportRoadmap = () => {
+    if (!isPro) {
+      alert('Roadmap exporting is a Pro feature. Upgrade to unlock offline growth paths!');
+      navigate('/pricing');
+      return;
+    }
+    window.print();
+  };
+
   const handleConstructClick = () => {
     if (hasExistingRoadmap) {
       setShowUpdateConfirm(true);
@@ -593,11 +602,33 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
               <label className="text-[10px] font-black uppercase tracking-[0.3em] text-text-dim flex items-center gap-2">
                 <BookOpen className="w-3 h-3 text-soft-green" /> Target Destination
               </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+                {[
+                  'DevOps Engineer', 
+                  'Cloud Engineer', 
+                  'Kubernetes Engineer', 
+                  'SRE Engineer', 
+                  'Platform Engineer'
+                ].map(g => (
+                  <button
+                    key={g}
+                    onClick={() => setGoal(g)}
+                    className={cn(
+                      "px-3 py-2 rounded-xl border-2 font-bold text-[10px] uppercase tracking-widest transition-all",
+                      goal === g 
+                        ? "bg-soft-green/10 border-soft-green text-soft-green" 
+                        : "bg-brand-bg border-border text-text-dim hover:border-text-dim/30"
+                    )}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
               <input
                 type="text"
                 value={goal}
                 onChange={(e) => setGoal(e.target.value)}
-                className="w-full bg-brand-bg border-4 border-border rounded-2xl px-6 py-4 font-black outline-hidden focus:border-soft-green transition-all shadow-inner"
+                className="w-full bg-brand-bg border-4 border-border rounded-2xl px-6 py-4 font-black outline-none focus:border-soft-green transition-all shadow-inner"
                 placeholder="e.g. SRE Leader"
               />
             </div>
@@ -643,10 +674,27 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
             animate={{ opacity: 1, y: 0 }}
             className="space-y-12"
           >
-            <div className="flex flex-col md:flex-row justify-between items-start gap-6 bg-surface p-10 rounded-[3rem] shadow-xl border-none">
-              <div className="space-y-4">
+            <div className="flex flex-col md:flex-row justify-between items-start gap-6 bg-surface p-10 rounded-[3rem] shadow-xl border-none relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:rotate-12 transition-transform duration-700">
+                <Compass className="w-40 h-40" />
+              </div>
+              <div className="space-y-4 relative z-10">
                 <h2 className="text-4xl font-black tracking-tighter leading-none">{roadmap.title}</h2>
                 <p className="text-text-dim font-bold text-lg max-w-2xl leading-relaxed">{roadmap.description}</p>
+              </div>
+              <div className="no-print relative z-10">
+                <button
+                  onClick={handleExportRoadmap}
+                  className={cn(
+                    "btn-pill flex items-center gap-3 py-4 px-8 shadow-xl transition-all hover:scale-105",
+                    isPro ? "bg-text-main text-surface" : "bg-brand-bg border-2 border-dashed border-border text-text-dim opacity-70"
+                  )}
+                >
+                  {isPro ? <Compass className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                  <span className="font-black text-xs uppercase tracking-widest">
+                    {isPro ? 'Export PDF' : 'Export (Pro Only)'}
+                  </span>
+                </button>
               </div>
             </div>
 

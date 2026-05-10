@@ -129,7 +129,8 @@ export default function Auth() {
           options: {
             data: {
               full_name: fullName,
-              username: username
+              username: username,
+              referred_by: localStorage.getItem('referred_by') || null
             }
           }
         });

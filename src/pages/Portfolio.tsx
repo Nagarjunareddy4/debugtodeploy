@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { generateAiResume, ResumeData } from '../lib/generator';
+import { trackEvent } from '../lib/analytics';
 import { cn } from '../lib/utils';
 import { Avatar } from '../components/ui/Avatar';
 
@@ -34,7 +35,9 @@ export default function Portfolio() {
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isPro, setIsPro] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<'modern' | 'classic' | 'cyberpunk'>('modern');
+  const [selectedTemplate, setSelectedTemplate] = useState<'modern' | 'classic' | 'cyberpunk' | 'ats'>('modern');
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -83,16 +86,44 @@ export default function Portfolio() {
       } catch (err) {
         console.error('Share failed:', err);
       }
+      trackEvent('portfolio_shared', { method: 'native_share', identifier });
     } else {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      trackEvent('portfolio_shared', { method: 'clipboard_copy', identifier });
     }
   };
 
   const handleDownload = () => {
     if (!isPro) return;
-    window.print();
+    setIsEditing(false); // Ensure edit mode is off for printing
+    setTimeout(() => window.print(), 100);
+  };
+
+  const saveResume = async () => {
+    if (!isPro || !resume) return;
+    setIsSaving(true);
+    try {
+      const roadmap = typeof profile.roadmap_data === 'string' ? JSON.parse(profile.roadmap_data) : profile.roadmap_data;
+      const updatedRoadmap = {
+        ...roadmap,
+        ai_resume: resume,
+        preferred_template: selectedTemplate
+      };
+      
+      const { error } = await supabase.from('profiles').update({
+        roadmap_data: updatedRoadmap
+      }).eq('id', profile.id);
+
+      if (error) throw error;
+      toast.success('Resume updated successfully!');
+      setIsEditing(false);
+    } catch (error: any) {
+      toast.error('Failed to save resume: ' + error.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleGenerateResume = async () => {
@@ -112,7 +143,7 @@ export default function Portfolio() {
           const currentRoadmap = typeof profile.roadmap_data === 'string' ? JSON.parse(profile.roadmap_data) : (profile.roadmap_data || {});
           const updatedRoadmap = { ...currentRoadmap, ai_resume: data, preferred_template: selectedTemplate };
           await supabase.from('profiles').update({ 
-            roadmap_data: JSON.stringify(updatedRoadmap) 
+            roadmap_data: updatedRoadmap 
           }).eq('id', user.id);
         } catch (e) {
           console.error("Failed to save resume to DB", e);
@@ -122,7 +153,7 @@ export default function Portfolio() {
     setGenerating(false);
   };
 
-  const updateTemplateChoice = async (template: 'modern' | 'classic' | 'cyberpunk') => {
+  const updateTemplateChoice = async (template: 'modern' | 'classic' | 'cyberpunk' | 'ats') => {
     setSelectedTemplate(template);
     const { data: { user } } = await supabase.auth.getUser();
     if (user && profile) {
@@ -130,7 +161,7 @@ export default function Portfolio() {
         const currentRoadmap = typeof profile.roadmap_data === 'string' ? JSON.parse(profile.roadmap_data) : (profile.roadmap_data || {});
         const updatedRoadmap = { ...currentRoadmap, preferred_template: template };
         await supabase.from('profiles').update({ 
-          roadmap_data: JSON.stringify(updatedRoadmap) 
+          roadmap_data: updatedRoadmap 
         }).eq('id', user.id);
       } catch (e) {
         console.warn("Failed to persist template choice:", e);
@@ -150,6 +181,7 @@ export default function Portfolio() {
     { id: 'modern', name: 'Modern Minimal', icon: '✨' },
     { id: 'classic', name: 'Executive Pro', icon: '👔' },
     { id: 'cyberpunk', name: 'Cyberpunk Tech', icon: '📟' },
+    { id: 'ats', name: 'ATS Optimized', icon: '✅' },
   ];
 
   const containerVariants = {
@@ -318,24 +350,86 @@ export default function Portfolio() {
 
           <div className="playful-card p-8 bg-linear-to-br from-soft-blue to-soft-purple text-white border-none shadow-xl">
             <h4 className="text-lg font-black italic mb-4 flex items-center gap-2">
-              <Shield className="w-5 h-5" /> Verified Skills
+              <Star className="w-5 h-5 text-soft-orange fill-soft-orange" /> Verified Achievements
             </h4>
-            <div className="space-y-3">
-              {(() => {
-                const completedLabs = profile?.labs_completed || 0;
-                const generatedLabs = profile?.generated_labs || [];
-                const completedTitles: string[] = generatedLabs.slice(0, completedLabs).map((l: any) => l.title);
-                // Fallback to roadmap milestones if no labs completed yet
-                const completedTasks: string[] = profile?.completed_roadmap_tasks?.slice(0, 3) || [];
-                const skills = completedTitles.length > 0 ? completedTitles.slice(0, 5) : completedTasks.length > 0 ? completedTasks.slice(0, 5) : ['Start your first lab to unlock verified skills'];
-                return skills.map((skill: string, i: number) => (
-                  <div key={i} className="flex items-center gap-3 bg-white/10 p-3 rounded-2xl border border-white/10">
-                    <div className="w-2 h-2 bg-soft-green rounded-full shadow-[0_0_10px_var(--color-soft-green)]" />
-                    <span className="text-[10px] font-black uppercase tracking-widest line-clamp-1">{skill}</span>
-                    <Check className="w-4 h-4 ml-auto shrink-0 text-soft-green" />
-                  </div>
-                ));
-              })()}
+            <div className="grid grid-cols-2 gap-4">
+               {(function() {
+                 const roadmapData = typeof profile?.roadmap_data === 'string' 
+                   ? JSON.parse(profile.roadmap_data) 
+                   : profile?.roadmap_data;
+                   
+                 const completedTasks = profile?.completed_roadmap_tasks || [];
+                 
+                 const roadmapBadges = roadmapData?.stages?.map((stage: any, sIdx: number) => {
+                   const stageTasks = stage.tasks || [];
+                   const isEarned = stageTasks.length > 0 && stageTasks.every((task: any, tIdx: number) => {
+                     const taskId = `${stage.id || `stage-${sIdx + 1}`}-task-${tIdx}`;
+                     return completedTasks.includes(taskId);
+                   });
+                   
+                   return {
+                     name: stage.label,
+                     earned: isEarned,
+                     date: isEarned ? 'Verified' : 'In Progress'
+                   };
+                 }) || [];
+
+                 const finalBadges = roadmapBadges.length > 0 
+                   ? roadmapBadges
+                   : [
+                       { name: 'Docker Pilot', earned: (profile?.labs_completed || 0) >= 1, date: '1 Lab' },
+                       { name: 'K8s Healer', earned: (profile?.labs_completed || 0) >= 3, date: '3 Labs' },
+                       { name: 'Cloud Native', earned: (profile?.labs_completed || 0) >= 5, date: '5 Labs' },
+                       { name: 'SRE Master', earned: (profile?.level || 1) >= 5, date: 'Level 5' }
+                     ];
+
+                 return finalBadges.map((badge, i) => (
+                   <div 
+                     key={i} 
+                     className={cn(
+                       "flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all relative overflow-hidden group",
+                       badge.earned 
+                         ? "bg-brand-bg/50 border-soft-orange/20" 
+                         : "bg-brand-bg opacity-30 border-border grayscale"
+                     )}
+                   >
+                      <div className="relative w-10 h-10 flex items-center justify-center drop-shadow-xl">
+                         <img 
+                           src={(function() {
+                             const name = badge.name.toLowerCase();
+                             if (name.includes('docker') || name.includes('container')) 
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Whale/3D/whale_3d.png';
+                             if (name.includes('k8s') || name.includes('kubernetes') || name.includes('orchestration'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Steering%20Wheel/3D/steering_wheel_3d.png';
+                             if (name.includes('git') || name.includes('version') || name.includes('github') || name.includes('gitlab'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Link/3D/link_3d.png';
+                             if (name.includes('monitor') || name.includes('metric') || name.includes('log') || name.includes('grafana') || name.includes('prometheus'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bar%20Chart/3D/bar_chart_3d.png';
+                             if (name.includes('cloud') || name.includes('aws') || name.includes('azure') || name.includes('gcp') || name.includes('infra'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cloud/3D/cloud_3d.png';
+                             if (name.includes('security') || name.includes('protect') || name.includes('vault') || name.includes('auth'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Shield/3D/shield_3d.png';
+                             if (name.includes('pipeline') || name.includes('cicd') || name.includes('deploy') || name.includes('action'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Rocket/3D/rocket_3d.png';
+                             if (name.includes('network') || name.includes('api') || name.includes('service') || name.includes('dns'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Globe%20with%20Meridians/3D/globe_with_meridians_3d.png';
+                             if (name.includes('automate') || name.includes('script') || name.includes('python') || name.includes('bash'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Robot/3D/robot_3d.png';
+                             return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Trophy/3D/trophy_3d.png';
+                           })().replace(/ /g, '%20')} 
+                           alt={badge.name}
+                           onError={(e) => {
+                             (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Trophy/3D/trophy_3d.png';
+                           }}
+                           className="w-full h-full object-contain"
+                         />
+                      </div>
+                      <div className="text-center">
+                         <p className="text-[7px] font-black uppercase truncate w-full">{badge.name}</p>
+                      </div>
+                   </div>
+                 ));
+               })()}
             </div>
           </div>
         </div>
@@ -394,23 +488,51 @@ export default function Portfolio() {
                   "resume-view rounded-[3rem] p-12 md:p-16 shadow-3xl border min-h-[800px] relative transition-all",
                   selectedTemplate === 'modern' && "bg-white text-slate-900 border-border font-sans",
                   selectedTemplate === 'classic' && "template-classic bg-[#fffcf5] text-[#2c1810] border-[#e8dcc4] font-serif",
-                  selectedTemplate === 'cyberpunk' && "template-cyberpunk bg-[#050505] text-[#00ffcc] border-[#00ffcc]/30 font-mono shadow-[0_0_50px_rgba(0,255,204,0.1)]"
+                  selectedTemplate === 'cyberpunk' && "template-cyberpunk bg-[#050505] text-[#00ffcc] border-[#00ffcc]/30 font-mono shadow-[0_0_50px_rgba(0,255,204,0.1)]",
+                  selectedTemplate === 'ats' && "bg-white text-black border-slate-200 font-sans shadow-none rounded-none p-20 border-0"
                 )}
               >
                 <div className="absolute top-10 right-10 flex gap-2 no-print">
                    <button 
-                     onClick={handleDownload}
+                     onClick={() => setIsEditing(!isEditing)}
                      className={cn(
                        "p-3 rounded-full transition-colors shadow-sm flex items-center gap-2 px-6",
-                       selectedTemplate === 'cyberpunk' ? "bg-[#00ffcc] text-black hover:bg-[#00ccaa]" : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+                       isEditing ? "bg-soft-green text-brand-bg font-black" : "bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold"
                      )}
                    >
-                     <Download className="w-5 h-5" />
-                     <span className="text-xs font-black uppercase">Export PDF</span>
+                     {isEditing ? <Check className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+                     <span className="text-xs uppercase">{isEditing ? 'Finish Editing' : 'Edit Resume'}</span>
                    </button>
+
+                   {isEditing ? (
+                     <button 
+                       onClick={saveResume}
+                       disabled={isSaving}
+                       className="p-3 bg-text-main text-surface rounded-full transition-colors shadow-sm flex items-center gap-2 px-6 hover:bg-soft-blue"
+                     >
+                       {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                       <span className="text-xs font-black uppercase">Save to Profile</span>
+                     </button>
+                   ) : (
+                     <button 
+                       onClick={handleDownload}
+                       className={cn(
+                         "p-3 rounded-full transition-colors shadow-sm flex items-center gap-2 px-6",
+                         selectedTemplate === 'cyberpunk' ? "bg-[#00ffcc] text-black hover:bg-[#00ccaa]" : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+                       )}
+                     >
+                       <Download className="w-5 h-5" />
+                       <span className="text-xs font-black uppercase">Export PDF</span>
+                     </button>
+                   )}
                 </div>
 
                 <div className="space-y-12">
+                   {isEditing && (
+                     <div className="bg-soft-orange/10 border-2 border-soft-orange/30 p-4 rounded-2xl text-[10px] font-black text-soft-orange uppercase tracking-widest no-print text-center">
+                       🛠️ Edit Mode Active: Click on any text below to modify it.
+                     </div>
+                   )}
                   {/* Header */}
                   <div className={cn(
                     "border-b-4 pb-8",
@@ -419,16 +541,27 @@ export default function Portfolio() {
                     selectedTemplate === 'cyberpunk' && "border-[#00ffcc] shadow-[0_10px_20px_-10px_rgba(0,255,204,0.3)]"
                   )}>
                     <h1 className={cn(
-                      "text-5xl font-black tracking-tighter uppercase",
-                      selectedTemplate === 'cyberpunk' && "text-transparent bg-linear-to-r from-[#00ffcc] to-[#ff00ff] bg-clip-text"
-                    )}>{profile?.full_name}</h1>
+                      "text-5xl font-black tracking-tighter uppercase outline-none",
+                      selectedTemplate === 'cyberpunk' && "text-transparent bg-linear-to-r from-[#00ffcc] to-[#ff00ff] bg-clip-text",
+                      isEditing && "bg-slate-50 border-2 border-dashed border-soft-blue/30 px-4 rounded-2xl"
+                    )}
+                    contentEditable={isEditing}
+                    suppressContentEditableWarning={true}
+                    onBlur={(e) => setProfile({ ...profile, full_name: e.currentTarget.textContent || '' })}
+                    >{profile?.full_name}</h1>
                     <p className={cn(
-                      "text-xl font-bold mt-2 uppercase tracking-[0.2em]",
+                      "text-xl font-bold mt-2 uppercase tracking-[0.2em] outline-none",
                       selectedTemplate === 'modern' && "text-soft-blue",
                       selectedTemplate === 'classic' && "text-[#8b4513] italic",
-                      selectedTemplate === 'cyberpunk' && "text-[#ff00ff]"
-                    )}>
-                      {JSON.parse(profile.roadmap_data || '{}').goal || 'DevOps Engineer'}
+                      selectedTemplate === 'cyberpunk' && "text-[#ff00ff]",
+                      selectedTemplate === 'ats' && "text-slate-600 font-black",
+                      isEditing && "bg-slate-50 border-2 border-dashed border-soft-blue/30 px-4 rounded-2xl"
+                    )}
+                    contentEditable={isEditing}
+                    suppressContentEditableWarning={true}
+                    onBlur={(e) => setResume({ ...resume, title: e.currentTarget.textContent || '' })}
+                    >
+                      {resume.title || (typeof profile.roadmap_data === 'string' ? JSON.parse(profile.roadmap_data || '{}').goal : profile.roadmap_data?.goal) || 'DevOps Engineer'}
                     </p>
                     {selectedTemplate === 'cyberpunk' && (
                        <div className="flex gap-4 mt-4 text-[10px]">
@@ -445,12 +578,19 @@ export default function Portfolio() {
                       "text-xs font-black uppercase tracking-widest border-l-4 pl-4",
                       selectedTemplate === 'modern' && "text-slate-400 border-soft-blue",
                       selectedTemplate === 'classic' && "text-[#8b4513] border-[#8b4513]",
-                      selectedTemplate === 'cyberpunk' && "text-[#00ffcc] border-[#ff00ff]"
+                      selectedTemplate === 'cyberpunk' && "text-[#00ffcc] border-[#ff00ff]",
+                      selectedTemplate === 'ats' && "text-slate-900 border-slate-900"
                     )}>Professional Summary</h2>
-                    <p className={cn(
-                      "text-lg leading-relaxed font-medium",
-                      selectedTemplate === 'cyberpunk' && "text-[#00ffcc]/80"
-                    )}>{resume.summary}</p>
+                    <p 
+                      contentEditable={isEditing}
+                      onBlur={(e) => setResume({ ...resume, summary: e.currentTarget.textContent || '' })}
+                      suppressContentEditableWarning={true}
+                      className={cn(
+                        "text-lg leading-relaxed font-medium outline-none transition-all",
+                        isEditing && "bg-slate-50 border-2 border-dashed border-soft-blue/30 p-4 rounded-2xl",
+                        selectedTemplate === 'cyberpunk' && "text-[#00ffcc]/80"
+                      )}
+                    >{resume.summary}</p>
                   </section>
 
                   {/* Skills */}
@@ -459,7 +599,8 @@ export default function Portfolio() {
                       "text-xs font-black uppercase tracking-widest border-l-4 pl-4",
                       selectedTemplate === 'modern' && "text-slate-400 border-soft-blue",
                       selectedTemplate === 'classic' && "text-[#8b4513] border-[#8b4513]",
-                      selectedTemplate === 'cyberpunk' && "text-[#00ffcc] border-[#ff00ff]"
+                      selectedTemplate === 'cyberpunk' && "text-[#00ffcc] border-[#ff00ff]",
+                      selectedTemplate === 'ats' && "text-slate-900 border-slate-900"
                     )}>Technical Arsenal</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       {resume.technicalSkills.map((cat, i) => (
@@ -471,7 +612,8 @@ export default function Portfolio() {
                                 "px-3 py-1 rounded-full text-xs font-bold",
                                 selectedTemplate === 'modern' && "bg-slate-100 text-slate-600",
                                 selectedTemplate === 'classic' && "bg-[#e8dcc4] text-[#2c1810]",
-                                selectedTemplate === 'cyberpunk' && "border border-[#00ffcc]/30 text-[#00ffcc] hover:bg-[#00ffcc]/10"
+                                selectedTemplate === 'cyberpunk' && "border border-[#00ffcc]/30 text-[#00ffcc] hover:bg-[#00ffcc]/10",
+                                selectedTemplate === 'ats' && "bg-white border border-slate-200 text-slate-900"
                               )}>
                                 {s}
                               </span>
@@ -488,31 +630,58 @@ export default function Portfolio() {
                       "text-xs font-black uppercase tracking-widest border-l-4 pl-4",
                       selectedTemplate === 'modern' && "text-slate-400 border-soft-blue",
                       selectedTemplate === 'classic' && "text-[#8b4513] border-[#8b4513]",
-                      selectedTemplate === 'cyberpunk' && "text-[#00ffcc] border-[#ff00ff]"
+                      selectedTemplate === 'cyberpunk' && "text-[#00ffcc] border-[#ff00ff]",
+                      selectedTemplate === 'ats' && "text-slate-900 border-slate-900"
                     )}>Technical Experience</h2>
                     <div className="space-y-8">
                       {resume.experience.map((exp, i) => (
                         <div key={i} className="space-y-3">
                           <div className="flex justify-between items-end">
-                            <div>
+                            <div className="outline-none" 
+                                 contentEditable={isEditing} 
+                                 suppressContentEditableWarning={true}
+                                 onBlur={(e) => {
+                                   const newExp = [...resume.experience];
+                                   newExp[i].title = e.currentTarget.querySelector('h3')?.textContent || '';
+                                   newExp[i].company = e.currentTarget.querySelector('p')?.textContent || '';
+                                   setResume({ ...resume, experience: newExp });
+                                 }}>
                               <h3 className="text-xl font-black">{exp.title}</h3>
                               <p className={cn(
                                 "font-bold",
                                 selectedTemplate === 'modern' && "text-slate-500",
                                 selectedTemplate === 'classic' && "text-[#8b4513]",
-                                selectedTemplate === 'cyberpunk' && "text-[#ff00ff]"
+                                selectedTemplate === 'cyberpunk' && "text-[#ff00ff]",
+                                selectedTemplate === 'ats' && "text-slate-700"
                               )}>{exp.company}</p>
                             </div>
-                            <span className="text-xs font-black text-slate-400 italic">{exp.period}</span>
+                            <span 
+                              contentEditable={isEditing}
+                              suppressContentEditableWarning={true}
+                              onBlur={(e) => {
+                                const newExp = [...resume.experience];
+                                newExp[i].period = e.currentTarget.textContent || '';
+                                setResume({ ...resume, experience: newExp });
+                              }}
+                              className="text-xs font-black text-slate-400 italic outline-none"
+                            >{exp.period}</span>
                           </div>
-                          <ul className="space-y-2">
+                          <ul className="space-y-2 list-disc pl-5">
                             {exp.achievements.map((ach, ai) => (
-                              <li key={ai} className="flex gap-3 text-sm font-medium leading-relaxed">
-                                <span className={cn(
-                                  selectedTemplate === 'modern' && "text-soft-blue",
-                                  selectedTemplate === 'classic' && "text-[#8b4513]",
-                                  selectedTemplate === 'cyberpunk' && "text-[#00ffcc]"
-                                )}>▹</span> {ach}
+                              <li key={ai} className="group">
+                                <span 
+                                  contentEditable={isEditing}
+                                  suppressContentEditableWarning={true}
+                                  onBlur={(e) => {
+                                    const newExp = [...resume.experience];
+                                    newExp[i].achievements[ai] = e.currentTarget.textContent || '';
+                                    setResume({ ...resume, experience: newExp });
+                                  }}
+                                  className={cn(
+                                    "text-sm font-medium leading-relaxed outline-none block w-full",
+                                    isEditing && "hover:bg-slate-50 p-1 rounded border-2 border-dashed border-transparent hover:border-soft-blue/20"
+                                  )}
+                                >{ach}</span>
                               </li>
                             ))}
                           </ul>
@@ -527,16 +696,28 @@ export default function Portfolio() {
                       "text-xs font-black uppercase tracking-widest border-l-4 pl-4",
                       selectedTemplate === 'modern' && "text-slate-400 border-soft-blue",
                       selectedTemplate === 'classic' && "text-[#8b4513] border-[#8b4513]",
-                      selectedTemplate === 'cyberpunk' && "text-[#00ffcc] border-[#ff00ff]"
+                      selectedTemplate === 'cyberpunk' && "text-[#00ffcc] border-[#ff00ff]",
+                      selectedTemplate === 'ats' && "text-slate-900 border-slate-900"
                     )}>Highlighted Projects</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {resume.projects.map((proj, i) => (
                         <div key={i} className={cn(
-                          "p-6 rounded-3xl space-y-3 border",
+                          "p-6 rounded-3xl space-y-3 border transition-all outline-none",
                           selectedTemplate === 'modern' && "bg-slate-50 border-slate-100",
                           selectedTemplate === 'classic' && "bg-[#e8dcc4]/20 border-[#e8dcc4]",
-                          selectedTemplate === 'cyberpunk' && "bg-black border-[#00ffcc]/20 hover:border-[#ff00ff]/40"
-                        )}>
+                          selectedTemplate === 'cyberpunk' && "bg-black border-[#00ffcc]/20 hover:border-[#ff00ff]/40",
+                          selectedTemplate === 'ats' && "bg-white border-slate-200 shadow-none rounded-none border-l-4 border-l-black",
+                          isEditing && "ring-2 ring-soft-blue ring-offset-2"
+                        )}
+                        contentEditable={isEditing}
+                        suppressContentEditableWarning={true}
+                        onBlur={(e) => {
+                          const newProj = [...resume.projects];
+                          newProj[i].name = e.currentTarget.querySelector('h3')?.textContent || '';
+                          newProj[i].description = e.currentTarget.querySelector('p')?.textContent || '';
+                          setResume({ ...resume, projects: newProj });
+                        }}
+                        >
                           <h3 className="font-black text-lg">{proj.name}</h3>
                           <p className="text-sm font-medium opacity-80">{proj.description}</p>
                           <div className="flex flex-wrap gap-2">
@@ -545,7 +726,8 @@ export default function Portfolio() {
                                 "text-[10px] font-black uppercase",
                                 selectedTemplate === 'modern' && "text-soft-blue",
                                 selectedTemplate === 'classic' && "text-[#8b4513]",
-                                selectedTemplate === 'cyberpunk' && "text-[#ff00ff]"
+                                selectedTemplate === 'cyberpunk' && "text-[#ff00ff]",
+                                selectedTemplate === 'ats' && "text-slate-900 font-bold"
                               )}>{t}</span>
                             ))}
                           </div>

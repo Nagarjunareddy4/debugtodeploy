@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Flame, Trophy, Zap, Users, Search, Sparkles, Star, ArrowRight, Brain, Lock, Check, RefreshCw } from 'lucide-react';
+import { Flame, Trophy, Zap, Users, Search, Sparkles, Star, ArrowRight, Brain, Lock, Check, RefreshCw, Share2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Joyride, Step } from 'react-joyride';
 import { supabase } from '../lib/supabase';
+import { trackEvent } from '../lib/analytics';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
 import { cn, usePageTitle } from '../lib/utils';
 import OnboardingModal from '../components/OnboardingModal';
@@ -214,11 +215,25 @@ export default function Dashboard() {
           messages: [
             { 
               role: 'system', 
-              content: 'You are a strict DevOps and SRE expert. ONLY answer queries related to Cloud, DevOps, SRE, Infrastructure, CI/CD, and related technologies. If the user asks something unrelated, politely inform them that you are a DevOps assistant.' 
+              content: `You are the Official DebugToDeploy AI Guide. You help users master DevOps and navigate all platform features.
+              
+              PLATFORM FEATURES & UPDATES:
+              - AI Roadmaps: Personalized learning paths. PRO users can EXPORT these as high-quality PDFs.
+              - Exporting: Roadmap exports include a "DebugToDeploy" brand watermark for professional authenticity.
+              - Achievement Badges: Premium 3D trophies that unlock automatically upon completing Roadmap stages or Cloud Labs.
+              - Cloud Labs: Live AWS/K8s sandboxes to solve production-grade infrastructure issues.
+              - ATS Resume Builder: Generates professional resumes. Users can use "Edit Mode" to modify any text inline. Pro users can export these.
+              - Public Portfolio: A high-end technical profile showing verified 3D achievements and career artifacts.
+              - Pro Plan ($6/mo): Unlocks unlimited roadmaps, exports, and unlimited AI search/audits.
+              
+              HOW TO ANSWER:
+              - For platform questions (badges, exporting, editing resumes, roadmaps), give specific and helpful guidance based on the features above.
+              - For technical DevOps/SRE questions, provide expert-level, concise answers.
+              - Keep responses under 180 words.`
             },
             { role: 'user', content: searchQuery }
           ],
-          max_tokens: 400,
+          max_tokens: 500,
         }),
       });
       const data = await response.json();
@@ -533,6 +548,279 @@ export default function Dashboard() {
           )}
         </div>
       </motion.section>
+
+      {/* Personalized Growth Section */}
+      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* AI Insights Card */}
+        <div className="playful-card bg-surface border-4 border-soft-blue/20 flex flex-col gap-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-6 opacity-5">
+            <Brain className="w-20 h-20 text-soft-blue" />
+          </div>
+          <div className="flex items-center gap-3">
+             <div className="w-10 h-10 rounded-xl bg-soft-blue/10 flex items-center justify-center text-soft-blue">
+                <Sparkles className="w-5 h-5" />
+             </div>
+             <div>
+                <h3 className="font-black italic text-xl">AI Insights</h3>
+                <p className="text-[9px] font-black uppercase tracking-widest text-text-dim">Personalized for your progress</p>
+             </div>
+          </div>
+          <div className="space-y-4 flex-1">
+             <div className="p-4 bg-brand-bg rounded-2xl border border-border">
+                <p className="text-sm font-bold leading-relaxed">
+                  {profile?.readiness_score < 30 
+                    ? "You're just starting! Focus on completing the 'Foundations' stage of your roadmap to build a solid base."
+                    : profile?.readiness_score < 70
+                    ? "Great progress! Your K8s skills are growing. Try the 'Network Policy' lab next to boost your score."
+                    : "You're reaching expert levels. Focus on Mock Interviews now to polish your technical communication."}
+                </p>
+             </div>
+             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-soft-blue">
+                <Check className="w-3 h-3" /> Readiness increased by 5% this week
+             </div>
+          </div>
+          <button onClick={() => navigate('/roadmap')} className="text-[10px] font-black uppercase tracking-widest text-soft-blue hover:underline text-left">View Roadmap Details →</button>
+        </div>
+
+        {/* Recommended Certifications */}
+        <div className="playful-card bg-surface border-4 border-soft-purple/20 flex flex-col gap-6">
+           <div className="flex items-center gap-3">
+             <div className="w-10 h-10 rounded-xl bg-soft-purple/10 flex items-center justify-center text-soft-purple">
+                <Trophy className="w-5 h-5" />
+             </div>
+             <div>
+                <h3 className="font-black italic text-xl">Recommended Certs</h3>
+                <p className="text-[9px] font-black uppercase tracking-widest text-text-dim">Based on your current path</p>
+             </div>
+          </div>
+          <div className="space-y-3 flex-1">
+             {[
+               { name: 'CKAD (Certified Kubernetes Application Developer)', focus: 'K8s', match: '95% Match' },
+               { name: 'AWS Certified DevOps Engineer', focus: 'Cloud', match: '80% Match' }
+             ].map((cert, i) => (
+               <div key={i} className="flex items-center justify-between p-3 bg-brand-bg rounded-xl border border-border">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black truncate">{cert.name}</p>
+                    <p className="text-[9px] font-bold text-text-dim uppercase">{cert.focus}</p>
+                  </div>
+                  <span className="shrink-0 text-[8px] font-black uppercase bg-soft-purple/10 text-soft-purple px-2 py-1 rounded-md">{cert.match}</span>
+               </div>
+             ))}
+          </div>
+          <button onClick={() => navigate('/certificates')} className="text-[10px] font-black uppercase tracking-widest text-soft-purple hover:underline text-left">Explore Certificates →</button>
+        </div>
+      </motion.div>
+
+      {/* Gamification Section */}
+      <motion.div variants={itemVariants} className="grid grid-cols-1 gap-8">
+         {/* Achievement Badges */}
+         <div className="playful-card bg-surface border-none shadow-2xl space-y-8">
+            <div className="flex items-center justify-between">
+               <div>
+                  <h3 className="text-2xl font-black italic">Achievement Badges</h3>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-text-dim">Your roadmap milestones</p>
+               </div>
+               <div className="w-10 h-10 rounded-full bg-soft-orange/10 flex items-center justify-center text-soft-orange">
+                  <Star className="w-5 h-5 fill-soft-orange" />
+               </div>
+            </div>
+            <div className="flex overflow-x-auto pb-4 gap-6 no-scrollbar snap-x snap-mandatory">
+               {(function() {
+                 const roadmapData = typeof profile?.roadmap_data === 'string' 
+                   ? JSON.parse(profile.roadmap_data) 
+                   : profile?.roadmap_data;
+                   
+                 const completedTasks = profile?.completed_roadmap_tasks || [];
+                 
+                 const roadmapBadges = roadmapData?.stages?.map((stage: any, sIdx: number) => {
+                   const stageTasks = stage.tasks || [];
+                   const isEarned = stageTasks.length > 0 && stageTasks.every((task: any, tIdx: number) => {
+                     const taskId = `${stage.id || `stage-${sIdx + 1}`}-task-${tIdx}`;
+                     return completedTasks.includes(taskId);
+                   });
+                   
+                   return {
+                     name: stage.label,
+                     icon: stage.icon || '🏆',
+                     earned: isEarned,
+                     date: isEarned ? 'Earned' : 'Locked'
+                   };
+                 }) || [];
+
+                 const finalBadges = roadmapBadges.length > 0 
+                   ? roadmapBadges
+                   : [
+                       { name: 'Docker Pilot', icon: '🐳', earned: (profile?.labs_completed || 0) >= 1, date: '1 Lab' },
+                       { name: 'K8s Healer', icon: '☸️', earned: (profile?.labs_completed || 0) >= 3, date: '3 Labs' },
+                       { name: 'Cloud Native', icon: '☁️', earned: (profile?.labs_completed || 0) >= 5, date: '5 Labs' },
+                       { name: 'SRE Master', icon: '⚡', earned: (profile?.level || 1) >= 5, date: 'Level 5' }
+                     ];
+
+                 return finalBadges.map((badge, i) => (
+                   <motion.div 
+                     key={i} 
+                     whileHover={{ 
+                       scale: 1.05, 
+                       rotateY: 10, 
+                       rotateX: -10,
+                       boxShadow: badge.earned 
+                         ? "0 25px 50px -12px rgba(251, 191, 36, 0.5)" 
+                         : "0 10px 15px -3px rgba(0, 0, 0, 0.1)"
+                     }}
+                     className={cn(
+                       "flex flex-col items-center gap-3 p-6 rounded-3xl border-4 transition-all relative overflow-hidden group cursor-pointer shrink-0 w-48 snap-center",
+                       badge.earned 
+                         ? "bg-surface border-soft-orange/30 shadow-xl" 
+                         : "bg-brand-bg opacity-40 border-border grayscale"
+                     )}
+                   >
+                      {/* Realistic Lighting Effect */}
+                      {badge.earned && (
+                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/20 pointer-events-none" />
+                      )}
+
+                      <div className="relative w-20 h-20 flex items-center justify-center drop-shadow-2xl">
+                         <img 
+                           src={(function() {
+                             const name = badge.name.toLowerCase();
+                             if (name.includes('docker') || name.includes('container')) 
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Whale/3D/whale_3d.png';
+                             if (name.includes('k8s') || name.includes('kubernetes') || name.includes('orchestration'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Steering%20Wheel/3D/steering_wheel_3d.png';
+                             if (name.includes('git') || name.includes('version') || name.includes('github') || name.includes('gitlab'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Link/3D/link_3d.png';
+                             if (name.includes('monitor') || name.includes('metric') || name.includes('log') || name.includes('grafana') || name.includes('prometheus'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bar%20Chart/3D/bar_chart_3d.png';
+                             if (name.includes('cloud') || name.includes('aws') || name.includes('azure') || name.includes('gcp') || name.includes('infra'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cloud/3D/cloud_3d.png';
+                             if (name.includes('security') || name.includes('protect') || name.includes('vault') || name.includes('auth'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Shield/3D/shield_3d.png';
+                             if (name.includes('pipeline') || name.includes('cicd') || name.includes('deploy') || name.includes('action'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Rocket/3D/rocket_3d.png';
+                             if (name.includes('network') || name.includes('api') || name.includes('service') || name.includes('dns'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Globe%20with%20Meridians/3D/globe_with_meridians_3d.png';
+                             if (name.includes('automate') || name.includes('script') || name.includes('python') || name.includes('bash'))
+                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Robot/3D/robot_3d.png';
+                             return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Trophy/3D/trophy_3d.png';
+                           })()} 
+                           alt={badge.name}
+                           onError={(e) => {
+                             (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Trophy/3D/trophy_3d.png';
+                           }}
+                           className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
+                         />
+                         
+                         {/* Holographic Glow */}
+                         {badge.earned && (
+                           <div className="absolute -inset-2 bg-soft-orange/20 blur-2xl -z-10 animate-pulse" />
+                         )}
+                      </div>
+
+                      <div className="text-center mt-2">
+                         <p className="text-[11px] font-black uppercase truncate max-w-[120px] leading-tight">
+                           {badge.name}
+                         </p>
+                         <p className={cn(
+                           "text-[8px] font-black uppercase mt-1 tracking-tighter",
+                           badge.earned ? "text-soft-orange" : "text-text-dim"
+                         )}>
+                           {badge.date}
+                         </p>
+                      </div>
+                      
+                      {/* Locked Overlay */}
+                      {!badge.earned && (
+                        <div className="absolute top-2 right-2">
+                          <Lock className="w-3 h-3 text-text-dim/30" />
+                        </div>
+                      )}
+                   </motion.div>
+                 ));
+               })()}
+            </div>
+         </div>
+      </motion.div>
+
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+         {/* Weekly Goal Tracker */}
+         <div className="playful-card bg-text-main text-surface border-none shadow-2xl flex flex-col gap-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-10">
+               <Zap className="w-24 h-24" />
+            </div>
+            <div>
+               <h3 className="text-2xl font-black italic">Weekly Goal</h3>
+               <p className="text-[9px] font-black uppercase tracking-widest text-surface/60">Stay on track, Commander</p>
+            </div>
+            <div className="space-y-6 flex-1">
+               <div className="space-y-2">
+                  <div className="flex justify-between text-[10px] font-black uppercase">
+                     <span>Complete 5 Labs</span>
+                     <span>3/5</span>
+                  </div>
+                  <div className="h-2 w-full bg-surface/20 rounded-full overflow-hidden">
+                     <div className="h-full bg-soft-green transition-all duration-700" style={{ width: '60%' }} />
+                  </div>
+               </div>
+               <div className="space-y-2">
+                  <div className="flex justify-between text-[10px] font-black uppercase">
+                     <span>Earn 1,000 XP</span>
+                     <span>450/1000</span>
+                  </div>
+                  <div className="h-2 w-full bg-surface/20 rounded-full overflow-hidden">
+                     <div className="h-full bg-soft-blue transition-all duration-700" style={{ width: '45%' }} />
+                  </div>
+               </div>
+               <div className="p-4 bg-surface/10 rounded-2xl border border-surface/20">
+                  <p className="text-[10px] font-bold leading-relaxed">
+                    🎁 **Reward:** Earn 500 bonus XP upon goal completion!
+                  </p>
+               </div>
+            </div>
+         </div>
+
+         {/* Refer & Earn Card */}
+         <div className="playful-card bg-surface border-4 border-dashed border-soft-blue/30 flex flex-col items-center text-center p-8 space-y-6 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 transition-transform">
+               <Users className="w-20 h-20 text-soft-blue" />
+            </div>
+            <div className="w-16 h-16 bg-soft-blue/10 rounded-full flex items-center justify-center text-soft-blue mb-2">
+               <Users className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+               <h3 className="text-xl font-black italic">Refer & Earn Pro</h3>
+               <p className="text-xs font-bold text-text-dim leading-relaxed">
+                  Invite 3 friends and get **1 month of Pro** for free. Help others accelerate their career!
+               </p>
+            </div>
+            
+            <div className="w-full bg-brand-bg border-2 border-border rounded-2xl p-4 flex items-center justify-between gap-4">
+               <span className="text-[10px] font-mono font-bold truncate text-text-dim">
+                  debugtodeploy.com/ref/{profile?.username || profile?.id?.slice(0, 8)}
+               </span>
+               <button 
+                 onClick={() => {
+                   navigator.clipboard.writeText(`https://debugtodeploy.com/ref/${profile?.username || profile?.id}`);
+                   toast.success('Referral link copied!');
+                   trackEvent('referral_link_copied', { username: profile?.username });
+                 }}
+                 className="p-2 hover:bg-soft-blue/10 rounded-lg text-soft-blue transition-all"
+               >
+                  <Share2 className="w-4 h-4" />
+               </button>
+            </div>
+
+            <div className="flex gap-4 w-full">
+               <div className="flex-1 text-center">
+                  <p className="text-[14px] font-black">{profile?.referral_count || 0}</p>
+                  <p className="text-[8px] font-black uppercase text-text-dim">Invited</p>
+               </div>
+               <div className="flex-1 text-center">
+                  <p className="text-[14px] font-black">3</p>
+                  <p className="text-[8px] font-black uppercase text-text-dim">Goal</p>
+               </div>
+            </div>
+         </div>
+      </motion.div>
 
       <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Progress Graph */}
