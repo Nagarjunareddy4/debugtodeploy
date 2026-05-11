@@ -13,6 +13,7 @@ export default function Auth() {
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot' | 'verify'>('login');
   const [identifier, setIdentifier] = useState(''); // email or username
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
@@ -97,8 +98,12 @@ export default function Auth() {
         const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
         if (error) throw error;
       } else if (authMode === 'signup') {
-        if (!username || !fullName) {
-          throw new Error('Please fill in all fields (Name, Username, Email, Password).');
+        if (!username || !fullName || !password || !confirmPassword) {
+          throw new Error('Please fill in all fields (Name, Username, Email, Password, Confirm Password).');
+        }
+
+        if (password !== confirmPassword) {
+          throw new Error('Passwords do not match. Please verify your system keys.');
         }
 
         if (usernameTaken) {
@@ -169,8 +174,12 @@ export default function Auth() {
         const isRegistered = data && data[0]?.email_taken;
 
         if (!isRegistered) {
-          setEmailNotRegistered(true);
-          throw new Error('This email is not registered. Please create an account first.');
+          setError('This email is not registered. Redirecting to signup...');
+          setTimeout(() => {
+            setAuthMode('signup');
+            setError(null);
+          }, 2000);
+          return;
         }
 
         const { error } = await supabase.auth.resetPasswordForEmail(identifier, {
@@ -244,8 +253,9 @@ export default function Auth() {
       </div>
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, y: 40, scale: 0.95, filter: 'blur(10px)' }}
+        animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         className="relative z-10 w-full max-w-[calc(100vw-2rem)] xl:max-w-[70rem] min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-8 lg:gap-0 bg-white/90 dark:bg-[#0D172A]/70 backdrop-blur-2xl border border-slate-200/60 dark:border-white/10 shadow-[0_32px_128px_-16px_rgba(15,23,42,0.22)] rounded-[2rem] sm:rounded-[3rem] overflow-auto my-4 md:my-8"
       >
         {/* Left Side: Branding & Features */}
@@ -329,7 +339,18 @@ export default function Auth() {
             </p>
           </motion.div>
 
-          <div className="mb-8 text-center lg:text-left">
+          <div className="mb-8 text-center lg:text-left relative">
+            {(authMode === 'forgot' || authMode === 'verify') && (
+              <motion.button
+                type="button"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                onClick={() => setAuthMode('login')}
+                className="absolute -top-12 left-0 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-text-dim hover:text-soft-blue transition-colors group"
+              >
+                <motion.span whileHover={{ x: -3 }}>←</motion.span> Back to Login
+              </motion.button>
+            )}
             <h2 className="text-3xl font-black tracking-tight mb-2">
               {authMode === 'login' ? "Welcome Back" : authMode === 'signup' ? "Start Journey" : authMode === 'forgot' ? "Reset Access" : "Verify Email"}
             </h2>
@@ -438,9 +459,10 @@ export default function Auth() {
                   {authMode === 'signup' && (
                     <motion.div
                       key="signup-fields"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
+                      initial={{ opacity: 0, x: -20, filter: 'blur(5px)' }}
+                      animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+                      exit={{ opacity: 0, x: 20, filter: 'blur(5px)' }}
+                      transition={{ duration: 0.4, ease: "backOut" }}
                       className="space-y-6 overflow-hidden"
                     >
                       <div className="space-y-2">
@@ -506,48 +528,104 @@ export default function Auth() {
                 </div>
 
                 {authMode !== 'forgot' && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center px-4">
-                      <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black">Password</label>
-                      {authMode === 'login' && (
+                  <div className="space-y-4">
+                    <div className="flex flex-col items-center justify-center mb-2">
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={showPassword ? 'monkey-peek' : 'monkey-hide'}
+                          initial={{ scale: 0.5, opacity: 0, y: 10 }}
+                          animate={{ scale: 1, opacity: 1, y: 0 }}
+                          exit={{ scale: 0.5, opacity: 0, y: -10 }}
+                          className="w-20 h-20 bg-surface border-2 border-border rounded-full flex items-center justify-center text-5xl shadow-lg shadow-soft-blue/10 mb-2"
+                        >
+                          {showPassword ? '🐵' : '🙈'}
+                        </motion.div>
+                      </AnimatePresence>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-dim">
+                        {showPassword ? 'System Access Visible' : 'Security Mode Active'}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center px-4">
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black">Master Key (Password)</label>
+                        {authMode === 'login' && (
+                          <button
+                            type="button"
+                            onClick={() => setAuthMode('forgot')}
+                            className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-soft-blue hover:text-soft-purple transition-all group/forgot"
+                          >
+                            <AlertCircle className="w-3 h-3 group-hover:rotate-12 transition-transform" />
+                            <span className="border-b border-soft-blue/30 group-hover:border-soft-purple">Forgot Password?</span>
+                          </button>
+                        )}
+                      </div>
+                      <div className="relative group/pass">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          required
+                          className="w-full bg-surface border-2 border-border rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm text-text-main pr-14"
+                          placeholder={authMode === 'login' ? "••••••••" : "Create Master Key"}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                        />
                         <button
                           type="button"
-                          onClick={() => setAuthMode('forgot')}
-                          className="text-[9px] font-black uppercase tracking-widest text-soft-blue hover:text-text-main transition-colors"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-soft-blue/10 transition-all cursor-pointer z-10"
                         >
-                          Forgot Password?
+                          <AnimatePresence mode="wait" initial={false}>
+                            <motion.div
+                              key={showPassword ? 'show' : 'hide'}
+                              initial={{ y: 5, opacity: 0 }}
+                              animate={{ y: 0, opacity: 1 }}
+                              exit={{ y: -5, opacity: 0 }}
+                              className="flex flex-col items-center"
+                            >
+                              <span className="text-xl">{showPassword ? '🔓' : '🔒'}</span>
+                              <span className="text-[8px] font-black uppercase mt-0.5 text-text-dim/50">
+                                {showPassword ? 'Hide' : 'Show'}
+                              </span>
+                            </motion.div>
+                          </AnimatePresence>
                         </button>
-                      )}
+                      </div>
                     </div>
-                    <div className="relative group/pass">
+                  </div>
+                )}
+
+                {authMode === 'signup' && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="space-y-2"
+                  >
+                    <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black ml-4">Confirm Password</label>
+                    <div className="relative">
                       <input
                         type={showPassword ? "text" : "password"}
                         required
                         className="w-full bg-surface border-2 border-border rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm text-text-main pr-14"
                         placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-white/5 transition-colors cursor-pointer z-10"
-                      >
-                        <AnimatePresence mode="wait" initial={false}>
-                          <motion.span
-                            key={showPassword ? 'show' : 'hide'}
-                            initial={{ scale: 0.5, opacity: 0, rotate: -20 }}
-                            animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                            exit={{ scale: 0.5, opacity: 0, rotate: 20 }}
-                            transition={{ type: "spring", stiffness: 700, damping: 30 }}
-                            className="text-xl select-none"
+                      <div className="absolute right-5 top-1/2 -translate-y-1/2">
+                        {confirmPassword && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className={cn(
+                              "w-6 h-6 rounded-full flex items-center justify-center",
+                              password === confirmPassword ? "bg-soft-green/20 text-soft-green" : "bg-soft-red/20 text-soft-red"
+                            )}
                           >
-                            {showPassword ? '👁️' : '🙈'}
-                          </motion.span>
-                        </AnimatePresence>
-                      </button>
+                            {password === confirmPassword ? <ShieldCheck className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                          </motion.div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
 
                 {authMode === 'signup' && (
@@ -596,15 +674,21 @@ export default function Auth() {
                 <motion.button
                   type="submit"
                   disabled={loading || (authMode === 'signup' && !acceptedConsent)}
-                  whileHover={!loading && (authMode !== 'signup' || acceptedConsent) ? { scale: 1.02 } : {}}
+                  whileHover={!loading && (authMode !== 'signup' || acceptedConsent) ? { scale: 1.02, y: -2 } : {}}
                   whileTap={!loading && (authMode !== 'signup' || acceptedConsent) ? { scale: 0.98 } : {}}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
                   className={cn(
-                    "w-full flex items-center justify-center gap-3 py-6 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all group",
+                    "w-full flex items-center justify-center gap-3 py-6 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all group relative overflow-hidden",
                     loading || (authMode === 'signup' && !acceptedConsent)
                       ? "bg-surface text-text-dim/30 cursor-not-allowed shadow-none border border-border"
                       : "bg-text-main text-surface shadow-2xl shadow-soft-blue/20 hover:bg-soft-blue"
                   )}
                 >
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-shimmer"
+                  />
                   {loading ? (
                     <div className="w-6 h-6 border-4 border-surface/30 border-t-surface rounded-full animate-spin" />
                   ) : authMode === 'login' ? (

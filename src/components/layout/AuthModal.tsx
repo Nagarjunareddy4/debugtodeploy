@@ -17,10 +17,13 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot' | 'verify'>(initialMode);
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [acceptedConsent, setAcceptedConsent] = useState(false);
 
   React.useEffect(() => {
@@ -56,6 +59,10 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
         if (error) throw error;
         onClose();
       } else if (authMode === 'signup') {
+        if (!password || password !== confirmPassword) {
+          throw new Error('Passwords do not match. Please verify your system keys.');
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email: identifier,
           password,
@@ -70,6 +77,36 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
         if (error) throw error;
         if (data.user) await saveUserConsent(data.user.id);
         setAuthMode('verify');
+      } else if (authMode === 'forgot') {
+        if (!identifier.includes('@')) {
+          throw new Error('Please enter a valid email address.');
+        }
+
+        // Check if email exists using secure RPC
+        const { data: availability, error: profileError } = await supabase.rpc('check_availability', {
+          target_username: '',
+          target_email: identifier.toLowerCase().trim()
+        });
+
+        if (profileError) throw profileError;
+
+        const isRegistered = availability && availability[0]?.email_taken;
+
+        if (!isRegistered) {
+          setError('This email is not registered. Redirecting to signup...');
+          setTimeout(() => {
+            setAuthMode('signup');
+            setError(null);
+          }, 2000);
+          return;
+        }
+
+        const { error } = await supabase.auth.resetPasswordForEmail(identifier, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+
+        if (error) throw error;
+        setMessage('Reset link sent! Please check your inbox.');
       }
     } catch (err: any) {
       setError(err.message);
@@ -121,12 +158,34 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                 <div className="w-16 h-16 bg-soft-blue/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-soft-blue/20">
                   <Rocket className="w-8 h-8 text-soft-blue" />
                 </div>
-                <h2 className="text-3xl font-black tracking-tight mb-2 italic">
-                  {authMode === 'login' ? 'Welcome Back' : authMode === 'signup' ? 'Join the Fleet' : 'Verify Email'}
-                </h2>
-                <p className="text-text-dim font-bold text-sm">
-                  {authMode === 'login' ? 'Continue your DevOps ascent.' : 'Start building your infrastructure career.'}
-                </p>
+                <div className="relative">
+                  {(authMode === 'forgot' || authMode === 'verify') && (
+                    <motion.button
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      onClick={() => {
+                        setAuthMode('login');
+                        setMessage(null);
+                        setError(null);
+                      }}
+                      className="absolute -top-12 left-0 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-text-dim hover:text-soft-blue transition-colors group"
+                    >
+                      <motion.span whileHover={{ x: -3 }}>←</motion.span> Back to Login
+                    </motion.button>
+                  )}
+                  <h2 className="text-3xl font-black tracking-tight mb-2 italic">
+                    {authMode === 'login' ? 'Welcome Back' : authMode === 'signup' ? 'Join the Fleet' : authMode === 'forgot' ? 'Reset Access' : 'Verify Email'}
+                  </h2>
+                  <p className="text-text-dim font-bold text-sm">
+                    {authMode === 'login' 
+                      ? 'Continue your DevOps ascent.' 
+                      : authMode === 'signup' 
+                        ? 'Start building your infrastructure career.'
+                        : authMode === 'forgot'
+                          ? "We'll send a recovery beacon to your inbox."
+                          : 'Check your inbox to activate your clearance.'}
+                  </p>
+                </div>
               </div>
 
               {authMode === 'verify' ? (
@@ -139,19 +198,23 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 gap-4 mb-8">
-                    <button onClick={() => signInWithSocial('google')} className="flex items-center justify-center gap-2 py-4 border-2 border-border rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-soft-blue/10 transition-colors">
-                      <Chrome className="w-4 h-4 text-soft-blue" /> Google
-                    </button>
-                    <button onClick={() => signInWithSocial('github')} className="flex items-center justify-center gap-2 py-4 border-2 border-border rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-soft-purple/10 transition-colors">
-                      <Github className="w-4 h-4 text-soft-purple" /> GitHub
-                    </button>
-                  </div>
+                  {authMode !== 'forgot' && (
+                    <>
+                      <div className="grid grid-cols-2 gap-4 mb-8">
+                        <button type="button" onClick={() => signInWithSocial('google')} className="flex items-center justify-center gap-2 py-4 border-2 border-border rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-soft-blue/10 transition-colors">
+                          <Chrome className="w-4 h-4 text-soft-blue" /> Google
+                        </button>
+                        <button type="button" onClick={() => signInWithSocial('github')} className="flex items-center justify-center gap-2 py-4 border-2 border-border rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-soft-purple/10 transition-colors">
+                          <Github className="w-4 h-4 text-soft-purple" /> GitHub
+                        </button>
+                      </div>
 
-                  <div className="relative mb-8">
-                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border"></div></div>
-                    <div className="relative flex justify-center text-[8px] uppercase font-black tracking-[0.4em] text-text-dim"><span className="bg-surface px-4">Or Credentials</span></div>
-                  </div>
+                      <div className="relative mb-8">
+                        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border"></div></div>
+                        <div className="relative flex justify-center text-[8px] uppercase font-black tracking-[0.4em] text-text-dim"><span className="bg-surface px-4">Or Credentials</span></div>
+                      </div>
+                    </>
+                  )}
 
                   <form onSubmit={handleAuth} className="space-y-4">
                     {authMode === 'signup' && (
@@ -174,22 +237,84 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                         />
                       </>
                     )}
-                    <input
-                      type="text"
-                      required
-                      placeholder="Email or Username"
-                      className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 outline-none focus:border-soft-blue font-bold text-sm"
-                      value={identifier}
-                      onChange={(e) => setIdentifier(e.target.value)}
-                    />
-                    <input
-                      type="password"
-                      required
-                      placeholder="Password"
-                      className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 outline-none focus:border-soft-blue font-bold text-sm"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
+                    {authMode !== 'forgot' && (
+                      <div className="flex flex-col items-center justify-center mb-6">
+                        <AnimatePresence mode="wait">
+                          <motion.div
+                            key={showPassword ? 'monkey-peek' : 'monkey-hide'}
+                            initial={{ scale: 0.5, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="w-16 h-16 bg-brand-bg border-2 border-border rounded-full flex items-center justify-center text-4xl shadow-inner mb-2"
+                          >
+                            {showPassword ? '🐵' : '🙈'}
+                          </motion.div>
+                        </AnimatePresence>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black ml-4">
+                        {authMode === 'signup' ? 'Email Address' : authMode === 'forgot' ? 'Registered Email' : 'Email or Username'}
+                      </label>
+                      <input
+                        type={authMode === 'login' ? "text" : "email"}
+                        required
+                        className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 outline-none focus:border-soft-blue font-bold text-sm"
+                        placeholder="engineer@debugtodeploy.com"
+                        value={identifier}
+                        onChange={(e) => setIdentifier(e.target.value)}
+                      />
+                    </div>
+
+                    {authMode !== 'forgot' && (
+                      <>
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center px-4">
+                            <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black">Password</label>
+                            {authMode === 'login' && (
+                              <button
+                                type="button"
+                                onClick={() => setAuthMode('forgot')}
+                                className="text-[9px] font-black uppercase tracking-widest text-soft-blue hover:text-soft-purple transition-colors"
+                              >
+                                Forgot Password?
+                              </button>
+                            )}
+                          </div>
+                          <div className="relative">
+                            <input
+                              type={showPassword ? "text" : "password"}
+                              required
+                              className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 outline-none focus:border-soft-blue font-bold text-sm pr-14"
+                              placeholder="••••••••"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-xl hover:bg-soft-blue/10 transition-colors"
+                            >
+                              {showPassword ? '🔓' : '🔒'}
+                            </button>
+                          </div>
+                        </div>
+
+                        {authMode === 'signup' && (
+                          <div className="space-y-2">
+                            <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black ml-4">Confirm Password</label>
+                            <input
+                              type={showPassword ? "text" : "password"}
+                              required
+                              className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 outline-none focus:border-soft-blue font-bold text-sm"
+                              placeholder="••••••••"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                            />
+                          </div>
+                        )}
+                      </>
+                    )}
 
                     {authMode === 'signup' && (
                       <ConsentCheckbox checked={acceptedConsent} onChange={setAcceptedConsent} />
@@ -201,20 +326,30 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                       </div>
                     )}
 
+                    {message && (
+                      <div className="p-4 bg-soft-green/10 border border-soft-green/20 rounded-2xl text-soft-green text-xs font-bold flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4" /> {message}
+                      </div>
+                    )}
+
                     <button
                       type="submit"
                       disabled={loading}
                       className="w-full py-5 bg-text-main text-surface rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-soft-blue transition-colors flex items-center justify-center gap-2"
                     >
-                      {loading ? 'Processing...' : authMode === 'login' ? <><LogIn className="w-4 h-4" /> Login</> : <><UserPlus className="w-4 h-4" /> Create Account</>}
+                      {loading ? 'Processing...' : authMode === 'login' ? <><LogIn className="w-4 h-4" /> Login</> : authMode === 'signup' ? <><UserPlus className="w-4 h-4" /> Create Account</> : <><Rocket className="w-4 h-4" /> Send Link</>}
                     </button>
                   </form>
 
                   <div className="mt-8 text-center">
                     <p className="text-xs font-bold text-text-dim">
-                      {authMode === 'login' ? "Don't have an account?" : "Already an architect?"}
+                      {authMode === 'login' ? "Don't have an account?" : authMode === 'signup' ? "Already an architect?" : "Remembered your key?"}
                       <button
-                        onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}
+                        onClick={() => {
+                          setAuthMode(authMode === 'signup' ? 'login' : 'signup');
+                          setMessage(null);
+                          setError(null);
+                        }}
                         className="ml-2 text-soft-blue hover:underline"
                       >
                         {authMode === 'login' ? 'Sign Up' : 'Login'}
