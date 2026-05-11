@@ -8,6 +8,7 @@ import { toast } from 'react-hot-toast';
 import ConsentCheckbox from '../components/ConsentCheckbox';
 import { saveUserConsent } from '../lib/consent';
 
+// Production-hardened authentication flow with real-time security validation
 export default function Auth() {
   usePageTitle('Sign In');
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot' | 'verify'>('login');
