@@ -682,7 +682,7 @@ export default function Auth() {
                         </button>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 )}
 
                 {authMode === 'signup' && (
