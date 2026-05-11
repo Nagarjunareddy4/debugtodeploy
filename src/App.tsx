@@ -22,6 +22,7 @@ import Support from './pages/Support';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Landing from './pages/Landing';
+import DeleteAccount from './pages/DeleteAccount';
 import PublicProfile from './pages/PublicProfile';
 import AiSupportBot from './components/AiSupportBot';
 import SplashScreen from './components/common/SplashScreen';
@@ -102,45 +103,43 @@ export default function App() {
       const metaUsername = user.user_metadata?.username || user.user_metadata?.preferred_username || user.email?.split('@')[0] || '';
       const metaAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || '';
 
-      // First, check if the profile already exists
-      const { data: existing } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-
-      if (!existing) {
-        // New user — create profile for the first time with all defaults
-        const { error: insertError } = await supabase.from('profiles').insert({
+      // Perform an UPSERT to handle both new and existing users safely
+      const { error: upsertError } = await supabase
+        .from('profiles')
+        .upsert({
           id: user.id,
           email: user.email,
           username: metaUsername,
           full_name: metaName,
-          avatar_url: metaAvatar, // Only set from OAuth provider on first login
-          level: 1,
-          xp: 0,
-          streak: 0,
-          readiness_score: 0,
-          labs_completed: 0,
-          subscription_status: 'free',
-        });
-        if (insertError) console.error('Profile insert error:', insertError.message);
-      } else {
+        }, { onConflict: 'id' });
+
+      if (upsertError) {
+        console.warn('Initial profile upsert handled:', upsertError.message);
+      }
+
+      // Re-fetch to ensure we have the latest state for patching
+      const { data: current } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+
+      if (current) {
         // SUBSCRIPTION EXPIRY GUARD
-        if (existing.subscription_status === 'pro' && existing.subscription_end_date) {
-          const expiryDate = new Date(existing.subscription_end_date);
-          if (new Date() < expiryDate) {
-             // Still active, but let's double check if we need to revert if it's very close (optional)
-          } else {
+        if (current.subscription_status === 'pro' && current.subscription_end_date) {
+          const expiryDate = new Date(current.subscription_end_date);
+          if (new Date() >= expiryDate) {
             console.log('Subscription expired. Reverting to free tier.');
             await supabase.from('profiles').update({ 
               subscription_status: 'free',
               auto_renew: false 
             }).eq('id', user.id);
-            existing.subscription_status = 'free';
+            current.subscription_status = 'free';
           }
         }
 
-        // Existing user — only patch fields that are still empty, NEVER overwrite avatar_url
+        // Patch empty fields from OAuth metadata
         const patches: Record<string, any> = {};
-        if (!existing.full_name && metaName) patches.full_name = metaName;
-        if (!existing.email) patches.email = user.email;
+        if (!current.full_name && metaName) patches.full_name = metaName;
+        if (!current.email) patches.email = user.email;
+        if (!current.avatar_url && metaAvatar) patches.avatar_url = metaAvatar;
+        
         if (Object.keys(patches).length > 0) {
           await supabase.from('profiles').update(patches).eq('id', user.id);
         }
@@ -219,6 +218,7 @@ export default function App() {
                 <Route path="/p/:username" element={<PublicPortfolio />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />
+                <Route path="/delete-account" element={<DeleteAccount />} />
 
                 {/* Conditional Layouts based on Auth */}
                 <Route path="*" element={

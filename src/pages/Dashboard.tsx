@@ -389,6 +389,41 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {profile?.is_deactivated && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="w-full playful-card bg-red-500 text-white border-none shadow-2xl relative overflow-hidden mb-8"
+          >
+            <div className="absolute top-0 right-0 p-8 opacity-20">
+              <Lock className="w-24 h-24" />
+            </div>
+            <div className="relative z-10 flex items-center justify-between flex-wrap gap-4">
+              <div className="space-y-1">
+                <h3 className="text-2xl font-black italic">Account Deactivated 🔒</h3>
+                <p className="text-xs font-bold uppercase tracking-widest opacity-80">
+                  Your profile is currently hidden and advanced features are locked.
+                </p>
+              </div>
+              <button 
+                onClick={async () => {
+                   const { error } = await supabase.from('profiles').update({ is_deactivated: false }).eq('id', profile.id);
+                   if (!error) {
+                     setProfile({ ...profile, is_deactivated: false });
+                     toast.success('Account Reactivated! 🚀');
+                   }
+                }}
+                className="bg-white text-red-500 hover:bg-white/90 px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95"
+              >
+                Activate Now
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <motion.div variants={itemVariants} className="flex flex-col lg:flex-row gap-8 items-start justify-between">
         <header className="space-y-2">
           <h2 className="text-5xl font-black tracking-tighter">
@@ -400,7 +435,11 @@ export default function Dashboard() {
           </h2>
           <p className="text-text-dim font-bold uppercase tracking-widest text-xs flex flex-wrap items-center gap-2 mt-2">
             <Star className="w-4 h-4 text-soft-orange fill-soft-orange" /> Profile readiness: {profile?.readiness_score || 0}%
-            {!isPro ? (
+            {profile?.is_deactivated ? (
+              <span className="ml-2 text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full text-[9px]">
+                DEACTIVATED · Features Locked
+              </span>
+            ) : !isPro ? (
               <span className="ml-2 text-soft-orange bg-soft-orange/10 px-2 py-0.5 rounded-full text-[9px]">
                 FREE · {searchesLeft} AI search{searchesLeft !== 1 ? 'es' : ''} left today
               </span>
@@ -414,20 +453,24 @@ export default function Dashboard() {
 
         <form onSubmit={handleAiSearch} className="w-full lg:max-w-xl relative group tour-step-search">
           <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none text-text-dim group-focus-within:text-soft-blue transition-colors">
-            {isSearching ? <Sparkles className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+            {isSearching ? <Sparkles className="w-5 h-5 animate-spin" /> : profile?.is_deactivated ? <Lock className="w-5 h-5 text-red-400" /> : <Search className="w-5 h-5" />}
           </div>
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Ask AI anything about DevOps..."
-            className="w-full bg-surface border-4 border-border rounded-[2.5rem] pl-16 pr-24 py-5 font-bold outline-hidden focus:border-soft-blue transition-all shadow-xl group-hover:shadow-2xl"
+            disabled={profile?.is_deactivated}
+            placeholder={profile?.is_deactivated ? "Account deactivated. Activate to use AI Search." : "Ask AI anything about DevOps..."}
+            className={cn(
+              "w-full bg-surface border-4 border-border rounded-[2.5rem] pl-16 pr-24 py-5 font-bold outline-hidden transition-all shadow-xl group-hover:shadow-2xl",
+              profile?.is_deactivated ? "cursor-not-allowed opacity-60" : "focus:border-soft-blue"
+            )}
           />
           <button
             type="submit"
-            disabled={isSearching || (!isPro && searchesLeft === 0)}
+            disabled={isSearching || profile?.is_deactivated || (!isPro && searchesLeft === 0)}
             className="absolute right-3 top-3 bottom-3 px-6 bg-text-main text-surface rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform disabled:opacity-40"
           >
-            {!isPro && searchesLeft === 0 ? <Lock className="w-4 h-4" /> : 'Search'}
+            {profile?.is_deactivated || (!isPro && searchesLeft === 0) ? <Lock className="w-4 h-4" /> : 'Search'}
           </button>
         </form>
       </motion.div>
@@ -499,10 +542,16 @@ export default function Dashboard() {
               <div className="flex flex-wrap gap-4 items-center tour-step-lab">
                 <button
                   onClick={handleStartLab}
-                  disabled={nextLab === null}
-                  className="px-10 py-4 bg-text-main text-surface rounded-full font-black shadow-xl hover:scale-105 transition-all text-base active:scale-95 shadow-soft-blue/30 disabled:opacity-50 disabled:cursor-not-allowed magnetic-float"
+                  disabled={nextLab === null || profile?.is_deactivated}
+                  className="px-10 py-4 bg-text-main text-surface rounded-full font-black shadow-xl hover:scale-105 transition-all text-base active:scale-95 shadow-soft-blue/30 disabled:opacity-50 disabled:cursor-not-allowed magnetic-float flex items-center gap-2"
                 >
-                  {nextLab === null ? 'Labs Complete ✓' : 'Start Lab'}
+                  {profile?.is_deactivated ? (
+                    <><Lock className="w-4 h-4" /> Locked</>
+                  ) : nextLab === null ? (
+                    'Labs Complete ✓'
+                  ) : (
+                    'Start Lab'
+                  )}
                 </button>
                 <div className={cn(
                   "flex items-center gap-2 bg-brand-bg/50 border-2 p-1 rounded-full pl-6 transition-all",
