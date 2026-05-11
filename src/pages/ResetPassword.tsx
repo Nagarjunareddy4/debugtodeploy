@@ -19,6 +19,14 @@ export default function ResetPassword() {
     const checkLinkExpiration = async () => {
       setCheckingLink(true);
       
+      // Check for forced expiration from URL (set by App.tsx)
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('expired') === 'true') {
+        setIsExpired(true);
+        setCheckingLink(false);
+        return;
+      }
+      
       // Get the current session
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -40,17 +48,16 @@ export default function ResetPassword() {
           const now = new Date().getTime();
           const diffMinutes = (now - sentAt) / (1000 * 60);
 
-          if (diffMinutes > 30) {
+          // ENFORCE 10 MINUTE LIMIT
+          if (diffMinutes > 10) {
             setIsExpired(true);
-            // Sign out because this session is technically "expired" by our rules
             await supabase.auth.signOut();
           }
         } else {
-          // If no recovery_sent_at found but we have a session, 
-          // it might be a normal session (not from a recovery link).
-          // We should probably redirect to auth if they didn't come from a recovery event.
-          // But for now, let's just assume if it's missing, the link is invalid.
+          // If no recovery_sent_at is found but we have a session, 
+          // it means this link has either been used already or is invalid.
           setIsExpired(true);
+          await supabase.auth.signOut();
         }
       } catch (err) {
         console.error('Error checking link expiration:', err);
@@ -142,10 +149,10 @@ export default function ResetPassword() {
               <XCircle className="w-10 h-10 text-soft-red" />
             </div>
             <div className="space-y-4">
-              <h3 className="text-xl font-black tracking-tight text-soft-red">Link Expired</h3>
+              <h3 className="text-xl font-black tracking-tight text-soft-red">Access Beacon Expired</h3>
               <p className="text-text-dim text-sm font-bold leading-relaxed">
-                Security protocols require reset links to be used within 30 minutes. 
-                This beacon has gone dark.
+                For your security, reset links are valid for only **10 minutes** and can be used **only once**.
+                This link is no longer valid.
               </p>
             </div>
             <motion.button

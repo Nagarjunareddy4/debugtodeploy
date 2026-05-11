@@ -32,9 +32,46 @@ export default function Settings() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
 
+  // Username validation states
+  const [originalUsername, setOriginalUsername] = useState<string>('');
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
+  const [showUsernameConfirm, setShowUsernameConfirm] = useState(false);
+
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  useEffect(() => {
+    if (!profile?.username || profile.username === originalUsername) {
+      setUsernameStatus('idle');
+      return;
+    }
+
+    // Validation: Alphanumeric and underscores only
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(profile.username)) {
+      setUsernameStatus('invalid');
+      return;
+    }
+
+    setUsernameStatus('checking');
+    const timer = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('username', profile.username)
+          .maybeSingle();
+
+        if (error) throw error;
+        setUsernameStatus(data ? 'taken' : 'available');
+      } catch (err) {
+        console.error('Check username error:', err);
+        setUsernameStatus('idle');
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [profile?.username, originalUsername]);
 
   const fetchProfile = async () => {
     try {
@@ -83,7 +120,10 @@ export default function Settings() {
         }
       }
 
-      if (data) setProfile(data);
+      if (data) {
+        setProfile(data);
+        setOriginalUsername(data.username || '');
+      }
       else {
         // Fallback: set minimal profile from auth data so the UI isn't blank
         setProfile({
@@ -136,6 +176,12 @@ export default function Settings() {
       const publicUrl = urlData.publicUrl; // Save clean URL
 
       await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
+      
+      // SYNC AUTH METADATA
+      await supabase.auth.updateUser({
+        data: { avatar_url: publicUrl }
+      });
+
       setProfile((prev: any) => ({ ...prev, avatar_url: publicUrl }));
       setImageSrc(null);
     } catch (err: any) {
@@ -146,13 +192,23 @@ export default function Settings() {
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    
+    // If username changed and we haven't confirmed yet, show modal
+    if (profile.username !== originalUsername && !showUsernameConfirm) {
+      if (usernameStatus === 'taken' || usernameStatus === 'invalid') return;
+      setShowUsernameConfirm(true);
+      return;
+    }
+
     setLoading(true);
+    setShowUsernameConfirm(false);
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-      const { error } = await supabase
+      // 1. Update Profiles Table
+      const { error: profileErr } = await supabase
         .from('profiles')
         .update({
           full_name: profile.full_name,
@@ -160,10 +216,28 @@ export default function Settings() {
         })
         .eq('id', user.id);
 
-      if (!error) {
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 3000);
+      if (profileErr) {
+        console.error('Profile DB update failed:', profileErr.message);
+        setLoading(false);
+        return;
       }
+
+      // 2. Sync Auth Metadata
+      const { error: authErr } = await supabase.auth.updateUser({
+        data: {
+          full_name: profile.full_name,
+          username: profile.username,
+        }
+      });
+
+      if (authErr) {
+        console.error('Auth metadata sync failed:', authErr.message);
+      }
+
+      setOriginalUsername(profile.username);
+      setUsernameStatus('idle');
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
     }
     setLoading(false);
   };
@@ -171,15 +245,23 @@ export default function Settings() {
   const removeAvatar = async () => {
     if (!profile?.id) return;
     setShowAvatarMenu(false);
-    const { error } = await supabase.from('profiles').update({ avatar_url: null }).eq('id', profile.id);
-    if (!error) {
-      setProfile((prev: any) => ({ ...prev, avatar_url: null }));
+    const { error: dbErr } = await supabase.from('profiles').update({ avatar_url: '' }).eq('id', profile.id);
+    
+    if (!dbErr) {
+      // Sync Auth Metadata (Setting to empty string to distinguish from null)
+      await supabase.auth.updateUser({
+        data: { avatar_url: '' }
+      });
+
+      setProfile((prev: any) => ({ ...prev, avatar_url: '' }));
 
       // Also try to delete from storage
       const exts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
       for (const ext of exts) {
         await supabase.storage.from('avatars').remove([`${profile.id}/avatar.${ext}`]);
       }
+    } else {
+      console.error('Failed to remove avatar from DB:', dbErr.message);
     }
   };
 
@@ -459,13 +541,32 @@ export default function Settings() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-text-dim flex items-center gap-2">
-                  <AtSign className="w-3 h-3" /> Username
+                <label className="text-[10px] font-black uppercase tracking-widest text-text-dim flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2"><AtSign className="w-3 h-3" /> Username</span>
+                  {usernameStatus !== 'idle' && (
+                    <span className={cn(
+                      "text-[8px] font-black uppercase tracking-tighter flex items-center gap-1",
+                      usernameStatus === 'available' ? "text-soft-green" : 
+                      usernameStatus === 'taken' || usernameStatus === 'invalid' ? "text-red-400" : "text-text-dim"
+                    )}>
+                      {usernameStatus === 'checking' && <Loader2 className="w-2 h-2 animate-spin" />}
+                      {usernameStatus === 'available' && <Check className="w-2 h-2" />}
+                      {usernameStatus === 'taken' && <X className="w-2 h-2" />}
+                      {usernameStatus === 'checking' ? 'Checking...' : 
+                       usernameStatus === 'available' ? 'Available' : 
+                       usernameStatus === 'taken' ? 'Taken' : '3-20 chars (A-Z, 0-9, _)'}
+                    </span>
+                  )}
                 </label>
                 <input
                   value={profile.username || ''}
-                  onChange={(e) => setProfile({ ...profile, username: e.target.value })}
-                  className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 font-mono font-bold outline-hidden focus:border-soft-green transition-colors"
+                  onChange={(e) => setProfile({ ...profile, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
+                  className={cn(
+                    "w-full bg-brand-bg border-2 rounded-2xl px-6 py-4 font-mono font-bold outline-hidden transition-all",
+                    usernameStatus === 'available' ? "border-soft-green/50 focus:border-soft-green" : 
+                    usernameStatus === 'taken' || usernameStatus === 'invalid' ? "border-red-500/50 focus:border-red-500" : 
+                    "border-border focus:border-soft-green"
+                  )}
                 />
               </div>
             </div>
@@ -552,6 +653,58 @@ export default function Settings() {
 
           {/* Cancel Confirmation Modal */}
           <AnimatePresence>
+            {showUsernameConfirm && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm"
+                onClick={() => setShowUsernameConfirm(false)}
+              >
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  onClick={e => e.stopPropagation()}
+                  className="bg-surface rounded-[2rem] border-2 border-soft-blue/20 shadow-2xl max-w-md w-full p-10 space-y-6 text-center"
+                >
+                  <div className="w-16 h-16 bg-soft-blue/10 rounded-full flex items-center justify-center mx-auto">
+                    <RefreshCw className="w-8 h-8 text-soft-blue" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-2xl font-black">Change Username?</h3>
+                    <div className="p-4 bg-red-500/10 border-2 border-red-500/20 rounded-2xl text-left space-y-3">
+                      <div className="flex gap-3">
+                        <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
+                        <p className="text-xs font-bold text-red-400 leading-relaxed">
+                          Your Public Portfolio URL will change to:
+                          <span className="block mt-1 font-mono text-text-main break-all">debugtodeploy.com/p/{profile.username}</span>
+                        </p>
+                      </div>
+                      <p className="text-[10px] font-bold text-text-dim leading-relaxed">
+                        Any existing links you've shared (on LinkedIn, Resumes, etc.) will stop working immediately.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 pt-2">
+                    <button
+                      onClick={() => setShowUsernameConfirm(false)}
+                      className="flex-1 py-4 border-2 border-border rounded-2xl font-black text-sm hover:bg-border transition-colors"
+                    >
+                      Wait, Keep Old
+                    </button>
+                    <button
+                      onClick={() => handleSave()}
+                      className="flex-1 py-4 bg-text-main text-surface rounded-2xl font-black text-sm hover:bg-soft-blue transition-colors flex items-center justify-center gap-2"
+                    >
+                      Confirm Change
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+
             {showCancelConfirm && (
               <motion.div
                 initial={{ opacity: 0 }}

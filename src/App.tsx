@@ -49,6 +49,12 @@ export default function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
+      // Detect expired/invalid recovery links from hash
+      if (window.location.hash.includes('error=access_denied') || 
+          window.location.hash.includes('Email+link+is+invalid')) {
+        window.location.hash = '';
+        window.history.replaceState({}, document.title, '/reset-password?expired=true');
+      }
       checkSession(session);
     });
 
@@ -97,51 +103,79 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isGenerating]);
 
+  // WEB-TO-MOBILE BRIDGE
+  useEffect(() => {
+    if (session?.user && (window as any).ReactNativeWebView) {
+      (window as any).ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'AUTH_STATE_SYNC',
+        payload: {
+          id: session.user.id,
+          access_token: session.access_token,
+          refresh_token: session.refresh_token
+        }
+      }));
+    }
+  }, [session]);
+
   const syncProfile = async (user: any) => {
     try {
       const metaName = user.user_metadata?.full_name || user.user_metadata?.name || '';
       const metaUsername = user.user_metadata?.username || user.user_metadata?.preferred_username || user.email?.split('@')[0] || '';
       const metaAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || '';
 
-      // Perform an UPSERT to handle both new and existing users safely
-      const { error: upsertError } = await supabase
+      // 1. Check if profile exists first
+      const { data: current, error: fetchErr } = await supabase
         .from('profiles')
-        .upsert({
-          id: user.id,
-          email: user.email,
-          username: metaUsername,
-          full_name: metaName,
-        }, { onConflict: 'id' });
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-      if (upsertError) {
-        console.warn('Initial profile upsert handled:', upsertError.message);
+      if (!current) {
+        // First time login - create profile from metadata
+        const { error: insertErr } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email,
+            username: metaUsername,
+            full_name: metaName,
+            avatar_url: metaAvatar,
+            subscription_status: 'free',
+            xp: 0, level: 1, streak: 0, labs_completed: 0
+          });
+        
+        if (insertErr) console.warn('Initial profile creation handled:', insertErr.message);
+      } else {
+      // Profile exists - ONLY patch fields that are explicitly null (never set)
+        const patches: Record<string, any> = {};
+        if (current.full_name === null && metaName) patches.full_name = metaName;
+        if (current.email === null && user.email) patches.email = user.email;
+        if (current.username === null && metaUsername) patches.username = metaUsername;
+        if (current.avatar_url === null && metaAvatar) patches.avatar_url = metaAvatar;
+
+        if (Object.keys(patches).length > 0) {
+          await supabase.from('profiles').update(patches).eq('id', user.id);
+          Object.assign(current, patches);
+        }
       }
 
-      // Re-fetch to ensure we have the latest state for patching
-      const { data: current } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+      // 2. RE-FETCH OR USE CURRENT (Ensure we have the most accurate state)
+      const { data: activeProfile } = current 
+        ? { data: current } 
+        : await supabase.from('profiles').select('*').eq('id', user.id).single();
 
-      if (current) {
+      if (activeProfile) {
         // SUBSCRIPTION EXPIRY GUARD
-        if (current.subscription_status === 'pro' && current.subscription_end_date) {
-          const expiryDate = new Date(current.subscription_end_date);
+        if (activeProfile.subscription_status === 'pro' && activeProfile.subscription_end_date) {
+          const expiryDate = new Date(activeProfile.subscription_end_date);
           if (new Date() >= expiryDate) {
             console.log('Subscription expired. Reverting to free tier.');
             await supabase.from('profiles').update({ 
               subscription_status: 'free',
               auto_renew: false 
             }).eq('id', user.id);
-            current.subscription_status = 'free';
+            activeProfile.subscription_status = 'free';
           }
-        }
-
-        // Patch empty fields from OAuth metadata
-        const patches: Record<string, any> = {};
-        if (!current.full_name && metaName) patches.full_name = metaName;
-        if (!current.email) patches.email = user.email;
-        if (!current.avatar_url && metaAvatar) patches.avatar_url = metaAvatar;
-        
-        if (Object.keys(patches).length > 0) {
-          await supabase.from('profiles').update(patches).eq('id', user.id);
         }
       }
 
