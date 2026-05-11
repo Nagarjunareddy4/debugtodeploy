@@ -179,25 +179,47 @@ export default function Sidebar() {
         <div className="flex-1 overflow-y-auto min-h-0 px-8">
           <div className="space-y-12 pb-8">
             <nav className="flex flex-col gap-3">
-              {navItems.map((item) => (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  onClick={() => setIsOpen(false)}
-                  className={({ isActive }) =>
-                    cn(
-                      "nav-pill group",
-                      isActive && "nav-pill-active"
-                    )
-                  }
-                >
-                  <item.icon className={cn("w-5 h-5", "group-hover:scale-110 transition-transform")} />
-                  <span className="font-black text-sm uppercase tracking-widest">{item.label}</span>
-                </NavLink>
-              ))}
+              {navItems.map((item) => {
+                const isDeactivated = profile?.is_deactivated;
+                const isDisabled = isDeactivated && !['Dashboard', 'Support', 'Settings'].includes(item.label);
+                
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={isDisabled ? '#' : item.path}
+                    onClick={(e) => {
+                      if (isDisabled) {
+                        e.preventDefault();
+                        return;
+                      }
+                      setIsOpen(false);
+                    }}
+                    className={({ isActive }) =>
+                      cn(
+                        "nav-pill group transition-all",
+                        isActive && !isDisabled && "nav-pill-active",
+                        isDisabled && "opacity-40 cursor-not-allowed grayscale"
+                      )
+                    }
+                  >
+                    <div className="relative">
+                      <item.icon className={cn("w-5 h-5", !isDisabled && "group-hover:scale-110 transition-transform")} />
+                      {isDisabled && (
+                        <div className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5">
+                          <X className="w-2 h-2 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <span className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
+                      {item.label}
+                      {isDisabled && <span className="text-[8px] bg-red-500/10 text-red-500 px-1 rounded-xs">Locked</span>}
+                    </span>
+                  </NavLink>
+                );
+              })}
             </nav>
 
-            {profile && profile.subscription_status !== 'pro' && (
+            {profile && profile.subscription_status !== 'pro' && !profile.is_deactivated && (
               <div className="px-2 mt-8">
                 <div 
                   className="relative overflow-hidden rounded-3xl p-6 border-2 border-soft-orange/30 group cursor-pointer transition-all hover:border-soft-orange" 
@@ -348,8 +370,9 @@ export default function Sidebar() {
               className="w-7 h-7 rounded-full border-2 border-surface shadow-sm"
             />
             <div className="flex flex-col min-w-0">
-              <span className="text-[10px] font-black uppercase tracking-widest leading-none truncate">
+              <span className="text-[10px] font-black uppercase tracking-widest leading-none truncate flex items-center gap-2">
                 {displayNameShort}
+                {profile?.is_deactivated && <span className="bg-red-500 text-white text-[6px] px-1 rounded-xs animate-pulse">DEACTIVATED</span>}
               </span>
               <span className="text-[8px] font-black text-soft-blue mt-1 uppercase">
                 {profile?.subscription_status === 'pro' ? '⭐ PRO MEMBER' : `DevOps Lvl ${profile?.level || 1}`}

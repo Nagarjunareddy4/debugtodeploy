@@ -604,8 +604,93 @@ export default function Settings() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Account Security & Data */}
+          <div className="playful-card p-8 bg-surface shadow-2xl border-none">
+            <h3 className="text-lg font-black uppercase tracking-widest flex items-center gap-2 text-red-500">
+              <Shield className="w-5 h-5" /> Account Security & Data
+            </h3>
+            
+            <div className="space-y-4">
+              <div className={cn(
+                "p-6 rounded-[2rem] border transition-all flex items-center justify-between gap-6",
+                profile?.is_deactivated ? "bg-red-500/10 border-red-500/20" : "bg-brand-bg border-border"
+              )}>
+                <div className="space-y-1 min-w-0">
+                  <h4 className="font-black text-sm">Account Status</h4>
+                  <p className="text-[10px] font-bold text-text-dim leading-relaxed">
+                    Your profile is currently {profile.is_deactivated ? <span className="text-red-500">Deactivated (Hidden)</span> : <span className="text-soft-green">Active</span>}.
+                  </p>
+                </div>
+                <button 
+                  type="button"
+                  onClick={async () => {
+                    if (!profile) return;
+                    const newState = !profile.is_deactivated;
+                    const { error } = await supabase.from('profiles').update({ is_deactivated: newState }).eq('id', profile.id);
+                    if (!error) {
+                      setProfile({ ...profile, is_deactivated: newState });
+                      setSuccess(true);
+                      setTimeout(() => setSuccess(false), 3000);
+                    }
+                  }}
+                  className={cn(
+                    "px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                    profile.is_deactivated 
+                      ? "bg-soft-green text-surface hover:bg-soft-green/90" 
+                      : "bg-text-main/10 text-text-main hover:bg-text-main hover:text-surface"
+                  )}
+                >
+                  {profile.is_deactivated ? 'Activate Profile' : 'Deactivate'}
+                </button>
+              </div>
+
+              <div className="p-6 bg-red-500/5 rounded-[2rem] border-2 border-red-500/10 space-y-4">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-red-500/10 rounded-2xl">
+                    <Trash2 className="w-5 h-5 text-red-500" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-black text-sm text-red-500">Request Account Deletion</h4>
+                    <p className="text-[10px] font-bold text-text-dim leading-relaxed">
+                      To permanently delete your account and all associated data, please contact our support team.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="pt-2 border-t border-red-500/10">
+                  <p className="text-[9px] font-bold text-text-dim">
+                    Send a request from your registered email to:
+                  </p>
+                  <a 
+                    href="mailto:debugtodeploy@gmail.com?subject=Account Deletion Request"
+                    className="text-sm font-black text-soft-blue hover:underline mt-1 block"
+                  >
+                    debugtodeploy@gmail.com
+                  </a>
+                </div>
+
+                <div className="p-4 bg-surface rounded-2xl border border-border">
+                  <ul className="space-y-2">
+                    {[
+                      'Account information & Profile data',
+                      'Learning progress & Certificates',
+                      'AI Roadmaps & Lab history'
+                    ].map((item, i) => (
+                      <li key={i} className="flex items-center gap-2 text-[9px] font-bold text-text-dim">
+                        <X className="w-3 h-3 text-red-400" /> {item} will be deleted
+                      </li>
+                    ))}
+                    <li className="flex items-center gap-2 text-[9px] font-bold text-text-dim opacity-60 italic">
+                      * Billing records may be retained for legal/compliance purposes.
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
 }
