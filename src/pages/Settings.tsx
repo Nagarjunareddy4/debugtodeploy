@@ -136,6 +136,12 @@ export default function Settings() {
       const publicUrl = urlData.publicUrl; // Save clean URL
 
       await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
+      
+      // SYNC AUTH METADATA
+      await supabase.auth.updateUser({
+        data: { avatar_url: publicUrl }
+      });
+
       setProfile((prev: any) => ({ ...prev, avatar_url: publicUrl }));
       setImageSrc(null);
     } catch (err: any) {
@@ -152,7 +158,8 @@ export default function Settings() {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-      const { error } = await supabase
+      // 1. Update Profiles Table
+      const { error: profileErr } = await supabase
         .from('profiles')
         .update({
           full_name: profile.full_name,
@@ -160,10 +167,26 @@ export default function Settings() {
         })
         .eq('id', user.id);
 
-      if (!error) {
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 3000);
+      if (profileErr) {
+        console.error('Profile DB update failed:', profileErr.message);
+        setLoading(false);
+        return;
       }
+
+      // 2. Sync Auth Metadata (CRITICAL: prevents revert on next login)
+      const { error: authErr } = await supabase.auth.updateUser({
+        data: {
+          full_name: profile.full_name,
+          username: profile.username,
+        }
+      });
+
+      if (authErr) {
+        console.error('Auth metadata sync failed:', authErr.message);
+      }
+
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
     }
     setLoading(false);
   };
@@ -171,8 +194,14 @@ export default function Settings() {
   const removeAvatar = async () => {
     if (!profile?.id) return;
     setShowAvatarMenu(false);
-    const { error } = await supabase.from('profiles').update({ avatar_url: null }).eq('id', profile.id);
-    if (!error) {
+    const { error: dbErr } = await supabase.from('profiles').update({ avatar_url: null }).eq('id', profile.id);
+    
+    if (!dbErr) {
+      // Sync Auth Metadata
+      await supabase.auth.updateUser({
+        data: { avatar_url: null }
+      });
+
       setProfile((prev: any) => ({ ...prev, avatar_url: null }));
 
       // Also try to delete from storage
