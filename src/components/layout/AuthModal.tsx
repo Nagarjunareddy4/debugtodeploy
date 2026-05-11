@@ -25,6 +25,22 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [acceptedConsent, setAcceptedConsent] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+
+  const getPasswordStrength = (pass: string) => {
+    let score = 0;
+    if (!pass) return 0;
+    if (pass.length >= 8) score += 25;
+    if (/[A-Z]/.test(pass)) score += 25;
+    if (/[0-9]/.test(pass)) score += 25;
+    if (/[^A-Za-z0-9]/.test(pass)) score += 25;
+    return score;
+  };
+
+  const strength = getPasswordStrength(password);
+  const strengthColor = strength <= 25 ? 'bg-soft-red' : strength <= 50 ? 'bg-soft-orange' : strength <= 75 ? 'bg-soft-yellow' : 'bg-soft-green';
+  const strengthText = strength <= 25 ? 'Weak' : strength <= 50 ? 'Fair' : strength <= 75 ? 'Good' : 'Strong';
 
   React.useEffect(() => {
     if (isOpen) {
@@ -36,6 +52,44 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
       document.body.style.overflow = 'unset';
     };
   }, [isOpen]);
+
+  // Username & Email availability check
+  React.useEffect(() => {
+    if (authMode !== 'signup' || (!username && !identifier.includes('@'))) {
+      setUsernameStatus('idle');
+      setEmailStatus('idle');
+      return;
+    }
+
+    if (username && !/^[a-z0-9_]{3,20}$/.test(username)) {
+      setUsernameStatus('invalid');
+    }
+
+    if (usernameStatus !== 'invalid') setUsernameStatus('checking');
+    if (identifier.includes('@')) setEmailStatus('checking');
+
+    const timer = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.rpc('check_availability', {
+          target_username: username || '',
+          target_email: identifier.includes('@') ? identifier : ''
+        });
+
+        if (!error && data?.[0]) {
+          if (username) setUsernameStatus(data[0].username_taken ? 'taken' : 'available');
+          if (identifier.includes('@')) setEmailStatus(data[0].email_taken ? 'taken' : 'available');
+        } else {
+          setUsernameStatus('idle');
+          setEmailStatus('idle');
+        }
+      } catch (err) {
+        setUsernameStatus('idle');
+        setEmailStatus('idle');
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [username, identifier, authMode]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,14 +281,34 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                           value={fullName}
                           onChange={(e) => setFullName(e.target.value)}
                         />
-                        <input
-                          type="text"
-                          required
-                          placeholder="Username"
-                          className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 outline-none focus:border-soft-blue font-bold text-sm"
-                          value={username}
-                          onChange={(e) => setUsername(e.target.value)}
-                        />
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center px-4">
+                            <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black">Username</label>
+                            {usernameStatus !== 'idle' && (
+                              <span className={cn(
+                                "text-[9px] font-black uppercase tracking-widest",
+                                usernameStatus === 'available' ? "text-soft-green" : "text-soft-red"
+                              )}>
+                                {usernameStatus === 'checking' ? '• Checking...' : 
+                                 usernameStatus === 'available' ? '• Available' : 
+                                 usernameStatus === 'taken' ? '• Taken' : '• 3-20 chars (a-z, 0-9, _)'}
+                              </span>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            required
+                            placeholder="devops_hero"
+                            className={cn(
+                              "w-full bg-brand-bg border-2 rounded-2xl px-6 py-4 outline-none transition-all font-mono font-bold text-sm text-text-main",
+                              usernameStatus === 'available' ? "border-soft-green/50 focus:border-soft-green" : 
+                              usernameStatus === 'taken' || usernameStatus === 'invalid' ? "border-soft-red/50 focus:border-soft-red" : 
+                              "border-border focus:border-soft-blue"
+                            )}
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                          />
+                        </div>
                       </>
                     )}
                     {authMode !== 'forgot' && (
@@ -253,17 +327,55 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                     )}
 
                     <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black ml-4">
-                        {authMode === 'signup' ? 'Email Address' : authMode === 'forgot' ? 'Registered Email' : 'Email or Username'}
-                      </label>
+                      <div className="flex justify-between items-center px-4">
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black">
+                          {authMode === 'signup' ? 'Email Address' : authMode === 'forgot' ? 'Registered Email' : 'Email or Username'}
+                        </label>
+                        {authMode === 'signup' && identifier.includes('@') && (
+                          <span className={cn(
+                            "text-[9px] font-black uppercase tracking-widest flex items-center gap-1",
+                            emailStatus === 'available' ? "text-soft-green" : "text-soft-red"
+                          )}>
+                            {emailStatus === 'checking' && <span className="w-2 h-2 border-2 border-text-dim border-t-transparent rounded-full animate-spin inline-block" />}
+                            {emailStatus === 'checking' ? 'Checking...' : 
+                             emailStatus === 'available' ? '• Valid Email' : 
+                             emailStatus === 'taken' ? '• Already Registered' : ''}
+                          </span>
+                        )}
+                      </div>
                       <input
                         type={authMode === 'login' ? "text" : "email"}
                         required
-                        className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 outline-none focus:border-soft-blue font-bold text-sm"
+                        className={cn(
+                          "w-full bg-brand-bg border-2 rounded-2xl px-6 py-4 outline-none transition-all font-bold text-sm text-text-main",
+                          authMode === 'signup' && identifier.includes('@') && (emailStatus === 'available' ? "border-soft-green/30" : emailStatus === 'taken' ? "border-soft-red/30" : "border-border"),
+                          (authMode !== 'signup' || !identifier.includes('@')) && "border-border"
+                        )}
                         placeholder="engineer@debugtodeploy.com"
                         value={identifier}
                         onChange={(e) => setIdentifier(e.target.value)}
                       />
+                      <AnimatePresence>
+                        {authMode === 'signup' && emailStatus === 'taken' && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="bg-soft-red/10 border border-soft-red/20 rounded-xl p-3 mt-1"
+                          >
+                            <p className="text-[10px] font-bold text-soft-red leading-tight">
+                              This email is already registered. 
+                              <button 
+                                type="button"
+                                onClick={() => setAuthMode('login')}
+                                className="ml-1 text-soft-blue underline hover:text-text-main transition-colors"
+                              >
+                                Sign in instead
+                              </button>
+                            </p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
 
                     {authMode !== 'forgot' && (
@@ -290,6 +402,21 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                               value={password}
                               onChange={(e) => setPassword(e.target.value)}
                             />
+                            {authMode === 'signup' && password.length > 0 && (
+                              <div className="absolute -bottom-6 left-4 right-4 space-y-1">
+                                <div className="flex justify-between items-center px-1">
+                                  <span className="text-[7px] font-black uppercase tracking-widest text-text-dim">Strength: {strengthText}</span>
+                                  <span className="text-[7px] font-black text-text-dim">{strength}%</span>
+                                </div>
+                                <div className="h-1 w-full bg-border/30 rounded-full overflow-hidden">
+                                  <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${strength}%` }}
+                                    className={cn("h-full transition-colors duration-500", strengthColor)}
+                                  />
+                                </div>
+                              </div>
+                            )}
                             <button
                               type="button"
                               onClick={() => setShowPassword(!showPassword)}
@@ -303,14 +430,33 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                         {authMode === 'signup' && (
                           <div className="space-y-2">
                             <label className="text-[10px] uppercase tracking-[0.2em] text-text-dim font-black ml-4">Confirm Password</label>
-                            <input
-                              type={showPassword ? "text" : "password"}
-                              required
-                              className="w-full bg-brand-bg border-2 border-border rounded-2xl px-6 py-4 outline-none focus:border-soft-blue font-bold text-sm"
-                              placeholder="••••••••"
-                              value={confirmPassword}
-                              onChange={(e) => setConfirmPassword(e.target.value)}
-                            />
+                            <div className="relative">
+                              <input
+                                type={showPassword ? "text" : "password"}
+                                required
+                                className={cn(
+                                  "w-full bg-brand-bg border-2 rounded-2xl px-6 py-4 outline-none transition-all font-bold text-sm text-text-main pr-14",
+                                  confirmPassword && (password === confirmPassword ? "border-soft-green/30" : "border-soft-red/30")
+                                )}
+                                placeholder="••••••••"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                              />
+                              <div className="absolute right-5 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                {confirmPassword && (
+                                  <motion.div
+                                    initial={{ scale: 0, rotate: -45 }}
+                                    animate={{ scale: 1, rotate: 0 }}
+                                    className={cn(
+                                      "px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest",
+                                      password === confirmPassword ? "bg-soft-green/10 text-soft-green" : "bg-soft-red/10 text-soft-red"
+                                    )}
+                                  >
+                                    {password === confirmPassword ? '✓ Match' : '× Mismatch'}
+                                  </motion.div>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         )}
                       </>

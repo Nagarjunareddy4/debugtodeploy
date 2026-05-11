@@ -49,6 +49,12 @@ export default function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
+      // Detect expired/invalid recovery links from hash
+      if (window.location.hash.includes('error=access_denied') || 
+          window.location.hash.includes('Email+link+is+invalid')) {
+        window.location.hash = '';
+        window.history.replaceState({}, document.title, '/reset-password?expired=true');
+      }
       checkSession(session);
     });
 
@@ -97,6 +103,20 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isGenerating]);
 
+  // WEB-TO-MOBILE BRIDGE
+  useEffect(() => {
+    if (session?.user && (window as any).ReactNativeWebView) {
+      (window as any).ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'AUTH_STATE_SYNC',
+        payload: {
+          id: session.user.id,
+          access_token: session.access_token,
+          refresh_token: session.refresh_token
+        }
+      }));
+    }
+  }, [session]);
+
   const syncProfile = async (user: any) => {
     try {
       const metaName = user.user_metadata?.full_name || user.user_metadata?.name || '';
@@ -126,12 +146,12 @@ export default function App() {
         
         if (insertErr) console.warn('Initial profile creation handled:', insertErr.message);
       } else {
-        // Profile exists - ONLY patch fields that are explicitly missing/null in DB
+      // Profile exists - ONLY patch fields that are explicitly null (never set)
         const patches: Record<string, any> = {};
-        if (!current.full_name && metaName) patches.full_name = metaName;
-        if (!current.email && user.email) patches.email = user.email;
-        if (!current.username && metaUsername) patches.username = metaUsername;
-        if (!current.avatar_url && metaAvatar) patches.avatar_url = metaAvatar;
+        if (current.full_name === null && metaName) patches.full_name = metaName;
+        if (current.email === null && user.email) patches.email = user.email;
+        if (current.username === null && metaUsername) patches.username = metaUsername;
+        if (current.avatar_url === null && metaAvatar) patches.avatar_url = metaAvatar;
 
         if (Object.keys(patches).length > 0) {
           await supabase.from('profiles').update(patches).eq('id', user.id);

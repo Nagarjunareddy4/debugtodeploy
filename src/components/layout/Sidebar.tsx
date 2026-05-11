@@ -129,8 +129,8 @@ export default function Sidebar() {
       '';
 
     if (data) {
-      // Patch the DB if full_name is empty
-      if (!data.full_name && authName) {
+      // Patch the DB ONLY if the field is strictly null (meaning never set)
+      if (data.full_name === null && authName) {
         await supabase.from('profiles').update({ full_name: authName }).eq('id', id);
         data.full_name = authName;
       }

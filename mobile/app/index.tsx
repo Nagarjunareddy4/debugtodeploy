@@ -4,6 +4,8 @@ import { WebView } from 'react-native-webview';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
+import { supabase } from '../src/services/supabase';
+import { registerForPushNotificationsAsync } from '../src/services/notifications';
 
 const customUserAgent = Platform.OS === 'android'
   ? 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36'
@@ -94,6 +96,26 @@ export default function App() {
       return () => subscription.remove();
     }, [canGoBack])
   );
+  
+  const onMessage = async (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'AUTH_STATE_SYNC') {
+        const { access_token, refresh_token } = data.payload;
+        
+        // Sync native session with web session
+        await supabase.auth.setSession({
+          access_token,
+          refresh_token
+        });
+
+        // Trigger push registration now that we are authenticated natively
+        await registerForPushNotificationsAsync();
+      }
+    } catch (err) {
+      console.warn('WebView Bridge Error:', err);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -106,6 +128,7 @@ export default function App() {
         onNavigationStateChange={(navState) => {
           setCanGoBack(navState.canGoBack);
         }}
+        onMessage={onMessage}
         onLoadEnd={() => setIsLoading(false)}
         allowsInlineMediaPlayback={true}
         javaScriptEnabled={true}

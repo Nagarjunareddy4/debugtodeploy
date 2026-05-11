@@ -95,7 +95,7 @@ export default function Dashboard() {
           user.user_metadata?.name ||
           user.user_metadata?.display_name ||
           '';
-        if (!prof.full_name && authName) {
+        if (prof.full_name === null && authName) {
           await supabase.from('profiles')
             .update({ full_name: authName, email: prof.email || user.email })
             .eq('id', user.id);
@@ -103,9 +103,9 @@ export default function Dashboard() {
           prof.email = prof.email || user.email;
         }
 
-        // If the profile row does not include an avatar URL, fall back to auth metadata and persist it.
-        // Do not restore auth avatar when the profile explicitly removed it (avatar_url === null).
-        if (prof.avatar_url === undefined || prof.avatar_url === '') {
+        // Only restore auth avatar if the profile has NEVER had one (avatar_url is null).
+        // If it's an empty string, it means the user explicitly removed it.
+        if (prof.avatar_url === null) {
           const fallbackAvatar =
             user.user_metadata?.avatar_url ||
             user.user_metadata?.picture ||
