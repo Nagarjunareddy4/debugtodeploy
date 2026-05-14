@@ -145,67 +145,49 @@ export async function sendLocalNotification(title: string, body: string) {
 }
 
 export async function setupDailyEngagementNotifications() {
-  // Check if we already scheduled notifications in the last 12 hours to avoid "reset loops"
   const lastScheduled = await AsyncStorage.getItem('dtd_last_notification_sync');
   const now = Date.now();
   
   if (lastScheduled) {
     const hoursSinceLastSync = (now - parseInt(lastScheduled)) / (1000 * 60 * 60);
-    if (hoursSinceLastSync < 12) {
-      // Already scheduled recently, don't reset the timers
-      return;
-    }
+    if (hoursSinceLastSync < 6) return; // Only re-sync every 6 hours
   }
 
-  // 1. Cancel all previously scheduled notifications
+  // 1. Clear existing to avoid duplicates
   await Notifications.cancelAllScheduledNotificationsAsync();
 
-  // 2. Get a random set of messages for the next 3 days
-  const dailyMessages = getRandomMessages(3);
+  // 2. Schedule Daily Engagement at 6:00 PM (18:00)
+  const messages = getRandomMessages(3);
+  
+  for (let i = 1; i <= 3; i++) {
+    const triggerDate = new Date();
+    triggerDate.setDate(triggerDate.getDate() + i);
+    triggerDate.setHours(18, 0, 0, 0);
 
-  // 3. Schedule Day 1 Reminder (24 hours from now)
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: messages[i-1].title,
+        body: messages[i-1].body,
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+      },
+      trigger: triggerDate, // Passing a Date object works as a one-time trigger
+    });
+  }
+
+  // 3. Schedule Weekly Debrief (Every Sunday at 8:00 PM)
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: dailyMessages[0].title,
-      body: dailyMessages[0].body,
+      title: "📊 Weekly Mission Debrief",
+      body: "Your weekly progress report is ready! See how much closer you are to your DevOps goal.",
       sound: true,
-      priority: Notifications.AndroidNotificationPriority.HIGH,
     },
     trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-      seconds: 24 * 60 * 60, // 24 hours
-      repeats: false,
-    },
-  });
-
-  // 4. Schedule Day 2 Reminder (48 hours from now)
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: dailyMessages[1].title,
-      body: dailyMessages[1].body,
-      sound: true,
-      priority: Notifications.AndroidNotificationPriority.DEFAULT,
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-      seconds: 48 * 60 * 60, // 48 hours
-      repeats: false,
-    },
-  });
-
-  // 5. Schedule Day 3 Reminder (72 hours from now)
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: dailyMessages[2].title,
-      body: dailyMessages[2].body,
-      sound: true,
-      priority: Notifications.AndroidNotificationPriority.DEFAULT,
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-      seconds: 72 * 60 * 60, // 72 hours
-      repeats: false,
-    },
+      weekday: 1, // 1 is Sunday in some locales, check Expo docs (actually 1 is Sunday in JS Date, but Expo is different)
+      hour: 20,
+      minute: 0,
+      repeats: true
+    } as any,
   });
 
   await AsyncStorage.setItem('dtd_last_notification_sync', now.toString());
