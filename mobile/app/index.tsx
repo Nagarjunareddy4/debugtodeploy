@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, BackHandler, ActivityIndicator, Platform, Animated, Easing, Image, AppState, PermissionsAndroid } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useFocusEffect } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
 import { supabase } from '../src/services/supabase';
@@ -13,6 +13,7 @@ const customUserAgent = Platform.OS === 'android'
   : 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1';
 
 export default function App() {
+  const insets = useSafeAreaInsets();
   const webViewRef = useRef<WebView>(null);
   const [canGoBack, setCanGoBack] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -137,7 +138,7 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top }]} edges={['bottom', 'left', 'right']}>
       {/* WebView loads the main web app */}
       <WebView
         ref={webViewRef}
@@ -151,7 +152,14 @@ export default function App() {
         onPermissionRequest={(request) => {
           request.grant(request.resources);
         }}
+        scalesPageToFit={false}
         injectedJavaScript={`
+          // Lock viewport and disable zoom
+          const meta = document.createElement('meta');
+          meta.name = 'viewport';
+          meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+          document.getElementsByTagName('head')[0].appendChild(meta);
+
           // Fix overflow-x to prevent horizontal scrolling inside WebView
           document.documentElement.style.overflowX = 'hidden';
           document.body.style.overflowX = 'hidden';

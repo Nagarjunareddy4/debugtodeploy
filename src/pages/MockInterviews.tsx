@@ -302,8 +302,12 @@ export default function MockInterviews() {
           formData.append('model', 'whisper-1');
           formData.append('language', 'en');
 
+          const { data: { session } } = await supabase.auth.getSession();
           const whisperRes = await fetch('/api/openai-proxy?path=v1/audio/transcriptions', {
             method: 'POST',
+            headers: {
+              ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+            },
             body: formData,
           });
           const whisperData = await whisperRes.json();
@@ -408,9 +412,13 @@ Be specific, constructive, and encouraging.`;
 
       const systemPrompt = mode === 'audio' ? audioSystemPrompt : textSystemPrompt;
 
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch('/api/openai-proxy?path=v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [

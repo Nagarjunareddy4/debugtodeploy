@@ -4,8 +4,17 @@ import crypto from 'crypto';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+import multer from 'multer';
+import FormData from 'form-data';
+import OpenAI, { toFile } from 'openai';
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 dotenv.config();
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 const app = express();
 app.use(express.json());
@@ -283,12 +292,29 @@ app.post('/api/subscription/manage', authenticate, async (req, res) => {
 });
 
 // 3. OpenAI Proxy
-app.post('/api/openai-proxy', async (req, res) => {
+app.post('/api/openai-proxy', upload.any(), async (req, res) => {
   const { path } = req.query;
   if (!path) return res.status(400).json({ error: 'Missing path' });
 
   try {
-    console.log(`[Proxy] Routing AI request to: https://api.openai.com/${path}`);
+    console.log(`[Proxy] Incoming request for path: ${path}`);
+    
+    // Handle Audio Transcriptions via SDK
+    if (path.includes('audio/transcriptions') && req.files && req.files.length > 0) {
+      console.log(`[Proxy] Using OpenAI SDK for audio transcription...`);
+      const file = req.files[0];
+      
+      const transcription = await openai.audio.transcriptions.create({
+        file: await toFile(file.buffer, file.originalname),
+        model: req.body.model || 'whisper-1',
+        language: req.body.language || 'en',
+      });
+
+      return res.json(transcription);
+    }
+
+    // Handle Chat Completions via standard fetch
+    console.log(`[Proxy] Routing standard AI request...`);
     const response = await fetch(`https://api.openai.com/${path}`, {
       method: 'POST',
       headers: {
@@ -298,18 +324,11 @@ app.post('/api/openai-proxy', async (req, res) => {
       body: JSON.stringify(req.body),
     });
 
-    const contentType = response.headers.get('content-type');
-    let data;
-    if (contentType && contentType.includes('application/json')) {
-      data = await response.json();
-    } else {
-      const text = await response.text();
-      console.error('[Proxy] Non-JSON response from OpenAI:', text);
-      return res.status(response.status).json({ error: 'Unexpected response from AI provider', details: text });
-    }
-
+    const data = await response.json();
+    
     if (!response.ok) {
       console.error('[Proxy] OpenAI Error Response:', data);
+      return res.status(response.status).json(data);
     }
 
     res.status(response.status).json(data);

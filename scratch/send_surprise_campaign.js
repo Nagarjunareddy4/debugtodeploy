@@ -134,9 +134,9 @@ async function runCampaign() {
     const mailOptions = {
       from: `"Command Center" <${smtpConfig.auth.user}>`,
       to: user.email,
-      subject: '[Restricted] A Signal from the Void... 📡',
+      subject: '[DebugToDeploy] Something is brewing... 📡',
       html: getTemplate(user.full_name || user.username),
-      text: `Greetings ${user.full_name || 'Explorer'},\n\nSomething is brewing. We're working on something that fits in your pocket. Reply with your feedback on what you expect from a mobile learning experience.\n\n- Command Center`,
+      text: `Greetings ${user.full_name || 'Explorer'},\n\nSomething is brewing at DebugToDeploy. We're working on something that fits in your pocket. Reply with your feedback on what you expect from a mobile learning experience.\n\n- DebugToDeploy Command Center`,
     };
 
     if (DRY_RUN) {

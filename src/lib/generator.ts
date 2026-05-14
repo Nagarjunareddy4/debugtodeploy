@@ -183,9 +183,7 @@ For each "interview", provide:
 
     const res = await fetch('/api/openai-proxy?path=v1/chat/completions', {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json'
-      },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
@@ -247,9 +245,7 @@ For each certificate, provide:
 
     const res = await fetch('/api/openai-proxy?path=v1/chat/completions', {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json'
-      },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
@@ -436,9 +432,7 @@ Return ONLY a valid JSON object with this exact structure:
 
     const res = await fetch('/api/openai-proxy?path=v1/chat/completions', {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json'
-      },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
