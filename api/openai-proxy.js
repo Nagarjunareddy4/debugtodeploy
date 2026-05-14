@@ -81,73 +81,90 @@ export default async function handler(req) {
   const url = new URL(req.url);
   const path = url.searchParams.get('path');
 
-  if (!path || !['v1/chat/completions'].includes(path)) {
+  if (!path || !['v1/chat/completions', 'v1/audio/transcriptions'].includes(path)) {
     return new Response(JSON.stringify({ error: 'Invalid or missing path parameter.' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  // --- Body validation: only allow safe models ---
+  const contentType = req.headers.get('content-type') || '';
+  const isFormData = contentType.includes('multipart/form-data');
+
   let body;
-  try {
-    body = await req.json();
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid request body. Expected JSON.' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+  let fetchOptions = {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+  };
 
-  const ALLOWED_MODELS = ['gpt-4o-mini', 'gpt-3.5-turbo', 'gpt-4o'];
-  if (!ALLOWED_MODELS.includes(body?.model)) {
-    return new Response(JSON.stringify({ error: `Model '${body?.model}' is not permitted.` }), {
-      status: 403,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  // --- Server-side rate limiting (security hardening) ---
-  try {
-    const dbKey = supabaseServiceKey || supabaseAnonKey;
-    const profileRes = await fetch(
-      `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=subscription_status,last_roadmap_generated_at`,
-      {
-        headers: {
-          apikey: dbKey,
-          Authorization: `Bearer ${dbKey}`,
-          'Content-Type': 'application/json',
-        },
+  if (isFormData) {
+    // Simply proxy the raw multipart stream directly to OpenAI to preserve boundaries and file data
+    fetchOptions.headers['Content-Type'] = contentType;
+    fetchOptions.body = req.body;
+    fetchOptions.duplex = 'half'; // Required for streaming request bodies in Edge Runtime
+  } else {
+    try {
+      body = await req.json();
+      fetchOptions.headers['Content-Type'] = 'application/json';
+      fetchOptions.body = JSON.stringify(body);
+      
+      const ALLOWED_MODELS = ['gpt-4o-mini', 'gpt-3.5-turbo', 'gpt-4o'];
+      if (!ALLOWED_MODELS.includes(body?.model)) {
+        return new Response(JSON.stringify({ error: `Model '${body?.model}' is not permitted.` }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
-    );
+      
+      // --- Server-side rate limiting (security hardening) for chat completions ---
+      try {
+        const dbKey = supabaseServiceKey || supabaseAnonKey;
+        const profileRes = await fetch(
+          `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=subscription_status,last_roadmap_generated_at`,
+          {
+            headers: {
+              apikey: dbKey,
+              Authorization: `Bearer ${dbKey}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
 
-    if (profileRes.ok) {
-      const profiles = await profileRes.json();
-      const profile = profiles?.[0];
+        if (profileRes.ok) {
+          const profiles = await profileRes.json();
+          const profile = profiles?.[0];
 
-      if (profile && profile.subscription_status !== 'pro') {
-        // Detect roadmap generation requests by checking prompt content
-        const promptContent = JSON.stringify(body?.messages || []).toLowerCase();
-        const isRoadmapRequest = promptContent.includes('roadmap') && promptContent.includes('stages');
+          if (profile && profile.subscription_status !== 'pro') {
+            // Detect roadmap generation requests by checking prompt content
+            const promptContent = JSON.stringify(body?.messages || []).toLowerCase();
+            const isRoadmapRequest = promptContent.includes('roadmap') && promptContent.includes('stages');
 
-        if (isRoadmapRequest && profile.last_roadmap_generated_at) {
-          const lastGen = new Date(profile.last_roadmap_generated_at);
-          const now = new Date();
-          const diffDays = (now.getTime() - lastGen.getTime()) / (1000 * 60 * 60 * 24);
-          if (diffDays < 3) {
-            return new Response(JSON.stringify({
-              error: 'Free tier: Roadmap generation is limited. Please wait before generating again, or upgrade to Pro.'
-            }), {
-              status: 429,
-              headers: { 'Content-Type': 'application/json' },
-            });
+            if (isRoadmapRequest && profile.last_roadmap_generated_at) {
+              const lastGen = new Date(profile.last_roadmap_generated_at);
+              const now = new Date();
+              const diffDays = (now.getTime() - lastGen.getTime()) / (1000 * 60 * 60 * 24);
+              if (diffDays < 3) {
+                return new Response(JSON.stringify({
+                  error: 'Free tier: Roadmap generation is limited. Please wait before generating again, or upgrade to Pro.'
+                }), {
+                  status: 429,
+                  headers: { 'Content-Type': 'application/json' },
+                });
+              }
+            }
           }
         }
+      } catch (rateLimitErr) {
+        console.warn('Rate limit check failed (non-blocking):', rateLimitErr);
       }
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid request body. Expected JSON.' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
-  } catch (rateLimitErr) {
-    // Non-blocking: if rate limit check fails, allow the request through
-    console.warn('Rate limit check failed (non-blocking):', rateLimitErr);
   }
 
   // --- OpenAI API Key ---
@@ -162,14 +179,7 @@ export default async function handler(req) {
   const targetUrl = `https://api.openai.com/${path}`;
 
   try {
-    const response = await fetch(targetUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(body),
-    });
+    const response = await fetch(targetUrl, fetchOptions);
 
     const resHeaders = new Headers();
     resHeaders.set('Content-Type', 'application/json');

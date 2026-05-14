@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const PLANS = {
   'pro_monthly': { amount: 49900, currency: 'INR', interval: 1, period: 'monthly' },
-  'pro_yearly': { amount: 399900, currency: 'INR', interval: 1, period: 'yearly' }
+  'pro_yearly': { amount: 499900, currency: 'INR', interval: 1, period: 'yearly' }
 };
 
 export default async function handler(req, res) {

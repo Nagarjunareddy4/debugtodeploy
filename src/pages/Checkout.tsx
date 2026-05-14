@@ -69,7 +69,7 @@ export default function Checkout() {
   const planName = location.state?.planName || 'Fleet Captain (Pro)';
   const amount = location.state?.amount || 6;
   const period = location.state?.period || 'month';
-  const amountINR = location.state?.amountINR || (period === 'month' ? 499 : 4499);
+  const amountINR = location.state?.amountINR || (period === 'month' ? 499 : 4999);
   // Tracks whether user actually opened the Razorpay modal (to distinguish dismiss vs error)
   const razorpayOpenedRef = React.useRef(false);
 

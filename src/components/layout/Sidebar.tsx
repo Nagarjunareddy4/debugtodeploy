@@ -152,9 +152,9 @@ export default function Sidebar() {
     <>
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed bottom-6 right-6 z-50 p-4 bg-text-main text-surface rounded-full shadow-2xl transition-all active:scale-95"
+        className="lg:hidden fixed top-4 right-4 z-50 p-3 bg-text-main text-surface rounded-full shadow-2xl transition-all active:scale-95"
       >
-        {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
 
       {isOpen && (

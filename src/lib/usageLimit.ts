@@ -74,15 +74,10 @@ export async function syncUsageStats(): Promise<void> {
     // Usage tracking is primarily handled locally and via profiles table to avoid missing table 404s
 
     // Special handling for roadmap cooldown which is server-side driven
+    // We rely on the actual count now instead of overriding based on timestamp
     if (profile?.last_roadmap_generated_at) {
-      const lastGen = new Date(profile.last_roadmap_generated_at);
-      const now = new Date();
-      const diffDays = (now.getTime() - lastGen.getTime()) / (1000 * 60 * 60 * 24);
-      if (diffDays < 7 && !isPro) {
-        // Force the roadmap count to be at least the limit to block client-side UI
-        const key = weekKey('roadmap');
-        localStorage.setItem(key, '2');
-      }
+      // (Optional: handle logic here if we wanted a strict 7-day cooldown between generations, 
+      // but the weekly limit handles 2 per week naturally).
     }
   } catch (err) {
     console.warn('Usage sync failed:', err);

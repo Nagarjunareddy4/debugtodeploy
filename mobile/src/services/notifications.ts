@@ -68,16 +68,11 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
+      name: 'DebugToDeploy Notifications',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF231F7C',
+      lightColor: '#00D2FF',
     });
-  }
-
-  if (!Device.isDevice) {
-    console.warn('Push notifications require a physical device.');
-    return undefined;
   }
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -85,7 +80,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
   if (existingStatus !== 'granted') {
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
-    
+
     // Send a welcome notification if they JUST granted permission for the first time
     if (status === 'granted') {
       const hasSentWelcome = await AsyncStorage.getItem('dtd_welcome_sent');
@@ -100,14 +95,22 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
       }
     }
   }
+
   if (finalStatus !== 'granted') {
     console.warn('Push notification permission not granted.');
     return undefined;
   }
 
+  // Push token registration only works on real physical devices.
+  // Local scheduled notifications still work without a token.
+  if (!Device.isDevice) {
+    console.warn('[DTD] Physical device not detected. Skipping push token registration. Local notifications still work.');
+    return undefined;
+  }
+
   try {
     token = (await Notifications.getExpoPushTokenAsync({
-      projectId: Constants.expoConfig?.extra?.eas?.projectId,
+      projectId: Constants.expoConfig?.extra?.eas?.projectId ?? 'c4ae150a-2326-43d8-ba8f-803107821a5e',
     })).data;
 
     // Save token to Supabase profile
