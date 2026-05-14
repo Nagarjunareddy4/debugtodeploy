@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "5622050c-dbe8-4355-965f-002de905e080"
+      }
+    },
+    "android": {
+      "package": "com.naga_4.reactexample"
+    }
+  }
+}

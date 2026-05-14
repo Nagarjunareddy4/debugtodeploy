@@ -1,9 +1,10 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, StyleSheet, BackHandler, ActivityIndicator, Platform, Animated, Easing, Image, AppState } from 'react-native';
+import { View, StyleSheet, BackHandler, ActivityIndicator, Platform, Animated, Easing, Image, AppState, PermissionsAndroid } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Linking from 'expo-linking';
 import { supabase } from '../src/services/supabase';
 import { registerForPushNotificationsAsync } from '../src/services/notifications';
 
@@ -15,6 +16,7 @@ export default function App() {
   const webViewRef = useRef<WebView>(null);
   const [canGoBack, setCanGoBack] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUrl, setCurrentUrl] = useState('https://debugtodeploy.com');
   
   // Animation States
   const [animationDone, setAnimationDone] = useState(false);
@@ -24,6 +26,32 @@ export default function App() {
   useEffect(() => {
     // Hide native static splash immediately
     SplashScreen.hideAsync().catch(() => {});
+
+    // Handle deep linking
+    const handleUrl = (url: string | null) => {
+      if (url) {
+        const parsed = Linking.parse(url);
+        // If the URL contains a path, append it. Otherwise use the base URL.
+        if (parsed.path) {
+          let targetUrl = `https://debugtodeploy.com/${parsed.path}`;
+          if (parsed.queryParams) {
+            const query = new URLSearchParams(parsed.queryParams as any).toString();
+            if (query) targetUrl += `?${query}`;
+          }
+          if (parsed.fragment) {
+            targetUrl += `#${parsed.fragment}`;
+          }
+          setCurrentUrl(targetUrl);
+        }
+      }
+    };
+
+    Linking.getInitialURL().then(handleUrl);
+    const subscription = Linking.addEventListener('url', ({ url }) => handleUrl(url));
+    
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   const playAnimation = () => {
@@ -67,18 +95,9 @@ export default function App() {
     }
   }, [isLoading]);
 
-  // Listen to app state changes to replay animation on foreground
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', nextAppState => {
-      if (nextAppState === 'active' && !isLoading) {
-        playAnimation();
-      }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, [isLoading]);
+  // NOTE: Intentionally NOT replaying the splash animation on app resume.
+  // Replaying it every time the app is foregrounded feels janky and distracting.
+  // The animation only plays once — on the initial load of the WebView.
 
   // Handle Android physical back button
   useFocusEffect(
@@ -118,15 +137,35 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      {/* We no longer need ActivityIndicator because the splash screen covers it! */}
+    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+      {/* WebView loads the main web app */}
       <WebView
         ref={webViewRef}
-        source={{ uri: 'https://debugtodeploy.com' }}
+        source={{ uri: currentUrl }}
         style={styles.webview}
         userAgent={customUserAgent}
+        textZoom={100}
+        bounces={false}
+        androidLayerType="hardware"
+        mediaPlaybackRequiresUserAction={false}
+        onPermissionRequest={(request) => {
+          request.grant(request.resources);
+        }}
+        injectedJavaScript={`
+          // Fix overflow-x to prevent horizontal scrolling inside WebView
+          document.documentElement.style.overflowX = 'hidden';
+          document.body.style.overflowX = 'hidden';
+          true;
+        `}
         onNavigationStateChange={(navState) => {
           setCanGoBack(navState.canGoBack);
+          // Explicitly request native permissions when entering interview page
+          if (Platform.OS === 'android' && navState.url.includes('/interviews')) {
+            PermissionsAndroid.requestMultiple([
+              PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+              PermissionsAndroid.PERMISSIONS.CAMERA,
+            ]).catch(err => console.warn('Permission Request Error:', err));
+          }
         }}
         onMessage={onMessage}
         onLoadEnd={() => setIsLoading(false)}

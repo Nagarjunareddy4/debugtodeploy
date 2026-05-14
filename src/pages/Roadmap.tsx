@@ -71,12 +71,7 @@ export default function Roadmap() {
           setCompletedTasks(prof.completed_roadmap_tasks);
         }
         if (prof.last_roadmap_generated_at) {
-          const lastGen = new Date(prof.last_roadmap_generated_at);
-          const now = new Date();
-          const diffDays = (now.getTime() - lastGen.getTime()) / (1000 * 60 * 60 * 24);
-          if (diffDays < 7) {
-            setServerLimitBlocked(true);
-          }
+          // We rely on weekly limits, not a strict 7-day cooldown.
         }
       }
 
@@ -204,11 +199,11 @@ Return a JSON object exactly like this:
     }
   ]
 }
-Include 4-6 stages. Each stage has 4-6 tasks. 
-CRITICAL: Ensure every "url" is a valid, high-quality link to official documentation (e.g. kubernetes.io, aws.amazon.com, terraform.io, or git-scm.com).`,
+Include exactly 4 stages. Each stage has exactly 4 tasks. Keep descriptions very concise.
+CRITICAL: Use highly technical, descriptive names for stages that include keywords (e.g. "Kubernetes Orchestration" instead of "Stage 1"). Ensure every "url" is a valid, high-quality link to official documentation (e.g. kubernetes.io, aws.amazon.com, terraform.io, or git-scm.com).`,
             },
           ],
-          max_tokens: 1500,
+          max_tokens: 1000,
           temperature: 0.7,
         }),
       });
@@ -259,6 +254,9 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
           .eq('id', user.id);
       }
       await regenerateDependentRecommendations(finalRoadmap, roadmapHash);
+      
+      // Refresh the page immediately upon successful generation as requested
+      window.location.reload();
     } catch (error: any) {
       console.error(error);
       setGenerateError(error.message || 'Failed to generate roadmap. Please check your connection and try again.');
@@ -548,19 +546,21 @@ CRITICAL: Ensure every "url" is a valid, high-quality link to official documenta
             exit={{ height: 0, opacity: 0, marginBottom: 0 }}
             className="overflow-hidden"
           >
-            <div className="flex items-center gap-4 p-4 sm:p-6 bg-soft-orange/10 border-4 border-soft-orange/30 rounded-[2rem] text-soft-orange shadow-xl relative overflow-hidden group">
+            <div className="flex items-center gap-4 p-4 sm:p-6 bg-soft-blue/10 border-4 border-soft-blue/30 rounded-[2rem] text-soft-blue shadow-xl relative overflow-hidden group">
                <motion.div 
                  animate={{ opacity: [0.05, 0.15, 0.05] }}
                  transition={{ duration: 2, repeat: Infinity }}
-                 className="absolute inset-0 bg-soft-orange"
+                 className="absolute inset-0 bg-soft-blue"
                />
-               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-soft-orange/20 rounded-2xl flex items-center justify-center shrink-0 relative z-10">
-                  <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
+               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-soft-blue/20 rounded-2xl flex items-center justify-center shrink-0 relative z-10">
+                  <Brain className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
                </div>
                <div className="space-y-1 relative z-10">
-                  <h4 className="font-black text-xs sm:text-base uppercase tracking-tighter">AI Synthesis in Progress</h4>
-                  <p className="text-[8px] sm:text-[10px] font-bold opacity-80 leading-relaxed uppercase tracking-widest">
-                    Critical logic being synchronized. **Please do not refresh or navigate away** to prevent sequence corruption.
+                  <h4 className="font-black text-xs sm:text-base uppercase tracking-tighter">
+                    <span className="animate-pulse">Generating AI Roadmap...</span>
+                  </h4>
+                  <p className="text-[8px] sm:text-[10px] font-bold opacity-80 leading-relaxed uppercase tracking-widest text-text-dim">
+                    Analyzing skills, structuring curriculum, and finding resources... <span className="text-soft-orange animate-pulse block mt-1">⚠️ DO NOT REFRESH OR NAVIGATE AWAY</span>
                   </p>
                </div>
             </div>

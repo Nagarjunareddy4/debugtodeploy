@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import LandingNavbar from '../components/layout/LandingNavbar';
 import AuthModal from '../components/layout/AuthModal';
+import { RoadmapBadge3D } from '../components/ui/RoadmapBadge3D';
 import { cn, useMeta } from '../lib/utils';
 
 export default function Landing({ session }: { session: any }) {
@@ -37,78 +38,94 @@ export default function Landing({ session }: { session: any }) {
           <div className="absolute bottom-[10%] right-[10%] w-[50%] h-[50%] bg-soft-purple/5 rounded-full blur-[120px] animate-pulse delay-700" />
         </div>
 
-        <div className="max-w-7xl mx-auto relative z-10 flex flex-col items-center text-center w-full">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-soft-blue/10 border border-soft-blue/20 mb-8"
-          >
-            <Sparkles className="w-4 h-4 text-soft-blue" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-soft-blue">
-              The AI-Powered DevOps Career Accelerator
-            </span>
-          </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-3xl sm:text-5xl md:text-8xl font-black italic tracking-tight md:tracking-tighter mb-8 leading-[1.1] md:leading-[0.9] overflow-visible"
-          >
-            DebugToDeploy: <br className="hidden md:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-soft-blue to-soft-purple block md:inline mt-2 md:mt-0">
-              DevOps Accelerator
-            </span>
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-lg md:text-xl text-text-dim font-bold max-w-3xl mb-12 leading-relaxed"
-          >
-            Bridge the gap between theoretical knowledge and production expertise. 
-            Build real-world infrastructure, fix complex cluster issues, and showcase 
-            your verified skills with a professional engineering portfolio.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto"
-          >
-            <button
-              onClick={() => openAuth('signup')}
-              className="btn-pill bg-text-main text-surface px-10 py-5 text-sm uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-soft-blue transition-colors group"
+        <div className="max-w-7xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center w-full">
+          <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-soft-blue/10 border border-soft-blue/20 mb-8"
             >
-              Start Free Journey <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
-            <a
-              href="#labs"
-              className="btn-pill bg-surface border-4 border-border px-10 py-5 text-sm uppercase tracking-widest flex items-center justify-center gap-2 hover:border-soft-blue transition-colors"
-            >
-              Explore Labs
-            </a>
-          </motion.div>
+              <Sparkles className="w-4 h-4 text-soft-blue" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-soft-blue">
+                The AI-Powered DevOps Career Accelerator
+              </span>
+            </motion.div>
 
-          {/* Social Proof */}
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="text-4xl sm:text-5xl md:text-7xl font-black italic tracking-tight mb-8 leading-[1.1] md:leading-[0.9]"
+            >
+              DebugToDeploy: <br className="hidden md:block" />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-soft-blue to-soft-purple">
+                Accelerator
+              </span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-lg text-text-dim font-bold max-w-xl mb-12 leading-relaxed"
+            >
+              Bridge the gap between theoretical knowledge and production expertise. 
+              Build real-world infrastructure, fix complex cluster issues, and showcase 
+              your verified skills with a professional engineering portfolio.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto"
+            >
+              <button
+                onClick={() => openAuth('signup')}
+                className="btn-pill bg-text-main text-surface px-10 py-5 text-sm uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-soft-blue transition-colors group"
+              >
+                Start Free Journey <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+              <a
+                href="#labs"
+                className="btn-pill bg-surface border-4 border-border px-10 py-5 text-sm uppercase tracking-widest flex items-center justify-center gap-2 hover:border-soft-blue transition-colors"
+              >
+                Explore Labs
+              </a>
+            </motion.div>
+
+            {/* Social Proof */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mt-16 flex flex-col lg:flex-row items-center gap-4"
+            >
+              <div className="flex -space-x-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="w-10 h-10 rounded-full border-4 border-brand-bg bg-surface flex items-center justify-center text-[10px] font-black shadow-lg">
+                    U{i}
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-dim">
+                Trusted by 5,000+ Engineers
+              </p>
+            </motion.div>
+          </div>
+
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="mt-16 flex flex-col items-center gap-4"
+            initial={{ opacity: 0, scale: 0.8, rotate: 5 }}
+            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            transition={{ delay: 0.2, type: 'spring', damping: 15 }}
+            className="relative hidden lg:block"
           >
-            <div className="flex -space-x-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="w-10 h-10 rounded-full border-4 border-brand-bg bg-surface flex items-center justify-center text-[10px] font-black">
-                  U{i}
-                </div>
-              ))}
-            </div>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-dim">
-              Trusted by 5,000+ Aspiring Platform Engineers
-            </p>
+            <div className="absolute inset-0 bg-soft-blue/20 blur-[100px] rounded-full animate-pulse" />
+            <img 
+              src="/hero-3d.png" 
+              alt="DevOps 3D Illustration" 
+              className="relative z-10 w-full h-auto drop-shadow-3xl hover:scale-105 transition-transform duration-700"
+            />
           </motion.div>
         </div>
       </section>
@@ -272,13 +289,11 @@ export default function Landing({ session }: { session: any }) {
                 className="flex-none w-[280px] md:w-[320px] snap-center playful-card flex flex-col items-center gap-6 p-10 border-4 relative overflow-hidden group cursor-pointer"
               >
                 <div className={cn("w-32 h-32 rounded-3xl flex items-center justify-center relative z-10", badge.color)}>
-                  <img 
-                    src={badge.icon.replace(/ /g, '%20')} 
-                    alt={badge.name} 
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Trophy/3D/trophy_3d.png';
-                    }}
-                    className="w-24 h-24 object-contain group-hover:scale-110 transition-transform duration-500 drop-shadow-2xl" 
+                  <RoadmapBadge3D 
+                    stageName={badge.name} 
+                    earned={true} 
+                    size="lg" 
+                    showGlow={true}
                   />
                 </div>
                 <div>
@@ -460,9 +475,7 @@ export default function Landing({ session }: { session: any }) {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-20">
           <div className="col-span-1 md:col-span-2 space-y-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-soft-blue/10 rounded-xl flex items-center justify-center border border-soft-blue/20">
-                <Rocket className="w-6 h-6 text-soft-blue" />
-              </div>
+              <img src="/logo.jpg" alt="DebugToDeploy" className="w-10 h-10 rounded-xl object-contain mix-blend-screen" />
               <span className="text-xl font-black italic tracking-tighter">Debug<span className="text-soft-blue">To</span>Deploy</span>
             </div>
             <p className="text-text-dim font-bold max-w-sm">The AI-Powered career accelerator for modern infrastructure engineers.</p>

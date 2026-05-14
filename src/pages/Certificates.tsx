@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { generateUserCertificates, GeneratedCertificate } from '../lib/generator';
 import { cn, getObjectHash, usePageTitle } from '../lib/utils';
 import { isLimitReached, incrementUsage, getLimitMessage } from '../lib/usageLimit';
+import { RoadmapBadge3D } from '../components/ui/RoadmapBadge3D';
 
 const iconMap: Record<string, any> = {
   Cloud,
@@ -47,8 +48,9 @@ export default function Certificates() {
 
       await fetchProfileData();
 
+      const channelId = `certificates-${Math.random().toString(36).substring(2, 9)}`;
       const channel = supabase
-        .channel('certificates-profile-sync')
+        .channel(channelId)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload) => {
           if (payload.new && payload.new.generated_certificates) {
             setCertificates(payload.new.generated_certificates);
@@ -56,7 +58,9 @@ export default function Certificates() {
         })
         .subscribe();
 
-      return () => { supabase.removeChannel(channel); };
+      return () => { 
+        supabase.removeChannel(channel); 
+      };
     };
     init();
   }, []);
@@ -167,8 +171,14 @@ export default function Certificates() {
                 {/* Decorative background circle */}
                 <div className={cn("absolute -right-8 -top-8 w-32 h-32 rounded-full opacity-10 blur-2xl", `bg-${cert.color}`)} />
                 
-                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-lg", `bg-${cert.color}/10 text-${cert.color}`)}>
-                  <IconComponent className="w-7 h-7" />
+                <div className={cn("w-14 h-14 mb-6 relative z-10")}>
+                  <RoadmapBadge3D 
+                    stageName={cert.title} 
+                    description={cert.description}
+                    earned={true} 
+                    size="sm" 
+                    showGlow={false}
+                  />
                 </div>
                 
                 <h3 className="text-2xl font-black tracking-tight mb-3 leading-snug">{cert.title}</h3>

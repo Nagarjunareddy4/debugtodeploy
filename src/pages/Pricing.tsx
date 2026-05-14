@@ -66,7 +66,7 @@ export default function Pricing() {
     {
       name: 'Fleet Captain (Pro)',
       priceUSD: billingCycle === 'monthly' ? 6 : 54,
-      priceINR: billingCycle === 'monthly' ? 499 : 4499,
+      priceINR: billingCycle === 'monthly' ? 499 : 4999,
       period: billingCycle === 'monthly' ? 'month' : 'year',
       description: 'Full-throttle engineering with unlimited AI power.',
       features: [

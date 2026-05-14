@@ -10,6 +10,7 @@ import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } fr
 import { cn, usePageTitle } from '../lib/utils';
 import OnboardingModal from '../components/OnboardingModal';
 import { Avatar } from '../components/ui/Avatar';
+import { RoadmapBadge3D } from '../components/ui/RoadmapBadge3D';
 import { toast } from 'react-hot-toast';
 
 interface DailyProgress {
@@ -684,6 +685,7 @@ export default function Dashboard() {
                    : profile?.roadmap_data;
                    
                  const completedTasks = profile?.completed_roadmap_tasks || [];
+                 console.log('DEBUG: Roadmap Data', roadmapData);
                  
                  const roadmapBadges = roadmapData?.stages?.map((stage: any, sIdx: number) => {
                    const stageTasks = stage.tasks || [];
@@ -694,6 +696,8 @@ export default function Dashboard() {
                    
                    return {
                      name: stage.label,
+                     description: stage.description,
+                     tasks: stageTasks,
                      icon: stage.icon || '🏆',
                      earned: isEarned,
                      date: isEarned ? 'Earned' : 'Locked'
@@ -732,42 +736,14 @@ export default function Dashboard() {
                         <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/20 pointer-events-none" />
                       )}
 
-                      <div className="relative w-20 h-20 flex items-center justify-center drop-shadow-2xl">
-                         <img 
-                           src={(function() {
-                             const name = badge.name.toLowerCase();
-                             if (name.includes('docker') || name.includes('container')) 
-                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Whale/3D/whale_3d.png';
-                             if (name.includes('k8s') || name.includes('kubernetes') || name.includes('orchestration'))
-                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Steering%20Wheel/3D/steering_wheel_3d.png';
-                             if (name.includes('git') || name.includes('version') || name.includes('github') || name.includes('gitlab'))
-                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Link/3D/link_3d.png';
-                             if (name.includes('monitor') || name.includes('metric') || name.includes('log') || name.includes('grafana') || name.includes('prometheus'))
-                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bar%20Chart/3D/bar_chart_3d.png';
-                             if (name.includes('cloud') || name.includes('aws') || name.includes('azure') || name.includes('gcp') || name.includes('infra'))
-                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cloud/3D/cloud_3d.png';
-                             if (name.includes('security') || name.includes('protect') || name.includes('vault') || name.includes('auth'))
-                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Shield/3D/shield_3d.png';
-                             if (name.includes('pipeline') || name.includes('cicd') || name.includes('deploy') || name.includes('action'))
-                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Rocket/3D/rocket_3d.png';
-                             if (name.includes('network') || name.includes('api') || name.includes('service') || name.includes('dns'))
-                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Globe%20with%20Meridians/3D/globe_with_meridians_3d.png';
-                             if (name.includes('automate') || name.includes('script') || name.includes('python') || name.includes('bash'))
-                               return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Robot/3D/robot_3d.png';
-                             return 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Trophy/3D/trophy_3d.png';
-                           })()} 
-                           alt={badge.name}
-                           onError={(e) => {
-                             (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Trophy/3D/trophy_3d.png';
-                           }}
-                           className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
-                         />
-                         
-                         {/* Holographic Glow */}
-                         {badge.earned && (
-                           <div className="absolute -inset-2 bg-soft-orange/20 blur-2xl -z-10 animate-pulse" />
-                         )}
-                      </div>
+                       <RoadmapBadge3D
+                         stageName={badge.name}
+                         description={(badge as any).description}
+                          tasks={(badge as any).tasks}
+                         earned={badge.earned}
+                         size="md"
+                         showGlow={badge.earned}
+                       />
 
                       <div className="text-center mt-2">
                          <p className="text-[11px] font-black uppercase truncate max-w-[120px] leading-tight">

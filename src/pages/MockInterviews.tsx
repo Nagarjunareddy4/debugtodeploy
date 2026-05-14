@@ -111,8 +111,9 @@ export default function MockInterviews() {
       await fetchProfileData();
 
       // Real-time subscription to profile changes
+      const channelId = `interviews-profile-sync-${Date.now()}-${Math.random()}`;
       const channel = supabase
-        .channel('interviews-profile-sync')
+        .channel(channelId)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload) => {
           if (payload.new) {
             setIsPro(payload.new.subscription_status === 'pro');
