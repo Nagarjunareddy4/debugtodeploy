@@ -9,8 +9,8 @@ import { supabase } from '../src/services/supabase';
 import { registerForPushNotificationsAsync } from '../src/services/notifications';
 
 const customUserAgent = Platform.OS === 'android'
-  ? 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36'
-  : 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1';
+  ? 'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
+  : 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 
 export default function App() {
   const insets = useSafeAreaInsets();
@@ -27,6 +27,15 @@ export default function App() {
   useEffect(() => {
     // Hide native static splash immediately
     SplashScreen.hideAsync().catch(() => {});
+
+    // Proactively request Microphone and Camera permissions on Android
+    if (Platform.OS === 'android') {
+      PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+        PermissionsAndroid.PERMISSIONS.CAMERA,
+        PermissionsAndroid.PERMISSIONS.MODIFY_AUDIO_SETTINGS,
+      ]).catch(err => console.warn('Initial Permission Request Error:', err));
+    }
 
     // Handle deep linking
     const handleUrl = (url: string | null) => {
@@ -150,8 +159,20 @@ export default function App() {
         androidLayerType="hardware"
         mediaPlaybackRequiresUserAction={false}
         onPermissionRequest={(request) => {
-          request.grant(request.resources);
+          // Explicitly grant resources requested by the WebView for our domain or dev environments
+          const isProduction = request.origin.includes('debugtodeploy.com');
+          const isDevelopment = request.origin.includes('localhost') || 
+                               request.origin.includes('10.0.2.2') || 
+                               request.origin.startsWith('http://192.168.');
+          
+          if (isProduction || isDevelopment) {
+            request.grant(request.resources);
+          } else {
+            request.deny();
+          }
         }}
+        originWhitelist={['*']}
+        mixedContentMode="always"
         scalesPageToFit={false}
         injectedJavaScript={`
           // Lock viewport and disable zoom
@@ -167,12 +188,12 @@ export default function App() {
         `}
         onNavigationStateChange={(navState) => {
           setCanGoBack(navState.canGoBack);
-          // Explicitly request native permissions when entering interview page
+          // If the user navigates to interviews, re-verify permissions just in case
           if (Platform.OS === 'android' && navState.url.includes('/interviews')) {
             PermissionsAndroid.requestMultiple([
               PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
               PermissionsAndroid.PERMISSIONS.CAMERA,
-            ]).catch(err => console.warn('Permission Request Error:', err));
+            ]).catch(err => console.warn('Permission Re-check Error:', err));
           }
         }}
         onMessage={onMessage}

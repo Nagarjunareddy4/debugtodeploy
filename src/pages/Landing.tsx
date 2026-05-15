@@ -4,7 +4,7 @@ import {
   Rocket, Brain, Zap, ShieldCheck, Terminal as TerminalIcon, 
   Map, CheckCircle2, ChevronRight, Star, ArrowRight,
   Sparkles, Cloud, Users, Award, Play, Github,
-  Facebook, Instagram, Twitter
+  Facebook, Instagram, Twitter, Briefcase
 } from 'lucide-react';
 import LandingNavbar from '../components/layout/LandingNavbar';
 import AuthModal from '../components/layout/AuthModal';
@@ -142,11 +142,25 @@ export default function Landing({ session }: { session: any }) {
           <div className="flex overflow-x-auto gap-8 pb-12 pt-4 px-4 snap-x snap-mandatory no-scrollbar -mx-4 md:mx-0 md:px-0">
             {[
               {
-                icon: Map,
-                title: "Curated Roadmaps",
-                desc: "Navigate the complex DevOps landscape with a path tailored to your dream role.",
+                icon: Briefcase,
+                title: "AI Job Board",
+                desc: "Real-time job opportunities matched to your roadmap goal and technical readiness score.",
                 color: "text-soft-blue",
                 bg: "bg-soft-blue/10"
+              },
+              {
+                icon: Users,
+                title: "Global Leaderboard",
+                desc: "Compete with engineers worldwide. Climb the ranks by completing labs and passing interviews.",
+                color: "text-soft-purple",
+                bg: "bg-soft-purple/10"
+              },
+              {
+                icon: Brain,
+                title: "Interview Analytics",
+                desc: "Deep AI analysis of your mock interview performance with personalized coaching insights.",
+                color: "text-soft-orange",
+                bg: "bg-soft-orange/10"
               },
               {
                 icon: TerminalIcon,
@@ -156,18 +170,11 @@ export default function Landing({ session }: { session: any }) {
                 bg: "bg-soft-green/10"
               },
               {
-                icon: Brain,
-                title: "Technical Audits",
-                desc: "Get real-time feedback on your architecture decisions and troubleshooting logic.",
-                color: "text-soft-purple",
-                bg: "bg-soft-purple/10"
-              },
-              {
                 icon: ShieldCheck,
                 title: "Verified Skills",
                 desc: "Prove your expertise with certificates backed by actual lab performance data.",
-                color: "text-soft-orange",
-                bg: "bg-soft-orange/10"
+                color: "text-soft-blue",
+                bg: "bg-soft-blue/10"
               },
               {
                 icon: Award,
@@ -175,13 +182,6 @@ export default function Landing({ session }: { session: any }) {
                 desc: "A public profile that speaks louder than a resume to hiring managers.",
                 color: "text-soft-green",
                 bg: "bg-soft-green/10"
-              },
-              {
-                icon: Rocket,
-                title: "Career Accelerator",
-                desc: "Designed to move you from Junior to Senior/Lead faster than generic courses.",
-                color: "text-soft-blue",
-                bg: "bg-soft-blue/10"
               }
             ].map((feature, i) => (
               <motion.div

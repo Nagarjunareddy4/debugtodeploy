@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Compass, Sparkles, CheckCircle2, Loader2, ChevronRight, Zap, Target, BookOpen, RefreshCw, Lock, X, ExternalLink, Brain, AlertTriangle } from 'lucide-react';
+import { Compass, Sparkles, CheckCircle2, Loader2, ChevronRight, Zap, Target, BookOpen, RefreshCw, Lock, X, ExternalLink, Brain, AlertTriangle, PlayCircle } from 'lucide-react';
 import { cn, getObjectHash, usePageTitle } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
@@ -740,7 +740,7 @@ CRITICAL: Use highly technical, descriptive names for stages that include keywor
                               isCompleted && "border-soft-green/50 bg-soft-green/5 shadow-lg shadow-soft-green/5"
                             )}
                           >
-                            <div 
+                            <div
                               className="flex items-center gap-3 cursor-pointer flex-1"
                               onClick={() => handleTopicClick(taskLabel, taskUrl)}
                             >
@@ -757,18 +757,30 @@ CRITICAL: Use highly technical, descriptive names for stages that include keywor
                                </div>
                             </div>
 
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleTask(stage.id, tidx);
-                              }}
-                              className={cn(
-                                "shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all",
-                                isCompleted ? "bg-soft-green text-white shadow-lg shadow-soft-green/20" : "bg-surface border border-border text-text-dim hover:border-soft-green hover:text-soft-green"
-                              )}
-                            >
-                              <CheckCircle2 className="w-4 h-4" strokeWidth={3} />
-                            </button>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate('/video-lesson', { state: { topic: taskLabel, url: taskUrl } });
+                                }}
+                                className="w-8 h-8 rounded-xl flex items-center justify-center bg-soft-purple/10 border border-soft-purple/30 text-soft-purple hover:bg-soft-purple/20 transition-all"
+                                title="Watch AI video lesson"
+                              >
+                                <PlayCircle className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleTask(stage.id, tidx);
+                                }}
+                                className={cn(
+                                  "shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all",
+                                  isCompleted ? "bg-soft-green text-white shadow-lg shadow-soft-green/20" : "bg-surface border border-border text-text-dim hover:border-soft-green hover:text-soft-green"
+                                )}
+                              >
+                                <CheckCircle2 className="w-4 h-4" strokeWidth={3} />
+                              </button>
+                            </div>
                           </div>
                         );
                       })}

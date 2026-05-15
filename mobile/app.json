@@ -7,7 +7,7 @@
     "icon": "./assets/images/logo.jpg",
     "scheme": "debugtodeploy",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/logo.jpg",
       "resizeMode": "contain",
@@ -31,7 +31,9 @@
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.ACCESS_NETWORK_STATE"
       ],
       "intentFilters": [
         {

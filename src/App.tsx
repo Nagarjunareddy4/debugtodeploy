@@ -15,6 +15,9 @@ import Checkout from './pages/Checkout';
 import Settings from './pages/Settings';
 import Certificates from './pages/Certificates';
 import Learning from './pages/Learning';
+import VideoLesson from './pages/VideoLesson';
+import Leaderboard from './pages/Leaderboard';
+import JobBoard from './pages/JobBoard';
 import Portfolio from './pages/Portfolio';
 import PublicPortfolio from './pages/PublicPortfolio';
 import ResetPassword from './pages/ResetPassword';
@@ -270,6 +273,9 @@ export default function App() {
                             <Route path="/interviews" element={<MockInterviews />} />
                             <Route path="/certificates" element={<Certificates />} />
                             <Route path="/learning" element={<Learning />} />
+                            <Route path="/video-lesson" element={<VideoLesson />} />
+                            <Route path="/leaderboard" element={<Leaderboard />} />
+                            <Route path="/jobs" element={<JobBoard />} />
                             <Route path="/settings" element={<Settings />} />
                             <Route path="/pricing" element={<Pricing />} />
                             <Route path="/checkout" element={<Checkout />} />
