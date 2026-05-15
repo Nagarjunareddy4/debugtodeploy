@@ -10,8 +10,6 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
   }),
 });
 
@@ -81,19 +79,19 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
 
-    // Send a welcome notification if they JUST granted permission for the first time
+    // Send a welcome notification if they JUST granted permission
     if (status === 'granted') {
-      const hasSentWelcome = await AsyncStorage.getItem('dtd_welcome_sent');
-      if (!hasSentWelcome) {
-        setTimeout(() => {
-          sendLocalNotification(
-            "👋 Welcome to DebugToDeploy!",
-            "Your AI DevOps journey begins now. Head over to the Roadmap to get started."
-          );
-        }, 3000);
-        await AsyncStorage.setItem('dtd_welcome_sent', 'true');
-      }
+      setTimeout(() => {
+        sendLocalNotification(
+          "👋 Welcome to DebugToDeploy!",
+          "Your AI DevOps journey begins now. Head over to the Roadmap to get started."
+        );
+      }, 3000);
+      await AsyncStorage.setItem('dtd_welcome_sent', 'true');
     }
+  } else {
+    // If permission was already granted, ensure we still have a token
+    // (This part is fine as it falls through to token fetch)
   }
 
   if (finalStatus !== 'granted') {
@@ -102,9 +100,8 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
   }
 
   // Push token registration only works on real physical devices.
-  // Local scheduled notifications still work without a token.
   if (!Device.isDevice) {
-    console.warn('[DTD] Physical device not detected. Skipping push token registration. Local notifications still work.');
+    console.warn('[DTD] Physical device not detected. Skipping push token registration.');
     return undefined;
   }
 
@@ -113,7 +110,6 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
       projectId: Constants.expoConfig?.extra?.eas?.projectId ?? 'c4ae150a-2326-43d8-ba8f-803107821a5e',
     })).data;
 
-    // Save token to Supabase profile
     const { data: { user } } = await supabase.auth.getUser();
     if (user && token) {
       await supabase
@@ -137,7 +133,6 @@ export async function sendLocalNotification(title: string, body: string) {
       sound: true,
     },
     trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
       seconds: 1,
       repeats: false,
     },
@@ -159,19 +154,24 @@ export async function setupDailyEngagementNotifications() {
   // 2. Schedule Daily Engagement at 6:00 PM (18:00)
   const messages = getRandomMessages(3);
   
-  for (let i = 1; i <= 3; i++) {
+  for (let i = 0; i < 3; i++) {
     const triggerDate = new Date();
     triggerDate.setDate(triggerDate.getDate() + i);
     triggerDate.setHours(18, 0, 0, 0);
 
+    // If we're setting it for today (i=0) and it's already past 6 PM, skip today
+    if (triggerDate.getTime() <= now) {
+      triggerDate.setDate(triggerDate.getDate() + 3);
+    }
+
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: messages[i-1].title,
-        body: messages[i-1].body,
+        title: messages[i].title,
+        body: messages[i].body,
         sound: true,
         priority: Notifications.AndroidNotificationPriority.HIGH,
       },
-      trigger: triggerDate, // Passing a Date object works as a one-time trigger
+      trigger: triggerDate,
     });
   }
 
@@ -183,12 +183,14 @@ export async function setupDailyEngagementNotifications() {
       sound: true,
     },
     trigger: {
-      weekday: 1, // 1 is Sunday in some locales, check Expo docs (actually 1 is Sunday in JS Date, but Expo is different)
+      weekday: 1, 
       hour: 20,
       minute: 0,
       repeats: true
-    } as any,
+    },
   });
 
   await AsyncStorage.setItem('dtd_last_notification_sync', now.toString());
 }
+
+

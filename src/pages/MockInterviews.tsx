@@ -16,7 +16,10 @@ import {
   PhoneOff,
   User,
   Cloud,
-  AlertCircle
+  AlertCircle,
+  BarChart2,
+  Calendar,
+  Activity
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
@@ -35,7 +38,7 @@ const iconMap: Record<string, any> = {
 type InterviewMode = 'text' | 'audio' | 'video';
 
 export default function MockInterviews() {
-  const [activeTab, setActiveTab] = useState<'browse' | 'session' | 'evaluation'>('browse');
+  const [activeTab, setActiveTab] = useState<'browse' | 'session' | 'evaluation' | 'analytics'>('browse');
   const [selectedScenario, setSelectedScenario] = useState<GeneratedInterview | null>(null);
   const [mode, setMode] = useState<InterviewMode>('text');
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -63,8 +66,10 @@ export default function MockInterviews() {
   const [isPro, setIsPro] = useState(false);
   const [interviewScenarios, setInterviewScenarios] = useState<(GeneratedInterview & { sessionState?: any })[]>([]);
   const [loading, setLoading] = useState(true);
-  const [interviewScores, setInterviewScores] = useState<Record<string, number>>({});
+  const [interviewScores, setInterviewScores] = useState<Record<string, any>>({});
   const [userAnswer, setUserAnswer] = useState('');
+  const [weaknessAnalysis, setWeaknessAnalysis] = useState<string | null>(null);
+  const [isGeneratingWeakness, setIsGeneratingWeakness] = useState(false);
 
   // Refs for MediaRecorder-based recording
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -97,7 +102,12 @@ export default function MockInterviews() {
               setActiveTab('session');
             }
           }
-          if (data.interview_scores) setInterviewScores(data.interview_scores);
+          if (data.interview_scores) {
+            setInterviewScores(data.interview_scores);
+            if (data.interview_scores.__weakness_analysis) {
+              setWeaknessAnalysis(data.interview_scores.__weakness_analysis);
+            }
+          }
           if (data.roadmap_data) {
             try {
               const roadmap = typeof data.roadmap_data === 'string' ? JSON.parse(data.roadmap_data) : data.roadmap_data;
@@ -498,6 +508,47 @@ Be specific, constructive, and encouraging.`;
     setActiveTab('evaluation');
   };
 
+  const generateWeaknessAnalysis = async (completedSessions: any[]) => {
+    if (completedSessions.length === 0) return;
+    setIsGeneratingWeakness(true);
+    try {
+      const allHistory = completedSessions.flatMap(s => s.sessionState.history).map(h => `Q: ${h.q}\nA: ${h.a}\nScore: ${h.score}`).join('\n\n');
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/openai-proxy?path=v1/chat/completions', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'You are an expert career coach. Based on the following interview history, provide a concise 1-2 sentence summary of the candidate\'s key weaknesses and one actionable tip to improve.' },
+            { role: 'user', content: allHistory },
+          ],
+          max_tokens: 150,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      
+      const analysis = data.choices?.[0]?.message?.content || 'No analysis generated.';
+      setWeaknessAnalysis(analysis);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+         const newScores = { ...interviewScores, __weakness_analysis: analysis };
+         setInterviewScores(newScores);
+         await supabase.from('profiles').update({ interview_scores: newScores }).eq('id', user.id);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsGeneratingWeakness(false);
+    }
+  };
+
   const totalQuestions = sessionQuestions.length;
   const isLastQuestion = currentQuestion === totalQuestions - 1;
 
@@ -511,11 +562,19 @@ Be specific, constructive, and encouraging.`;
           <p className="text-text-dim font-bold uppercase tracking-widest text-sm flex items-center gap-2">
              <Zap className="w-4 h-4 text-soft-orange" /> Sharpen your technical edge with real-time feedback
           </p>
-          {!isPro && (
-            <div className="text-[10px] font-black uppercase tracking-widest text-soft-orange bg-soft-orange/10 px-4 py-2 rounded-full border border-soft-orange/20">
-              {getRemainingUsage('interview', isPro)} interview left this week
-            </div>
-          )}
+          <div className="flex items-center gap-4 flex-wrap">
+            <button 
+              onClick={() => setActiveTab(activeTab === 'analytics' ? 'browse' : 'analytics')}
+              className="flex items-center gap-2 px-4 py-2 bg-surface text-text-main rounded-full font-black text-[10px] uppercase tracking-widest border border-border hover:border-text-main transition-colors"
+            >
+              <BarChart2 className="w-4 h-4" /> {activeTab === 'analytics' ? 'Back to Browse' : 'History & Analytics'}
+            </button>
+            {!isPro && (
+              <div className="text-[10px] font-black uppercase tracking-widest text-soft-orange bg-soft-orange/10 px-4 py-2 rounded-full border border-soft-orange/20">
+                {getRemainingUsage('interview', isPro)} interview left this week
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -591,6 +650,109 @@ Be specific, constructive, and encouraging.`;
                 );
               })
             )}
+          </motion.div>
+        );
+      }
+      if (activeTab === 'analytics') {
+        const completedSessions = interviewScenarios.filter(s => s.sessionState && s.sessionState.history && s.sessionState.history.length > 0 && !s.sessionState.isActive);
+        const totalCompleted = completedSessions.length;
+        // Filter out the __weakness_analysis key
+        const scoreKeys = Object.keys(interviewScores).filter(k => k !== '__weakness_analysis');
+        const avgScore = scoreKeys.length > 0 
+          ? Math.round(scoreKeys.reduce((acc, k) => acc + (typeof interviewScores[k] === 'number' ? interviewScores[k] : 0), 0) / scoreKeys.length)
+          : 0;
+          
+        return (
+          <motion.div
+            key="analytics"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.05 }}
+            className="space-y-8"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+               <div className="playful-card bg-surface shadow-xl p-6 border-none flex items-center gap-4">
+                  <div className="w-12 h-12 bg-soft-blue/10 text-soft-blue rounded-full flex items-center justify-center">
+                    <Activity className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-text-dim tracking-widest">Total Interviews</p>
+                    <p className="text-3xl font-black">{totalCompleted}</p>
+                  </div>
+               </div>
+               <div className="playful-card bg-surface shadow-xl p-6 border-none flex items-center gap-4">
+                  <div className="w-12 h-12 bg-soft-green/10 text-soft-green rounded-full flex items-center justify-center">
+                    <BarChart2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-text-dim tracking-widest">Average Score</p>
+                    <p className="text-3xl font-black">{avgScore}%</p>
+                  </div>
+               </div>
+               <div className="playful-card bg-surface shadow-xl p-6 border-none flex items-center gap-4 relative overflow-hidden group">
+                  <div className="w-12 h-12 bg-soft-purple/10 text-soft-purple rounded-full flex items-center justify-center shrink-0">
+                    <Brain className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                       <p className="text-[10px] font-black uppercase text-text-dim tracking-widest">AI Weakness Analysis</p>
+                       {totalCompleted > 0 && (
+                          <button 
+                            onClick={() => generateWeaknessAnalysis(completedSessions)}
+                            disabled={isGeneratingWeakness}
+                            className="text-[10px] font-black uppercase text-soft-blue hover:underline disabled:opacity-50"
+                          >
+                            {isGeneratingWeakness ? 'Analyzing...' : weaknessAnalysis ? 'Refresh' : 'Analyze Now'}
+                          </button>
+                       )}
+                    </div>
+                    <p className="text-xs font-bold mt-1 text-text-main line-clamp-3">
+                       {isGeneratingWeakness ? 'Reading past transcripts...' : weaknessAnalysis || 'Generate an AI analysis to find your blind spots.'}
+                    </p>
+                  </div>
+               </div>
+            </div>
+
+            <div className="playful-card bg-surface shadow-2xl border-none space-y-6">
+              <h3 className="text-2xl font-black italic">Past Interview History</h3>
+              {totalCompleted === 0 ? (
+                <div className="text-center p-8 text-text-dim font-bold">No interviews completed yet.</div>
+              ) : (
+                <div className="space-y-4">
+                  {completedSessions.map(scenario => {
+                    const score = interviewScores[scenario.id] || 0;
+                    return (
+                      <div 
+                        key={scenario.id} 
+                        className="p-4 border-2 border-border/50 bg-brand-bg rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 group hover:border-soft-blue transition-colors cursor-pointer" 
+                        onClick={() => { 
+                          setSelectedScenario(scenario); 
+                          setHistory(scenario.sessionState.history); 
+                          setActiveTab('evaluation'); 
+                        }}
+                      >
+                         <div className="flex items-center gap-4">
+                            <div className={cn("w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0", `bg-${scenario.color}`)}>
+                               {iconMap[scenario.icon] ? React.createElement(iconMap[scenario.icon], { className: "w-5 h-5" }) : <Brain className="w-5 h-5" />}
+                            </div>
+                            <div>
+                               <h4 className="font-black text-lg group-hover:text-soft-blue transition-colors">{scenario.title}</h4>
+                               <p className="text-xs font-bold text-text-dim">{scenario.sessionState.history.length} Questions Answered</p>
+                            </div>
+                         </div>
+                         <div className="flex items-center gap-4">
+                            <div className="text-right">
+                               <p className="text-[10px] font-black uppercase text-text-dim tracking-widest">Score</p>
+                               <p className={cn("text-xl font-black", score >= 80 ? 'text-soft-green' : score >= 50 ? 'text-soft-orange' : 'text-red-500')}>{score}%</p>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-text-dim group-hover:text-soft-blue transition-colors" />
+                         </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </motion.div>
         );
       }
