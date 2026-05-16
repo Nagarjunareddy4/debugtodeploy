@@ -1,8 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, StyleSheet, BackHandler, ActivityIndicator, Platform, Animated, Easing, Image, AppState, PermissionsAndroid } from 'react-native';
+import { StyleSheet, BackHandler, Platform, Animated, Easing, AppState, PermissionsAndroid } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useFocusEffect } from 'expo-router';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
 import { supabase } from '../src/services/supabase';
@@ -13,12 +14,14 @@ const customUserAgent = Platform.OS === 'android'
   : 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 
 export default function App() {
-  const insets = useSafeAreaInsets();
   const webViewRef = useRef<WebView>(null);
   const [canGoBack, setCanGoBack] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
   const [currentUrl, setCurrentUrl] = useState('https://debugtodeploy.com');
-  
+  const appStateRef = useRef(AppState.currentState);
+  const backgroundedAtRef = useRef<number | null>(null);
+
   // Animation States
   const [animationDone, setAnimationDone] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -58,9 +61,24 @@ export default function App() {
 
     Linking.getInitialURL().then(handleUrl);
     const subscription = Linking.addEventListener('url', ({ url }) => handleUrl(url));
-    
+
+    // Reload WebView if app was backgrounded for > 30 minutes (session may expire)
+    const appStateSub = AppState.addEventListener('change', (nextState) => {
+      if (appStateRef.current.match(/inactive|background/) && nextState === 'active') {
+        const bgDuration = backgroundedAtRef.current ? Date.now() - backgroundedAtRef.current : 0;
+        if (bgDuration > 30 * 60 * 1000) {
+          webViewRef.current?.reload();
+        }
+        backgroundedAtRef.current = null;
+      } else if (nextState.match(/inactive|background/)) {
+        backgroundedAtRef.current = Date.now();
+      }
+      appStateRef.current = nextState;
+    });
+
     return () => {
       subscription.remove();
+      appStateSub.remove();
     };
   }, []);
 
@@ -147,7 +165,8 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: insets.top }]} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+      <StatusBar style="light" backgroundColor="#0A0A0B" translucent={false} />
       {/* WebView loads the main web app */}
       <WebView
         ref={webViewRef}
@@ -159,13 +178,17 @@ export default function App() {
         androidLayerType="hardware"
         mediaPlaybackRequiresUserAction={false}
         onPermissionRequest={(request) => {
-          // Explicitly grant resources requested by the WebView for our domain or dev environments
-          const isProduction = request.origin.includes('debugtodeploy.com');
-          const isDevelopment = request.origin.includes('localhost') || 
-                               request.origin.includes('10.0.2.2') || 
-                               request.origin.startsWith('http://192.168.');
+          // Explicitly grant resources requested by the WebView for our domain or dev/preview environments
+          const origin = request.origin.toLowerCase();
+          const isProduction = origin.includes('debugtodeploy.com');
+          const isPreview = origin.includes('vercel.app') || 
+                           origin.includes('amplifyapp.com') ||
+                           origin.includes('github.io');
+          const isDevelopment = origin.includes('localhost') || 
+                               origin.includes('10.0.2.2') || 
+                               origin.startsWith('http://192.168.');
           
-          if (isProduction || isDevelopment) {
+          if (isProduction || isPreview || isDevelopment) {
             request.grant(request.resources);
           } else {
             request.deny();
@@ -175,15 +198,23 @@ export default function App() {
         mixedContentMode="always"
         scalesPageToFit={false}
         injectedJavaScript={`
-          // Lock viewport and disable zoom
-          const meta = document.createElement('meta');
-          meta.name = 'viewport';
-          meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-          document.getElementsByTagName('head')[0].appendChild(meta);
-
-          // Fix overflow-x to prevent horizontal scrolling inside WebView
-          document.documentElement.style.overflowX = 'hidden';
-          document.body.style.overflowX = 'hidden';
+          (function() {
+            // Lock viewport and disable zoom
+            var existing = document.querySelector('meta[name="viewport"]');
+            if (existing) {
+              existing.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+            } else {
+              var meta = document.createElement('meta');
+              meta.name = 'viewport';
+              meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+              document.getElementsByTagName('head')[0].appendChild(meta);
+            }
+            // Fix overflow-x to prevent horizontal scrolling inside WebView
+            document.documentElement.style.overflowX = 'hidden';
+            document.body.style.overflowX = 'hidden';
+            // Prevent double-tap zoom on iOS
+            document.addEventListener('dblclick', function(e) { e.preventDefault(); }, { passive: false });
+          })();
           true;
         `}
         onNavigationStateChange={(navState) => {
@@ -197,8 +228,12 @@ export default function App() {
           }
         }}
         onMessage={onMessage}
-        onLoadEnd={() => setIsLoading(false)}
+        onLoadEnd={() => { setIsLoading(false); setHasError(false); }}
+        onError={() => setHasError(true)}
+        onHttpError={(e) => { if (e.nativeEvent.statusCode >= 500) setHasError(true); }}
         allowsInlineMediaPlayback={true}
+        allowFileAccess={true}
+        cacheEnabled={true}
         javaScriptEnabled={true}
         domStorageEnabled={true}
         startInLoadingState={false}
@@ -207,10 +242,16 @@ export default function App() {
       {/* Animated Overlay - renders on top of WebView until done */}
       {!animationDone && (
         <Animated.View style={[styles.splashContainer, { opacity: opacityAnim }]} pointerEvents="none">
-          <Animated.Image 
+          <Animated.Image
             source={require('../assets/images/logo.jpg')}
             style={[styles.logo, { transform: [{ scale: scaleAnim }] }]}
           />
+        </Animated.View>
+      )}
+
+      {/* Error overlay - shown when WebView fails to load */}
+      {hasError && animationDone && (
+        <Animated.View style={styles.errorContainer} pointerEvents="box-none">
         </Animated.View>
       )}
     </SafeAreaView>
@@ -238,11 +279,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#0A0A0B',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10, // Ensure it sits above the WebView
+    zIndex: 10,
   },
   logo: {
     width: 200,
     height: 200,
-    resizeMode: 'contain',
-  }
+  },
+  errorContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#0A0A0B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 5,
+  },
 });

@@ -72,17 +72,30 @@ export default function LabDetail() {
             return;
           }
 
-          if (foundLab) {
-            setLab(foundLab);
-            setCodes(foundLab.steps.map(s => s.defaultCode));
-            setOutputs(foundLab.steps.map(() => []));
-            setSuccesses(foundLab.steps.map(() => false));
-            
-            // Resume from last saved step if it exists
-            if (foundLab.lastStepIndex !== undefined) {
-              setStepIndex(foundLab.lastStepIndex);
+            if (foundLab) {
+              setLab(foundLab);
+              
+              // Load saved user code or use default code
+              if (foundLab.stepCodes && foundLab.stepCodes.length === foundLab.steps.length) {
+                setCodes(foundLab.stepCodes);
+              } else {
+                setCodes(foundLab.steps.map(s => s.defaultCode));
+              }
+              
+              setOutputs(foundLab.steps.map(() => []));
+              
+              // Load saved completion status
+              if (foundLab.completedSteps && foundLab.completedSteps.length === foundLab.steps.length) {
+                setSuccesses(foundLab.completedSteps);
+              } else {
+                setSuccesses(foundLab.steps.map(() => false));
+              }
+              
+              // Resume from last saved step if it exists
+              if (foundLab.lastStepIndex !== undefined) {
+                setStepIndex(foundLab.lastStepIndex);
+              }
             }
-          }
         }
       }
     }
@@ -143,20 +156,29 @@ export default function LabDetail() {
       
       setLatestLogs(newOutput);
       setOutputs(prev => prev.map((o, i) => i === stepIndex ? newOutput : o));
+      
       if (!hasSyntaxError && !hasBug) {
-        setSuccesses(prev => prev.map((s, i) => i === stepIndex ? true : s));
+        const newSuccesses = successes.map((s, i) => i === stepIndex ? true : s);
+        setSuccesses(newSuccesses);
+        // Persist completion immediately with the latest codes
+        saveLabState(stepIndex, codes, newSuccesses);
       }
       setIsRunning(false);
     }, 1200);
   };
 
-  const saveStepProgress = async (newIndex: number) => {
+  const saveLabState = async (index: number, currentCodes: string[], currentSuccesses: boolean[]) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || !id) return;
 
     const updatedLabs = labsData.map(l => {
       if (l.id === id) {
-        return { ...l, lastStepIndex: newIndex };
+        return { 
+          ...l, 
+          lastStepIndex: index,
+          completedSteps: currentSuccesses,
+          stepCodes: currentCodes
+        };
       }
       return l;
     });
@@ -165,11 +187,13 @@ export default function LabDetail() {
     await supabase.from('profiles').update({ generated_labs: updatedLabs }).eq('id', user.id);
   };
 
+  // Removed saveStepProgress in favor of saveLabState
+
   const goNext = () => {
     if (stepIndex < totalSteps - 1) {
       const nextIdx = stepIndex + 1;
       setStepIndex(nextIdx);
-      saveStepProgress(nextIdx);
+      saveLabState(nextIdx, codes, successes);
     }
   };
 
@@ -177,7 +201,7 @@ export default function LabDetail() {
     if (stepIndex > 0) {
       const prevIdx = stepIndex - 1;
       setStepIndex(prevIdx);
-      saveStepProgress(prevIdx);
+      saveLabState(prevIdx, codes, successes);
     }
   };
 
@@ -280,7 +304,7 @@ export default function LabDetail() {
                 key={i}
                 onClick={() => {
                   setStepIndex(i);
-                  saveStepProgress(i);
+                  saveLabState(i, codes, successes);
                 }}
                 className={cn(
                   "w-7 h-7 rounded-full text-xs font-black border-2 transition-all",

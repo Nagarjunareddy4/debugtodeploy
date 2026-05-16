@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Medal, Crown, Star, TrendingUp, Users, Search, Target, Zap } from 'lucide-react';
+import { Trophy, Medal, Crown, Star, TrendingUp, Users, Search, Target, Zap, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn, usePageTitle } from '../lib/utils';
 import { Avatar } from '../components/ui/Avatar';
@@ -101,6 +101,7 @@ export default function Leaderboard() {
                 const isSecond = rankIndex === 1;
                 const isThird = rankIndex === 2;
                 const rank = rankIndex + 1;
+                const isCurrentUser = user.id === currentUserId;
 
                 return (
                   <motion.div
@@ -109,10 +110,12 @@ export default function Leaderboard() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: rankIndex * 0.1, type: 'spring' }}
                   >
-                    <Link
-                      to={`/p/${user.username || user.id}`}
+                    {/* Podium card — clickable only for own profile */}
+                    <div
+                      onClick={() => isCurrentUser && window.location.assign(`/p/${user.username || user.id}`)}
                       className={cn(
-                        "relative flex flex-col items-center p-6 rounded-[2rem] border-4 shadow-2xl transition-transform hover:scale-105 block",
+                        "relative flex flex-col items-center p-6 rounded-[2rem] border-4 shadow-2xl transition-transform block",
+                        isCurrentUser ? "hover:scale-105 cursor-pointer" : "cursor-default",
                         isFirst ? "bg-gradient-to-b from-yellow-500/20 to-surface border-yellow-500/50 md:-mt-8 md:mb-8" :
                         isSecond ? "bg-gradient-to-b from-slate-300/20 to-surface border-slate-300/50" :
                         "bg-gradient-to-b from-orange-400/20 to-surface border-orange-400/50"
@@ -126,25 +129,36 @@ export default function Leaderboard() {
                       </div>
                       {isFirst && <Crown className="absolute -top-14 w-8 h-8 text-yellow-500" />}
 
-                      <Avatar 
-                        url={user.avatar_url}
-                        className={cn(
-                          "rounded-full border-4 shadow-xl mb-4",
-                          isFirst ? "w-24 h-24 border-yellow-500" : "w-20 h-20 border-surface"
+                      {/* Blurred avatar for others */}
+                      <div className={cn("mb-4 relative", !isCurrentUser && "pointer-events-none")}>
+                        <Avatar
+                          url={user.avatar_url}
+                          className={cn(
+                            "rounded-full border-4 shadow-xl",
+                            isFirst ? "w-24 h-24 border-yellow-500" : "w-20 h-20 border-surface",
+                            !isCurrentUser && "blur-sm"
+                          )}
+                        />
+                        {!isCurrentUser && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Lock className="w-5 h-5 text-text-dim" />
+                          </div>
                         )}
-                      />
-                      <h3 className="text-xl font-black tracking-tight text-center truncate w-full hover:text-soft-blue transition-colors">
-                        {user.full_name || user.username || 'Anonymous'}
+                      </div>
+
+                      <h3 className="text-xl font-black tracking-tight text-center truncate w-full">
+                        {isCurrentUser ? (user.full_name || user.username || 'Anonymous') : 'Hidden'}
+                        {isCurrentUser && <span className="block text-[8px] text-soft-blue font-black uppercase tracking-widest mt-0.5">You</span>}
                       </h3>
                       <p className="text-xs font-bold text-text-dim mt-1 mb-4 flex items-center gap-1">
                         <Star className="w-3 h-3 text-soft-orange" /> Level {user.level || 1}
                       </p>
 
-                      <div className="w-full bg-brand-bg rounded-xl p-3 flex flex-col items-center gap-1 border border-border group-hover:border-soft-blue transition-colors">
+                      <div className="w-full bg-brand-bg rounded-xl p-3 flex flex-col items-center gap-1 border border-border">
                         <span className="text-[10px] font-black uppercase text-text-dim tracking-widest">Total XP</span>
                         <span className={cn("text-2xl font-black", isFirst ? "text-yellow-500" : "text-text-main")}>{user.xp || 0}</span>
                       </div>
-                    </Link>
+                    </div>
                   </motion.div>
                 );
               })}
@@ -173,45 +187,75 @@ export default function Leaderboard() {
                      initial={{ opacity: 0 }}
                      animate={{ opacity: 1 }}
                    >
-                     <Link
-                       to={`/p/${user.username || user.id}`}
-                       className={cn(
-                         "grid grid-cols-12 gap-4 px-8 py-4 border-b border-border/50 items-center transition-colors hover:bg-soft-blue/5 group cursor-pointer",
-                         isCurrentUser && "bg-soft-blue/5 border-l-4 border-l-soft-blue"
-                       )}
-                     >
-                       <div className="col-span-1 text-center font-black text-text-dim">
-                          {rank}
-                       </div>
-                       <div className="col-span-5 md:col-span-4 flex items-center gap-3">
-                          <Avatar url={user.avatar_url} className="w-8 h-8 rounded-full border border-border shrink-0" />
-                          <div className="min-w-0">
+                     {/* Row — only own row is a real link */}
+                     {isCurrentUser ? (
+                       <Link
+                         to={`/p/${user.username || user.id}`}
+                         className={cn(
+                           "grid grid-cols-12 gap-4 px-8 py-4 border-b border-border/50 items-center transition-colors hover:bg-soft-blue/5 group cursor-pointer",
+                           "bg-soft-blue/5 border-l-4 border-l-soft-blue"
+                         )}
+                       >
+                         <div className="col-span-1 text-center font-black text-text-dim">{rank}</div>
+                         <div className="col-span-5 md:col-span-4 flex items-center gap-3">
+                           <Avatar url={user.avatar_url} className="w-8 h-8 rounded-full border border-border shrink-0" />
+                           <div className="min-w-0">
                              <p className="font-bold text-sm truncate group-hover:text-soft-blue transition-colors">
                                {user.full_name || user.username || 'Anonymous'}
                              </p>
-                             {isCurrentUser && <span className="text-[8px] bg-soft-blue text-white px-1.5 py-0.5 rounded-sm font-black uppercase inline-block mt-0.5">You</span>}
-                          </div>
-                       </div>
-                       <div className="hidden md:flex col-span-2 justify-center items-center">
-                          <span className="bg-surface border-2 border-border px-3 py-1 rounded-full text-xs font-black">
-                            {user.level || 1}
-                          </span>
-                       </div>
-                       <div className="hidden md:flex col-span-2 justify-center items-center gap-1 text-sm font-bold text-text-dim">
-                          <Target className="w-3.5 h-3.5" /> {user.labs_completed || 0}
-                       </div>
-                       <div className="hidden md:flex col-span-2 justify-center items-center">
-                          <div className="flex items-center gap-2 w-full max-w-[80px]">
+                             <span className="text-[8px] bg-soft-blue text-white px-1.5 py-0.5 rounded-sm font-black uppercase inline-block mt-0.5">You</span>
+                           </div>
+                         </div>
+                         <div className="hidden md:flex col-span-2 justify-center items-center">
+                           <span className="bg-surface border-2 border-border px-3 py-1 rounded-full text-xs font-black">{user.level || 1}</span>
+                         </div>
+                         <div className="hidden md:flex col-span-2 justify-center items-center gap-1 text-sm font-bold text-text-dim">
+                           <Target className="w-3.5 h-3.5" /> {user.labs_completed || 0}
+                         </div>
+                         <div className="hidden md:flex col-span-2 justify-center items-center">
+                           <div className="flex items-center gap-2 w-full max-w-[80px]">
                              <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
-                                <div className="h-full bg-soft-green" style={{ width: `${user.readiness_score || 0}%` }} />
+                               <div className="h-full bg-soft-green" style={{ width: `${user.readiness_score || 0}%` }} />
                              </div>
                              <span className="text-xs font-bold text-text-dim">{user.readiness_score || 0}%</span>
-                          </div>
+                           </div>
+                         </div>
+                         <div className="col-span-6 md:col-span-1 text-right font-black text-soft-orange flex items-center justify-end gap-1">
+                           {user.xp || 0} <Zap className="w-3 h-3 hidden md:block" />
+                         </div>
+                       </Link>
+                     ) : (
+                       /* Other users — no link, blurred name/avatar, stats visible */
+                       <div
+                         className="grid grid-cols-12 gap-4 px-8 py-4 border-b border-border/50 items-center cursor-default select-none"
+                       >
+                         <div className="col-span-1 text-center font-black text-text-dim">{rank}</div>
+                         <div className="col-span-5 md:col-span-4 flex items-center gap-3">
+                           <div className="relative shrink-0">
+                             <Avatar url={user.avatar_url} className="w-8 h-8 rounded-full border border-border blur-sm" />
+                             <Lock className="w-3 h-3 text-text-dim absolute inset-0 m-auto" />
+                           </div>
+                           <p className="font-bold text-sm truncate text-text-dim blur-sm select-none">••••••••</p>
+                         </div>
+                         <div className="hidden md:flex col-span-2 justify-center items-center">
+                           <span className="bg-surface border-2 border-border px-3 py-1 rounded-full text-xs font-black">{user.level || 1}</span>
+                         </div>
+                         <div className="hidden md:flex col-span-2 justify-center items-center gap-1 text-sm font-bold text-text-dim">
+                           <Target className="w-3.5 h-3.5" /> {user.labs_completed || 0}
+                         </div>
+                         <div className="hidden md:flex col-span-2 justify-center items-center">
+                           <div className="flex items-center gap-2 w-full max-w-[80px]">
+                             <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
+                               <div className="h-full bg-soft-green" style={{ width: `${user.readiness_score || 0}%` }} />
+                             </div>
+                             <span className="text-xs font-bold text-text-dim">{user.readiness_score || 0}%</span>
+                           </div>
+                         </div>
+                         <div className="col-span-6 md:col-span-1 text-right font-black text-soft-orange flex items-center justify-end gap-1">
+                           {user.xp || 0} <Zap className="w-3 h-3 hidden md:block" />
+                         </div>
                        </div>
-                       <div className="col-span-6 md:col-span-1 text-right font-black text-soft-orange flex items-center justify-end gap-1">
-                          {user.xp || 0} <Zap className="w-3 h-3 hidden md:block" />
-                       </div>
-                     </Link>
+                     )}
                    </motion.div>
                  );
                })}

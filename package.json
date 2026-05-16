@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebackend": "fuser -k 3001/tcp || true",
     "backend": "tsx server/index.js",
     "dev:all": "npm run backend & npm run dev",
     "build": "vite build",
