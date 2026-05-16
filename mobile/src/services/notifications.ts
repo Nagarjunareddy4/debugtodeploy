@@ -10,7 +10,7 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
-  }),
+  } as any),
 });
 
 const ENGAGEMENT_MESSAGES = [
@@ -78,9 +78,12 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
   if (existingStatus !== 'granted') {
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
+  }
 
-    // Send a welcome notification if they JUST granted permission
-    if (status === 'granted') {
+  if (finalStatus === 'granted') {
+    // Send a welcome notification if they haven't received it yet on this device
+    const welcomeSent = await AsyncStorage.getItem('dtd_welcome_sent');
+    if (!welcomeSent) {
       setTimeout(() => {
         sendLocalNotification(
           "👋 Welcome to DebugToDeploy!",
@@ -89,9 +92,6 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
       }, 3000);
       await AsyncStorage.setItem('dtd_welcome_sent', 'true');
     }
-  } else {
-    // If permission was already granted, ensure we still have a token
-    // (This part is fine as it falls through to token fetch)
   }
 
   if (finalStatus !== 'granted') {
@@ -133,6 +133,7 @@ export async function sendLocalNotification(title: string, body: string) {
       sound: true,
     },
     trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
       seconds: 1,
       repeats: false,
     },
@@ -171,7 +172,10 @@ export async function setupDailyEngagementNotifications() {
         sound: true,
         priority: Notifications.AndroidNotificationPriority.HIGH,
       },
-      trigger: triggerDate,
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: triggerDate,
+      },
     });
   }
 
@@ -183,11 +187,11 @@ export async function setupDailyEngagementNotifications() {
       sound: true,
     },
     trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
       weekday: 1, 
       hour: 20,
       minute: 0,
-      repeats: true
-    },
+    } as any,
   });
 
   await AsyncStorage.setItem('dtd_last_notification_sync', now.toString());
