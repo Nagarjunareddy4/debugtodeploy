@@ -14,7 +14,8 @@ import {
   Sparkles,
   ShieldCheck,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  Lock
 } from 'lucide-react';
 import { cn, useMeta } from '../lib/utils';
 import { supabase } from '../lib/supabase';
@@ -27,6 +28,7 @@ export default function PublicProfile() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useMeta(
     profile ? `${profile.full_name}'s Engineering Portfolio` : 'Public Portfolio',
@@ -41,6 +43,10 @@ export default function PublicProfile() {
   const fetchProfile = async () => {
     setLoading(true);
     try {
+      // Get current session user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setCurrentUserId(user.id);
+
       // Try to find by username first, then by ID
       let { data, error } = await supabase
         .from('profiles')
@@ -102,6 +108,8 @@ export default function PublicProfile() {
 
   const roadmap = typeof profile.roadmap_data === 'string' ? JSON.parse(profile.roadmap_data) : (profile.roadmap_data || {});
   const isPro = profile.subscription_status === 'pro';
+  // Owner sees full data; visitors see blurred private sections
+  const isOwner = currentUserId !== null && currentUserId === profile.id;
 
   return (
     <div className="min-h-screen bg-brand-bg">
@@ -168,10 +176,15 @@ export default function PublicProfile() {
                     <ShieldCheck className="w-4 h-4 text-soft-blue" />
                     <span className="text-xs font-bold uppercase tracking-widest">{roadmap.goal || 'DevOps Engineer'}</span>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className={cn("flex items-center gap-3", !isOwner && "blur-sm select-none pointer-events-none")}>
                     <Flame className="w-4 h-4 text-soft-orange" />
                     <span className="text-xs font-bold uppercase tracking-widest">{profile.streak || 0} Day Streak</span>
                   </div>
+                  {!isOwner && (
+                    <p className="text-[9px] font-black uppercase tracking-widest text-text-dim/50 flex items-center gap-1">
+                      <Lock className="w-3 h-3" /> Some data is private
+                    </p>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -209,7 +222,7 @@ export default function PublicProfile() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="playful-card bg-surface border-none shadow-2xl p-10 space-y-8"
+              className="playful-card bg-surface border-none shadow-2xl p-10 space-y-8 relative"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -221,23 +234,49 @@ export default function PublicProfile() {
                 </span>
               </div>
               
-              <div className="relative pl-10 space-y-8">
-                <div className="absolute left-[15px] top-4 bottom-4 w-1 bg-soft-blue/20" />
-                {roadmap.stages?.slice(0, 3).map((stage: any, idx: number) => (
-                  <div key={idx} className="relative">
-                    <div className="absolute -left-[35px] top-1 w-6 h-6 rounded-lg bg-soft-blue flex items-center justify-center text-white shadow-lg shadow-soft-blue/20">
-                       <CheckCircle2 className="w-3.5 h-3.5" />
+              {/* Blur roadmap details for non-owners */}
+              {isOwner ? (
+                <div className="relative pl-10 space-y-8">
+                  <div className="absolute left-[15px] top-4 bottom-4 w-1 bg-soft-blue/20" />
+                  {roadmap.stages?.slice(0, 3).map((stage: any, idx: number) => (
+                    <div key={idx} className="relative">
+                      <div className="absolute -left-[35px] top-1 w-6 h-6 rounded-lg bg-soft-blue flex items-center justify-center text-white shadow-lg shadow-soft-blue/20">
+                         <CheckCircle2 className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="space-y-2">
+                         <h4 className="font-black text-lg">{stage.label}</h4>
+                         <p className="text-sm font-bold text-text-dim leading-relaxed">{stage.description}</p>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                       <h4 className="font-black text-lg">{stage.label}</h4>
-                       <p className="text-sm font-bold text-text-dim leading-relaxed">{stage.description}</p>
-                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="relative">
+                  {/* Show blurred stage pills — count is visible, content is not */}
+                  <div className="space-y-4 blur-sm pointer-events-none select-none">
+                    {[1,2,3].map(i => (
+                      <div key={i} className="flex items-center gap-4 p-4 bg-brand-bg rounded-2xl border border-border">
+                        <div className="w-6 h-6 rounded-lg bg-soft-blue/30 shrink-0" />
+                        <div className="space-y-1 flex-1">
+                          <div className="h-3 bg-border rounded w-1/2" />
+                          <div className="h-2 bg-border/60 rounded w-3/4" />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                    <div className="w-12 h-12 bg-surface border-2 border-border rounded-full flex items-center justify-center shadow-xl">
+                      <Lock className="w-6 h-6 text-text-dim" />
+                    </div>
+                    <p className="text-xs font-black uppercase tracking-widest text-text-dim">Private Roadmap</p>
+                    <p className="text-[10px] text-text-dim/60 font-bold">{roadmap.stages?.length || 0} stages · visible to owner only</p>
+                  </div>
+                </div>
+              )}
+
               <div className="pt-4 flex justify-end">
                  <p className="text-[10px] font-black uppercase tracking-widest text-text-dim italic">
-                    Showing first 3 stages · Total {roadmap.stages?.length || 0} stages
+                    {isOwner ? `Showing first 3 stages · Total ${roadmap.stages?.length || 0} stages` : `${roadmap.stages?.length || 0} total stages`}
                  </p>
               </div>
             </motion.div>
@@ -247,32 +286,58 @@ export default function PublicProfile() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="space-y-6"
+              className="space-y-6 relative"
             >
                <div className="flex items-center gap-3">
                   <Terminal className="w-6 h-6 text-soft-green" />
                   <h3 className="text-2xl font-black italic">Certified Labs</h3>
+                  {!isOwner && <span className="text-[9px] font-black uppercase tracking-widest bg-border/50 text-text-dim px-2 py-1 rounded-full flex items-center gap-1"><Lock className="w-2.5 h-2.5" /> Private</span>}
                </div>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {(profile.generated_labs || []).slice(0, profile.labs_completed || 0).map((lab: any, i: number) => (
-                    <div key={i} className="playful-card bg-surface border-none shadow-xl p-6 group hover:scale-[1.02] transition-transform">
-                       <div className="flex items-center justify-between mb-4">
-                          <span className={cn("text-[9px] font-black uppercase px-2 py-1 rounded-md", `bg-${lab.color}/10 text-${lab.color}`)}>
-                             {lab.difficulty}
-                          </span>
-                          <CheckCircle2 className="w-5 h-5 text-soft-green" />
+               {isOwner ? (
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   {(profile.generated_labs || []).slice(0, profile.labs_completed || 0).map((lab: any, i: number) => (
+                     <div key={i} className="playful-card bg-surface border-none shadow-xl p-6 group hover:scale-[1.02] transition-transform">
+                        <div className="flex items-center justify-between mb-4">
+                           <span className={cn("text-[9px] font-black uppercase px-2 py-1 rounded-md", `bg-${lab.color}/10 text-${lab.color}`)}>
+                              {lab.difficulty}
+                           </span>
+                           <CheckCircle2 className="w-5 h-5 text-soft-green" />
+                        </div>
+                        <h4 className="font-black text-lg mb-2">{lab.title}</h4>
+                        <p className="text-[10px] font-bold text-text-dim leading-relaxed line-clamp-2">Successfully debugged and deployed in the DebugToDeploy practice arena.</p>
+                     </div>
+                   ))}
+                   {(!profile.labs_completed || profile.labs_completed === 0) && (
+                     <div className="col-span-full py-12 border-4 border-dashed border-border rounded-3xl flex flex-col items-center justify-center text-center px-8">
+                        <Sparkles className="w-12 h-12 text-border mb-4" />
+                        <p className="text-text-dim font-bold italic text-lg">No labs certified yet. Commander is currently synchronizing skills.</p>
+                     </div>
+                   )}
+                 </div>
+               ) : (
+                 /* Blurred placeholder grid for non-owners */
+                 <div className="relative">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 blur-sm pointer-events-none select-none">
+                     {[1,2].map(i => (
+                       <div key={i} className="playful-card bg-surface border-none shadow-xl p-6">
+                         <div className="flex items-center justify-between mb-4">
+                           <div className="h-5 w-16 bg-border rounded" />
+                           <div className="w-5 h-5 bg-soft-green/20 rounded-full" />
+                         </div>
+                         <div className="h-4 bg-border rounded w-3/4 mb-2" />
+                         <div className="h-3 bg-border/60 rounded w-full" />
                        </div>
-                       <h4 className="font-black text-lg mb-2">{lab.title}</h4>
-                       <p className="text-[10px] font-bold text-text-dim leading-relaxed line-clamp-2">Successfully debugged and deployed in the DebugToDeploy practice arena.</p>
-                    </div>
-                  ))}
-                  {(!profile.labs_completed || profile.labs_completed === 0) && (
-                    <div className="col-span-full py-12 border-4 border-dashed border-border rounded-3xl flex flex-col items-center justify-center text-center px-8">
-                       <Sparkles className="w-12 h-12 text-border mb-4" />
-                       <p className="text-text-dim font-bold italic text-lg">No labs certified yet. Commander is currently synchronizing skills.</p>
-                    </div>
-                  )}
-               </div>
+                     ))}
+                   </div>
+                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                     <div className="w-12 h-12 bg-surface border-2 border-border rounded-full flex items-center justify-center shadow-xl">
+                       <Lock className="w-6 h-6 text-text-dim" />
+                     </div>
+                     <p className="text-xs font-black uppercase tracking-widest text-text-dim">Labs are Private</p>
+                     <p className="text-[10px] text-text-dim/60 font-bold">{profile.labs_completed || 0} labs completed · visible to owner only</p>
+                   </div>
+                 </div>
+               )}
             </motion.div>
 
             {/* CTA for Visitors */}

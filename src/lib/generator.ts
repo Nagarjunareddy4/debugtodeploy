@@ -16,6 +16,9 @@ export interface GeneratedLab {
   icon: string;
   color: string;
   steps: GeneratedLabStep[];
+  lastStepIndex?: number;
+  completedSteps?: boolean[];
+  stepCodes?: string[];
 }
 
 export interface GeneratedInterview {

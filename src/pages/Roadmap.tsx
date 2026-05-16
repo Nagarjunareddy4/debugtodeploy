@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
 import { updateReadinessScore } from '../lib/readiness';
 import { generateUserDocs, generateUserCertificates, generateUserCurriculum } from '../lib/generator';
+import { toast } from 'react-hot-toast';
 
 interface RoadmapStage {
   id: string;
@@ -255,8 +256,8 @@ CRITICAL: Use highly technical, descriptive names for stages that include keywor
       }
       await regenerateDependentRecommendations(finalRoadmap, roadmapHash);
       
-      // Refresh the page immediately upon successful generation as requested
-      window.location.reload();
+      // Show success notification instead of reloading
+      toast.success('Your personalized roadmap has been generated successfully! 🚀');
     } catch (error: any) {
       console.error(error);
       setGenerateError(error.message || 'Failed to generate roadmap. Please check your connection and try again.');

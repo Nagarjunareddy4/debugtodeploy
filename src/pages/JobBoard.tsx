@@ -1,8 +1,94 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Briefcase, MapPin, Building2, DollarSign, Clock, Zap, Star, ShieldCheck, Search, Filter, Target } from 'lucide-react';
+import { Briefcase, MapPin, Building2, DollarSign, Clock, Zap, Star, ShieldCheck, Search, CheckCircle, ExternalLink, Target, Construction, Rocket, Bell, ArrowRight, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn, usePageTitle } from '../lib/utils';
+
+// ─── Beta Splash Screen ──────────────────────────────────────────────────────
+function BetaSplash({ onContinue }: { onContinue: () => void }) {
+  const features = [
+    { icon: Rocket, label: 'AI-Matched Listings', desc: 'Jobs matched to your exact roadmap & skill level' },
+    { icon: Bell, label: 'Real-Time Alerts', desc: 'Get notified when a perfect-fit role goes live' },
+    { icon: Target, label: 'Readiness Gating', desc: 'See only jobs you are actually qualified for' },
+    { icon: ShieldCheck, label: 'One-Click Apply', desc: 'Apply directly without leaving the platform' },
+  ];
+
+  return (
+    <div className="min-h-[80vh] flex items-center justify-center">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="max-w-2xl w-full mx-auto text-center space-y-10"
+      >
+        {/* Icon */}
+        <motion.div
+          animate={{ y: [0, -8, 0] }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          className="mx-auto w-24 h-24 rounded-3xl bg-soft-orange/10 border-2 border-soft-orange/30 flex items-center justify-center shadow-2xl shadow-soft-orange/10"
+        >
+          <Construction className="w-12 h-12 text-soft-orange" />
+        </motion.div>
+
+        {/* Badge */}
+        <div className="flex items-center justify-center gap-2">
+          <span className="px-4 py-1.5 bg-soft-orange/10 border border-soft-orange/30 rounded-full text-[10px] font-black uppercase tracking-widest text-soft-orange flex items-center gap-2">
+            <Sparkles className="w-3 h-3" /> Beta Feature
+          </span>
+        </div>
+
+        {/* Headline */}
+        <div className="space-y-3">
+          <h1 className="text-4xl sm:text-5xl font-black italic tracking-tighter">
+            AI Job Board{' '}
+            <span className="text-soft-orange">Coming Soon</span>
+          </h1>
+          <p className="text-text-dim font-bold text-base leading-relaxed max-w-md mx-auto">
+            We're building a fully AI-powered job board that matches DevOps roles directly to your skill progress. 
+            This feature is currently in <span className="text-soft-orange font-black">beta</span> — expect rapid improvements every week!
+          </p>
+        </div>
+
+        {/* Feature Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+          {features.map((f, i) => (
+            <motion.div
+              key={f.label}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 + i * 0.1 }}
+              className="playful-card flex items-start gap-4 p-5 border-2 border-border/50 hover:border-soft-orange/30 transition-colors"
+            >
+              <div className="w-10 h-10 bg-soft-orange/10 rounded-xl flex items-center justify-center shrink-0">
+                <f.icon className="w-5 h-5 text-soft-orange" />
+              </div>
+              <div>
+                <p className="font-black text-sm text-text-main">{f.label}</p>
+                <p className="text-xs text-text-dim font-bold leading-snug mt-0.5">{f.desc}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* CTA */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+          <motion.button
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={onContinue}
+            className="btn-pill bg-text-main text-surface px-8 py-3.5 font-black uppercase tracking-widest text-sm flex items-center gap-2 shadow-xl"
+          >
+            Continue to Beta
+            <ArrowRight className="w-4 h-4" />
+          </motion.button>
+          <p className="text-[10px] text-text-dim/60 font-bold uppercase tracking-widest">
+            Data may be limited or approximate
+          </p>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
 
 interface Job {
   id: string | number;
@@ -19,6 +105,8 @@ interface Job {
   minReadiness: number;
   url?: string;
   publicationDate?: string;
+  source?: string;
+  applied_job_ids?: string[];
 }
 
 const mockJobs: Job[] = [
@@ -90,7 +178,8 @@ const mockJobs: Job[] = [
 ];
 
 export default function JobBoard() {
-  usePageTitle('Job Board');
+  usePageTitle('Job Board – Beta');
+  const [showBeta, setShowBeta] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -111,6 +200,9 @@ export default function JobBoard() {
         if (data) {
            setProfile(data);
            currentProfile = data;
+           if (data.applied_job_ids) {
+             setAppliedJobs(new Set(data.applied_job_ids));
+           }
         }
       }
 
@@ -119,17 +211,14 @@ export default function JobBoard() {
       if (currentProfile?.roadmap_data) {
         const roadmapStr = typeof currentProfile.roadmap_data === 'string' ? currentProfile.roadmap_data.toLowerCase() : JSON.stringify(currentProfile.roadmap_data).toLowerCase();
         
-        // Dictionary of strong tech keywords relevant to our platform
         const STRONG_TECH_KEYWORDS = [
           'devops', 'aws', 'azure', 'kubernetes', 'cloud', 'sre', 'docker', 
           'terraform', 'ci/cd', 'linux', 'python', 'go', 'gcp', 'jenkins', 
           'ansible', 'infrastructure', 'platform', 'git', 'security', 'monitoring'
         ];
 
-        // Extract all tech keywords that actually exist anywhere in the user's generated roadmap
         const matchedTech = STRONG_TECH_KEYWORDS.filter(kw => roadmapStr.includes(kw));
         
-        // Also extract words from the specific goal (e.g., "Site Reliability Engineer" -> ["site", "reliability", "engineer"])
         let goalKeywords: string[] = [];
         try {
            const parsed = typeof currentProfile.roadmap_data === 'string' ? JSON.parse(currentProfile.roadmap_data) : currentProfile.roadmap_data;
@@ -144,67 +233,49 @@ export default function JobBoard() {
         }
       }
 
-      // Fetch from Jobicy API via AllOrigins to bypass CORS and Cloudflare Bot Management
-      const targetUrl = 'https://jobicy.com/api/v2/remote-jobs?count=50&industry=engineering';
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+      const { data: { session } } = await supabase.auth.getSession();
       
-      const res = await fetch(proxyUrl);
-      if (!res.ok) throw new Error('Failed to fetch jobs');
-      
-      const proxyData = await res.json();
-      const apiData = JSON.parse(proxyData.contents);
-      
-      let jobs: any[] = apiData.jobs || [];
+      const jobResponse = await fetch('/api/jobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          query: currentProfile?.roadmap_data ? (typeof currentProfile.roadmap_data === 'string' ? JSON.parse(currentProfile.roadmap_data).goal : currentProfile.roadmap_data.goal) : 'DevOps Engineer',
+          keywords: userKeywords
+        })
+      });
 
-      // Filter jobs by relevance to the user's roadmap tech stack
-      if (userKeywords.length > 0) {
-         const relevantJobs = jobs.filter(j => {
-            const text = ((j.jobTitle || '') + ' ' + (j.jobDescription || '')).toLowerCase();
-            // A job is relevant if it mentions at least one of the user's core tech keywords
-            return userKeywords.some(k => text.includes(k));
-         });
-         
-         // Only apply relevance filter if it yields results, otherwise fallback to all engineering jobs
-         if (relevantJobs.length > 0) {
-            jobs = relevantJobs;
-         }
-      }
+      if (!jobResponse.ok) throw new Error('Failed to fetch jobs from backend');
       
-      // Filter by past 24 hours
-      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      let recentJobs = jobs.filter(j => new Date(j.pubDate) > yesterday);
-      
-      // If none found in 24h, fallback to all (so UI isn't completely empty, but prioritize recent)
-      if (recentJobs.length === 0) {
-         recentJobs = jobs.slice(0, 20); // Top 20 most recent
-      }
+      const { jobs } = await jobResponse.json();
 
-      const formattedJobs: Job[] = recentJobs.map((j: any) => {
-         // Auto-generate requirements/min levels based on keywords
-         const isSenior = j.jobLevel === 'Senior' || j.jobTitle.toLowerCase().includes('senior') || j.jobTitle.toLowerCase().includes('lead') || j.jobTitle.toLowerCase().includes('principal');
-         const isMid = j.jobLevel === 'Mid' || j.jobTitle.toLowerCase().includes('mid') || j.jobTitle.toLowerCase().includes('engineer');
+      const formattedJobs: Job[] = jobs.map((j: any) => {
+         const isSenior = j.title.toLowerCase().includes('senior') || j.title.toLowerCase().includes('lead') || j.title.toLowerCase().includes('principal');
+         const isMid = j.title.toLowerCase().includes('mid') || j.title.toLowerCase().includes('engineer');
          
          const minLevel = isSenior ? 4 : isMid ? 2 : 1;
          const minXp = isSenior ? 500 : isMid ? 200 : 50;
          const minReadiness = isSenior ? 80 : isMid ? 60 : 40;
 
-         const descText = j.jobDescription ? j.jobDescription.replace(/<[^>]+>/g, '').substring(0, 150) + '...' : '';
+         const descText = j.description ? j.description.replace(/<[^>]+>/g, '').substring(0, 150) + '...' : '';
 
          return {
             id: j.id,
-            title: j.jobTitle,
-            company: j.companyName,
-            companyLogo: j.companyLogo,
-            location: j.jobGeo || 'Remote',
+            title: j.title,
+            company: j.company,
+            location: j.location,
             salary: 'Competitive',
-            type: j.jobType && j.jobType.length > 0 ? j.jobType[0] : 'Full-time',
+            type: j.type || 'Full-time',
             description: descText,
-            requirements: ['Remote', isSenior ? 'Senior Level' : 'Mid/Junior Level', j.jobIndustry && j.jobIndustry.length > 0 ? j.jobIndustry[0] : 'Engineering'],
+            requirements: [j.location === 'Remote' ? 'Remote' : 'On-site', isSenior ? 'Senior Level' : 'Mid/Junior Level', j.source || 'Direct'],
             minXp,
             minLevel,
             minReadiness,
             url: j.url,
-            publicationDate: j.pubDate
+            publicationDate: j.pubDate,
+            source: j.source
          };
       });
 
@@ -219,50 +290,103 @@ export default function JobBoard() {
     }
   };
 
-  const handleApply = (jobId: string) => {
-    setAppliedJobs(prev => new Set(prev).add(jobId));
+  const openApplicationLink = (job: Job) => {
+    if (!job.url) return;
+    window.open(job.url, '_blank');
+  };
+
+  const updateApplicationStatus = async (job: Job, submitted: boolean) => {
+    if (!profile) return;
+
+    const existingIds = Array.isArray(profile.applied_job_ids) ? profile.applied_job_ids.map((id: any) => id.toString()) : [];
+    const jobId = job.id.toString();
+    let newAppliedIds = [...existingIds];
+
+    if (submitted) {
+      if (!newAppliedIds.includes(jobId)) {
+        newAppliedIds.push(jobId);
+      }
+    } else {
+      newAppliedIds = newAppliedIds.filter(id => id !== jobId);
+    }
+
+    setAppliedJobs(new Set(newAppliedIds));
+    setProfile((prev: any) => prev ? { ...prev, applied_job_ids: newAppliedIds } : null);
+
+    try {
+      await supabase
+        .from('profiles')
+        .update({ applied_job_ids: newAppliedIds })
+        .eq('id', profile.id);
+    } catch (err) {
+      console.error('Failed to update application status:', err);
+    }
   };
 
   const calculateMatch = (job: Job) => {
     if (!profile) return 0;
     
-    // Weighted scoring logic based on profile stats vs job requirements
     let score = 0;
-    let maxScore = 3; 
+    const goal = profile?.roadmap_data ? (typeof profile.roadmap_data === 'string' ? JSON.parse(profile.roadmap_data).goal : profile.roadmap_data.goal) : 'DevOps Engineer';
+    const goalWords = goal.toLowerCase().split(/\s+/).filter(w => !['engineer', 'specialist', 'junior', 'senior'].includes(w));
+    const title = job.title.toLowerCase();
+    
+    const titleMatch = goalWords.some(word => title.includes(word)) || 
+                      (goal.toLowerCase().includes('devops') && (title.includes('sre') || title.includes('cloud') || title.includes('platform')));
+    
+    if (titleMatch) score += 40;
 
-    // Readiness score match (0-1 point)
-    if (profile.readiness_score >= job.minReadiness) score += 1;
-    else score += (profile.readiness_score / job.minReadiness);
+    const userKeywords = [
+      'devops', 'aws', 'azure', 'kubernetes', 'cloud', 'sre', 'docker', 
+      'terraform', 'ci/cd', 'linux', 'python', 'go', 'gcp', 'jenkins', 
+      'ansible', 'infrastructure', 'platform', 'git', 'security', 'monitoring'
+    ];
+    const description = job.description.toLowerCase();
+    const matchedCount = userKeywords.filter(k => description.includes(k)).length;
+    score += Math.min(matchedCount * 5, 30); 
 
-    // XP match (0-1 point)
-    if (profile.xp >= job.minXp) score += 1;
-    else score += (profile.xp / job.minXp);
+    let statsScore = 0;
+    if (profile.readiness_score >= (job.minReadiness || 50)) statsScore += 10;
+    if (profile.xp >= (job.minXp || 500)) statsScore += 10;
+    if (profile.level >= (job.minLevel || 1)) statsScore += 10;
+    score += statsScore;
 
-    // Level match (0-1 point)
-    if (profile.level >= job.minLevel) score += 1;
-    else score += (profile.level / job.minLevel);
-
-    const percentage = Math.min(Math.round((score / maxScore) * 100), 100);
-    return percentage;
+    return Math.min(score, 100);
   };
 
   const filteredJobs = realJobs.filter(job => 
-    job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    job.requirements.some(r => r.toLowerCase().includes(searchQuery.toLowerCase()))
-  ).sort((a, b) => calculateMatch(b) - calculateMatch(a)); // Sort by highest match
+    job.url && (
+      job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      job.requirements.some(r => r.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+  ).sort((a, b) => calculateMatch(b) - calculateMatch(a));
 
   if (loading) return null;
 
+  if (showBeta) {
+    return <BetaSplash onContinue={() => setShowBeta(false)} />;
+  }
+
   return (
-    <div className="max-w-6xl mx-auto space-y-12 pb-24">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="max-w-6xl mx-auto space-y-12 pb-24"
+    >
       <header className="flex flex-col md:flex-row justify-between items-end gap-6">
         <div className="space-y-4">
           <h2 className="text-5xl font-black tracking-tighter italic flex items-center gap-4">
             <Briefcase className="w-10 h-10 text-soft-purple" /> AI Job Board
           </h2>
-          <p className="text-text-dim font-bold uppercase tracking-[0.2em] text-xs">
+          <p className="text-text-dim font-bold uppercase tracking-[0.2em] text-xs flex items-center gap-2">
             Opportunities matched to your skills
+            {profile?.roadmap_data && (
+              <span className="bg-soft-blue/10 text-soft-blue px-2 py-0.5 rounded-sm text-[10px] animate-pulse">
+                Synced with Roadmap
+              </span>
+            )}
           </p>
         </div>
         <div className="relative w-full md:w-64">
@@ -277,7 +401,6 @@ export default function JobBoard() {
         </div>
       </header>
 
-      {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="playful-card bg-surface shadow-xl p-6 border-none flex items-center gap-4">
           <div className="w-12 h-12 bg-soft-blue/10 text-soft-blue rounded-full flex items-center justify-center shrink-0">
@@ -316,21 +439,29 @@ export default function JobBoard() {
         </div>
       )}
 
+      <div className="bg-soft-blue/10 border-l-4 border-soft-blue p-4 rounded-r-xl mb-6">
+        <p className="text-sm font-bold text-soft-blue flex items-center gap-2">
+          <Star className="w-4 h-4" /> Beta Feature: The Job Board is currently in beta. Direct application links and live job data will be available soon. Stay tuned!
+        </p>
+      </div>
+
       <div className="space-y-6">
         <AnimatePresence>
           {filteredJobs.length === 0 ? (
             <motion.div 
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
-              className="text-center p-12 text-text-dim font-bold"
+              key="no-jobs"
+              className="text-center p-12 text-text-dim font-bold space-y-2"
             >
-              No opportunities found matching your criteria.
+              <p>No opportunities with available application links found matching your criteria.</p>
+              <p className="text-xs text-text-dim/70">Jobs are only shown when direct application links are available. Check back soon for more opportunities!</p>
             </motion.div>
           ) : (
             filteredJobs.map((job, index) => {
               const matchScore = calculateMatch(job);
               const isHighMatch = matchScore >= 80;
-              const hasApplied = appliedJobs.has(job.id);
+              const hasApplied = appliedJobs.has(job.id.toString());
 
               return (
                 <motion.div
@@ -352,11 +483,28 @@ export default function JobBoard() {
                             <Star className="w-3 h-3 fill-soft-green" /> Top Match
                           </span>
                         )}
+                        {hasApplied && (
+                          <span className="px-2 py-1 bg-soft-blue/10 text-soft-blue text-[10px] font-black uppercase tracking-widest rounded-sm flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" /> Submitted
+                          </span>
+                        )}
                       </div>
-                      <p className="text-sm font-bold text-text-dim flex items-center gap-2">
+                      <p className="text-sm font-bold text-text-dim flex items-center gap-2 flex-wrap">
                         <Building2 className="w-4 h-4" /> {job.company}
                         <span className="w-1 h-1 bg-border rounded-full mx-1" />
                         <MapPin className="w-4 h-4" /> {job.location}
+                        {job.publicationDate && (
+                          <>
+                            <span className="w-1 h-1 bg-border rounded-full mx-1" />
+                            <Clock className="w-4 h-4" /> {new Date(job.publicationDate).toLocaleDateString('en-IN')}
+                          </>
+                        )}
+                        {job.source && (
+                          <>
+                            <span className="w-1 h-1 bg-border rounded-full mx-1" />
+                            <span className="text-soft-blue px-2 py-0.5 bg-soft-blue/10 rounded text-[10px] font-black">{job.source}</span>
+                          </>
+                        )}
                       </p>
                     </div>
 
@@ -398,36 +546,49 @@ export default function JobBoard() {
                       )}
                     </div>
 
-                    {job.url ? (
-                      <a
-                        href={job.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={cn(
-                          "w-full btn-pill py-3 font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2",
-                          isHighMatch 
-                            ? "bg-soft-green text-surface hover:scale-105 shadow-lg shadow-soft-green/20"
-                            : "bg-text-main text-surface hover:scale-105 shadow-xl"
-                        )}
-                      >
-                        Apply Now
-                      </a>
-                    ) : (
+                    <div className="space-y-3">
                       <button
-                        onClick={() => handleApply(job.id as string)}
-                        disabled={hasApplied}
+                        onClick={() => openApplicationLink(job)}
                         className={cn(
                           "w-full btn-pill py-3 font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2",
-                          hasApplied 
-                            ? "bg-text-main/10 text-text-main/50 cursor-not-allowed"
-                            : isHighMatch 
+                          !job.url ? "bg-text-main/10 text-text-main/50 cursor-not-allowed" : hasApplied
+                            ? "bg-soft-blue text-surface hover:scale-105 shadow-lg shadow-soft-blue/20"
+                            : isHighMatch
                               ? "bg-soft-green text-surface hover:scale-105 shadow-lg shadow-soft-green/20"
                               : "bg-text-main text-surface hover:scale-105 shadow-xl"
                         )}
+                        disabled={!job.url}
                       >
-                        {hasApplied ? 'Applied ✓' : 'Easy Apply'}
+                        {job.url ? (
+                          hasApplied ? (
+                            <>
+                              <CheckCircle className="w-4 h-4" />
+                              View Application
+                            </>
+                          ) : (
+                            <>
+                              Apply Now
+                              <ExternalLink className="w-4 h-4" />
+                            </>
+                          )
+                        ) : (
+                          'Application link unavailable'
+                        )}
                       </button>
-                    )}
+
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold uppercase tracking-widest text-text-dim">Application status</label>
+                        <select
+                          value={hasApplied ? 'submitted' : 'not_submitted'}
+                          onChange={e => updateApplicationStatus(job, e.target.value === 'submitted')}
+                          className="w-full rounded-full border border-border bg-brand-bg px-4 py-3 text-sm font-bold outline-none focus:border-soft-blue"
+                        >
+                          <option value="not_submitted">Not Submitted</option>
+                          <option value="submitted">Submitted</option>
+                        </select>
+                        <p className="text-[10px] text-text-dim leading-snug">Click Apply Now to open the posting, then mark the status as Submitted once you have applied.</p>
+                      </div>
+                    </div>
                   </div>
                 </motion.div>
               );
@@ -435,6 +596,6 @@ export default function JobBoard() {
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   );
 }

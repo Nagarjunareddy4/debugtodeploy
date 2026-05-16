@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -559,7 +560,7 @@ export default function Portfolio() {
                     )}
                     contentEditable={isEditing}
                     suppressContentEditableWarning={true}
-                    onBlur={(e) => setResume({ ...resume, title: e.currentTarget.textContent || '' })}
+                    onBlur={(e) => setResume({ ...resume, summary: e.currentTarget.textContent || '' })}
                     >
                       {resume.title || (typeof profile.roadmap_data === 'string' ? JSON.parse(profile.roadmap_data || '{}').goal : profile.roadmap_data?.goal) || 'DevOps Engineer'}
                     </p>

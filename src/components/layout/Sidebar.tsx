@@ -75,7 +75,7 @@ const navItems = [
   { icon: Book, label: 'Learning', path: '/learning' },
   { icon: MessageSquare, label: 'Interviews', path: '/interviews' },
   { icon: Trophy, label: 'Leaderboard', path: '/leaderboard' },
-  { icon: Briefcase, label: 'Jobs', path: '/jobs' },
+  { icon: Briefcase, label: 'Jobs', path: '/jobs', badge: 'BETA' },
   { icon: Award, label: 'Certificates', path: '/certificates' },
   { icon: LifeBuoy, label: 'Support', path: '/support' },
   { icon: CreditCard, label: 'Pricing', path: '/pricing' },
@@ -216,6 +216,11 @@ export default function Sidebar() {
                     <span className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
                       {item.label}
                       {isDisabled && <span className="text-[8px] bg-red-500/10 text-red-500 px-1 rounded-xs">Locked</span>}
+                      {(item as any).badge && !isDisabled && (
+                        <span className="text-[7px] bg-soft-orange/20 text-soft-orange border border-soft-orange/30 px-1.5 py-0.5 rounded-full font-black tracking-widest animate-pulse">
+                          {(item as any).badge}
+                        </span>
+                      )}
                     </span>
                   </NavLink>
                 );

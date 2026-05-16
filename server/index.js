@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 import multer from 'multer';
 import FormData from 'form-data';
 import OpenAI, { toFile } from 'openai';
+import { getJobs } from '../api/jobs/index.js';
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -335,6 +336,29 @@ app.post('/api/openai-proxy', upload.any(), async (req, res) => {
   } catch (error) {
     console.error('[Proxy] AI Proxy failed:', error);
     res.status(500).json({ error: 'AI request failed', message: error.message });
+  }
+});
+
+// 4. Job Search Endpoint - India DevOps Jobs Only
+app.post('/api/jobs', async (req, res) => {
+  const { query, keywords = [] } = req.body;
+  
+  try {
+    console.log(`[Jobs] Searching for: ${query} with keywords: ${keywords.join(', ')}`);
+    
+    // Get jobs from all sources
+    const jobs = await getJobs(keywords);
+    
+    // Return ranked and filtered jobs
+    res.json({ 
+      jobs: jobs,
+      count: jobs.length,
+      region: 'India',
+      cached: false
+    });
+  } catch (error) {
+    console.error('[Jobs] Error:', error);
+    res.status(500).json({ error: 'Failed to fetch jobs', message: error.message });
   }
 });
 
