@@ -36,7 +36,6 @@ export default function App() {
       PermissionsAndroid.requestMultiple([
         PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
         PermissionsAndroid.PERMISSIONS.CAMERA,
-        PermissionsAndroid.PERMISSIONS.MODIFY_AUDIO_SETTINGS,
       ]).catch(err => console.warn('Initial Permission Request Error:', err));
     }
 
@@ -51,8 +50,8 @@ export default function App() {
             const query = new URLSearchParams(parsed.queryParams as any).toString();
             if (query) targetUrl += `?${query}`;
           }
-          if (parsed.fragment) {
-            targetUrl += `#${parsed.fragment}`;
+          if ((parsed as any).fragment) {
+            targetUrl += `#${(parsed as any).fragment}`;
           }
           setCurrentUrl(targetUrl);
         }
@@ -177,7 +176,8 @@ export default function App() {
         bounces={false}
         androidLayerType="hardware"
         mediaPlaybackRequiresUserAction={false}
-        onPermissionRequest={(request) => {
+        // @ts-ignore - onPermissionRequest typing is sometimes missing in older RN webview versions but works at runtime
+        onPermissionRequest={(request: any) => {
           // Explicitly grant resources requested by the WebView for our domain or dev/preview environments
           const origin = request.origin.toLowerCase();
           const isProduction = origin.includes('debugtodeploy.com');

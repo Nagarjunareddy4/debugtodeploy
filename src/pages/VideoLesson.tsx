@@ -110,6 +110,32 @@ export default function VideoLesson() {
   const timerRef = useRef<any>(null);
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
 
+  const cancelSpeech = useCallback(() => {
+    try {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    } catch (e) {
+      console.warn('Speech synthesis cancel error:', e);
+    }
+  }, []);
+
+  const speakText = useCallback((text: string) => {
+    try {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utt = new SpeechSynthesisUtterance(text);
+        utt.rate = 0.95;
+        utt.pitch = 1;
+        utt.lang = 'en-US';
+        speechRef.current = utt;
+        window.speechSynthesis.speak(utt);
+      }
+    } catch (e) {
+      console.warn('Speech synthesis speak error:', e);
+    }
+  }, []);
+
   // Redirect if no topic
   useEffect(() => {
     if (!topic) navigate('/roadmap');
@@ -235,23 +261,17 @@ Return JSON exactly like this:
     if (!lesson || !playing || muted) return;
     const slide = lesson.slides[currentSlide];
     const text = `${slide.title}. ${slide.body}${slide.code ? '. Example: ' + slide.code.replace(/\n/g, '. ') : ''}`;
-    window.speechSynthesis.cancel();
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = 0.95;
-    utt.pitch = 1;
-    utt.lang = 'en-US';
-    speechRef.current = utt;
-    window.speechSynthesis.speak(utt);
-    return () => window.speechSynthesis.cancel();
-  }, [currentSlide, playing, muted, lesson]);
+    speakText(text);
+    return () => cancelSpeech();
+  }, [currentSlide, playing, muted, lesson, speakText, cancelSpeech]);
 
   const goToSlide = useCallback((idx: number) => {
-    window.speechSynthesis.cancel();
+    cancelSpeech();
     clearInterval(timerRef.current);
     setCurrentSlide(idx);
     setElapsed(0);
     setSlideKey(k => k + 1);
-  }, []);
+  }, [cancelSpeech]);
 
   const togglePlay = () => {
     if (!lesson) return;
@@ -272,7 +292,7 @@ Return JSON exactly like this:
     <div className="max-w-4xl mx-auto pb-16 space-y-6">
       {/* Back */}
       <button
-        onClick={() => { window.speechSynthesis.cancel(); navigate('/roadmap'); }}
+        onClick={() => { cancelSpeech(); navigate('/roadmap'); }}
         className="flex items-center gap-2 text-text-dim hover:text-text-main font-black uppercase text-[10px] tracking-widest transition-colors"
       >
         <ChevronLeft className="w-4 h-4" /> Back to Roadmap
@@ -466,7 +486,7 @@ Return JSON exactly like this:
               <button
                 onClick={() => {
                   setMuted(m => !m);
-                  if (!muted) window.speechSynthesis.cancel();
+                  if (!muted) cancelSpeech();
                 }}
                 className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${
                   muted ? 'bg-soft-red/10 border-soft-red text-soft-red' : 'bg-brand-bg border-border text-text-dim hover:border-text-dim/40'
