@@ -26,6 +26,23 @@ const iconMap: Record<string, any> = {
   'Compass': Compass,
 };
 
+const colorMap: Record<string, { bg: string; text: string }> = {
+  'soft-blue': { bg: 'bg-soft-blue/10', text: 'text-soft-blue' },
+  'soft-green': { bg: 'bg-soft-green/10', text: 'text-soft-green' },
+  'soft-purple': { bg: 'bg-soft-purple/10', text: 'text-soft-purple' },
+  'soft-orange': { bg: 'bg-soft-orange/10', text: 'text-soft-orange' },
+  'soft-red': { bg: 'bg-soft-red/10', text: 'text-soft-red' },
+  'blue': { bg: 'bg-soft-blue/10', text: 'text-soft-blue' },
+  'green': { bg: 'bg-soft-green/10', text: 'text-soft-green' },
+  'purple': { bg: 'bg-soft-purple/10', text: 'text-soft-purple' },
+  'orange': { bg: 'bg-soft-orange/10', text: 'text-soft-orange' },
+  'red': { bg: 'bg-soft-red/10', text: 'text-soft-red' },
+};
+
+function getColorClasses(colorName?: string) {
+  return colorMap[colorName || 'soft-blue'] || colorMap['soft-blue'];
+}
+
 export default function Learning() {
   const [docs, setDocs] = useState<GeneratedDoc[]>([]);
   const [readDocs, setReadDocs] = useState<string[]>([]);
@@ -179,8 +196,9 @@ export default function Learning() {
                   )}
 
                   <div className={cn(
-                    "w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-lg",
-                    `bg-${doc.color || 'soft-blue'}/10 text-${doc.color || 'soft-blue'}`
+                    "w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-lg transition-transform group-hover:scale-110 duration-300",
+                    getColorClasses(doc.color).bg,
+                    getColorClasses(doc.color).text
                   )}>
                     <IconComponent className="w-8 h-8" />
                   </div>
@@ -188,7 +206,8 @@ export default function Learning() {
                   <div className="space-y-3">
                     <span className={cn(
                       "text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full",
-                      `bg-${doc.color || 'soft-blue'}/10 text-${doc.color || 'soft-blue'}`
+                      getColorClasses(doc.color).bg,
+                      getColorClasses(doc.color).text
                     )}>
                       {doc.category}
                     </span>

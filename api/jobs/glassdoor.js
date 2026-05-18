@@ -19,7 +19,6 @@ async function fetchFromGlassdoorAlternative() {
     };
 
     if (!process.env.RAPIDAPI_KEY) {
-      console.log('[Glassdoor] RapidAPI key not configured, using fallback');
       return await fetchGlassdoorFallback();
     }
 
@@ -52,7 +51,6 @@ async function fetchFromGlassdoorAlternative() {
       }))
       .slice(0, 25);
   } catch (err) {
-    console.error('[Glassdoor] API fetch error:', err.message);
     return await fetchGlassdoorFallback();
   }
 }
@@ -104,7 +102,6 @@ async function fetchGlassdoorFallback() {
       }))
       .slice(0, 25);
   } catch (err) {
-    console.error('[Glassdoor] Fallback fetch error:', err.message);
     return [];
   }
 }
@@ -151,7 +148,6 @@ async function fetchFromIndeedAggregator() {
       }))
       .slice(0, 15);
   } catch (err) {
-    console.error('[Glassdoor] Indeed aggregator error:', err.message);
     return [];
   }
 }

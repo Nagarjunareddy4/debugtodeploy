@@ -15,6 +15,23 @@ const iconMap: Record<string, any> = {
   Terminal,
 };
 
+const colorMap: Record<string, { bg: string; text: string }> = {
+  'soft-blue': { bg: 'bg-soft-blue', text: 'text-soft-blue' },
+  'soft-green': { bg: 'bg-soft-green', text: 'text-soft-green' },
+  'soft-purple': { bg: 'bg-soft-purple', text: 'text-soft-purple' },
+  'soft-orange': { bg: 'bg-soft-orange', text: 'text-soft-orange' },
+  'soft-red': { bg: 'bg-soft-red', text: 'text-soft-red' },
+  'blue': { bg: 'bg-soft-blue', text: 'text-soft-blue' },
+  'green': { bg: 'bg-soft-green', text: 'text-soft-green' },
+  'purple': { bg: 'bg-soft-purple', text: 'text-soft-purple' },
+  'orange': { bg: 'bg-soft-orange', text: 'text-soft-orange' },
+  'red': { bg: 'bg-soft-red', text: 'text-soft-red' },
+};
+
+function getColorClasses(colorName?: string) {
+  return colorMap[colorName || 'soft-blue'] || colorMap['soft-blue'];
+}
+
 export default function Certificates() {
   usePageTitle('Certifications');
   const [certificates, setCertificates] = useState<GeneratedCertificate[]>([]);
@@ -169,7 +186,7 @@ export default function Certificates() {
                 className="playful-card flex flex-col group hover:scale-[1.02] transition-transform bg-surface shadow-xl border-none relative overflow-hidden"
               >
                 {/* Decorative background circle */}
-                <div className={cn("absolute -right-8 -top-8 w-32 h-32 rounded-full opacity-10 blur-2xl", `bg-${cert.color}`)} />
+                <div className={cn("absolute -right-8 -top-8 w-32 h-32 rounded-full opacity-10 blur-2xl", getColorClasses(cert.color).bg)} />
                 
                 <div className={cn("w-14 h-14 mb-6 relative z-10")}>
                   <RoadmapBadge3D 
@@ -190,7 +207,7 @@ export default function Certificates() {
                 <div className="mt-auto space-y-6">
                   <div className="flex items-center justify-between border-t border-border pt-4">
                     <span className="text-[10px] font-black uppercase tracking-widest text-text-dim">Estimated Price</span>
-                    <span className={cn("font-black text-lg", `text-${cert.color}`)}>{cert.price}</span>
+                    <span className={cn("font-black text-lg", getColorClasses(cert.color).text)}>{cert.price}</span>
                   </div>
                   
                   <a 

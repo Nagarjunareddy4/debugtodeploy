@@ -6,8 +6,8 @@ import { Platform } from 'react-native';
 // Use environment variables via Expo's public env var system.
 // These are set in eas.json per build profile, or via EAS Secrets for production.
 // Fallback values are the publishable (anon) keys — safe for client-side use.
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
 // Custom storage safely bypasses AsyncStorage during Web SSR (Node)
 const customStorage = {

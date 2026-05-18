@@ -19,7 +19,7 @@ export const supabase = createClient(
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
-      storage: window.localStorage
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined
     },
     global: {
       headers: { 'x-application-name': 'debugtodeploy' }

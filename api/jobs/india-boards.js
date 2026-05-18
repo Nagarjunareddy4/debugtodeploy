@@ -46,7 +46,6 @@ async function fetchFromIndeedIndia() {
       }))
       .slice(0, 15);
   } catch (err) {
-    console.error('[IndeedIndia] Fetch error:', err.message);
     return [];
   }
 }
@@ -86,7 +85,6 @@ async function fetchFromGitHubJobs() {
       }))
       .slice(0, 15);
   } catch (err) {
-    console.error('[GitHubJobs] Fetch error:', err.message);
     return [];
   }
 }
@@ -122,7 +120,6 @@ async function fetchFromAngelListIndia() {
       }))
       .slice(0, 15);
   } catch (err) {
-    console.error('[AngelListIndia] Fetch error:', err.message);
     return [];
   }
 }
@@ -156,7 +153,6 @@ async function fetchFromStackOverflowJobs() {
       }))
       .slice(0, 15);
   } catch (err) {
-    console.error('[StackOverflowJobs] Fetch error:', err.message);
     return [];
   }
 }
@@ -175,7 +171,6 @@ async function fetchFromLinkedInIndiaJobs() {
     };
 
     if (!process.env.RAPIDAPI_KEY) {
-      console.log('[LinkedInIndia] RapidAPI key not configured, using fallback');
       return await fetchLinkedInFallback();
     }
 
@@ -204,7 +199,6 @@ async function fetchFromLinkedInIndiaJobs() {
       }))
       .slice(0, 20);
   } catch (err) {
-    console.error('[LinkedInIndia] Fetch error:', err.message);
     return [];
   }
 }
@@ -240,7 +234,6 @@ async function fetchFromDiceJobs() {
       }))
       .slice(0, 15);
   } catch (err) {
-    console.error('[DiceJobs] Fetch error:', err.message);
     return [];
   }
 }

@@ -17,7 +17,6 @@ import { cn, usePageTitle } from '../lib/utils';
 import { GeneratedLab } from '../lib/generator';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
 
-// Map string icon names from AI to actual lucide-react components
 const iconMap: Record<string, any> = {
   'Cloud': Cloud,
   'Terminal': Terminal,
@@ -26,6 +25,23 @@ const iconMap: Record<string, any> = {
   'Flame': Flame,
   'Brain': Brain,
 };
+
+const colorMap: Record<string, { bg: string; bgSoft: string; text: string }> = {
+  'soft-blue': { bg: 'bg-soft-blue', bgSoft: 'bg-soft-blue/10', text: 'text-soft-blue' },
+  'soft-green': { bg: 'bg-soft-green', bgSoft: 'bg-soft-green/10', text: 'text-soft-green' },
+  'soft-purple': { bg: 'bg-soft-purple', bgSoft: 'bg-soft-purple/10', text: 'text-soft-purple' },
+  'soft-orange': { bg: 'bg-soft-orange', bgSoft: 'bg-soft-orange/10', text: 'text-soft-orange' },
+  'soft-red': { bg: 'bg-soft-red', bgSoft: 'bg-soft-red/10', text: 'text-soft-red' },
+  'blue': { bg: 'bg-soft-blue', bgSoft: 'bg-soft-blue/10', text: 'text-soft-blue' },
+  'green': { bg: 'bg-soft-green', bgSoft: 'bg-soft-green/10', text: 'text-soft-green' },
+  'purple': { bg: 'bg-soft-purple', bgSoft: 'bg-soft-purple/10', text: 'text-soft-purple' },
+  'orange': { bg: 'bg-soft-orange', bgSoft: 'bg-soft-orange/10', text: 'text-soft-orange' },
+  'red': { bg: 'bg-soft-red', bgSoft: 'bg-soft-red/10', text: 'text-soft-red' },
+};
+
+function getColorClasses(colorName?: string) {
+  return colorMap[colorName || 'soft-blue'] || colorMap['soft-blue'];
+}
 
 export default function LabList() {
   usePageTitle('Cloud Sandbox');
@@ -163,13 +179,13 @@ export default function LabList() {
                   </div>
                 )}
 
-                <div className={cn("w-20 h-20 rounded-[2rem] flex items-center justify-center mb-8 shadow-xl", `bg-${lab.color} text-white`)}>
+                 <div className={cn("w-20 h-20 rounded-[2rem] flex items-center justify-center mb-8 shadow-xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-3", getColorClasses(lab.color).bg, "text-white")}>
                   <IconComponent className="w-10 h-10" />
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className={cn("text-[9px] font-black uppercase tracking-widest py-1 px-3 rounded-full", `bg-${lab.color}/10 text-${lab.color}`)}>
+                    <span className={cn("text-[9px] font-black uppercase tracking-widest py-1 px-3 rounded-full", getColorClasses(lab.color).bgSoft, getColorClasses(lab.color).text)}>
                       {lab.difficulty}
                     </span>
                     <span className="text-[9px] font-black uppercase tracking-widest text-text-dim">+ {lab.xp} XP</span>

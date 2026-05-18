@@ -55,6 +55,25 @@ export default function Dashboard() {
   const [quizAvailable, setQuizAvailable] = useState(true);
   const [quizStats, setQuizStats] = useState<any>(null);
   const [showQuizSection, setShowQuizSection] = useState(true);
+  const [greeting, setGreeting] = useState("Glad you're back");
+  const [greetingIcon, setGreetingIcon] = useState('☀️');
+
+  useEffect(() => {
+    const hours = new Date().getHours();
+    if (hours >= 5 && hours < 12) {
+      setGreeting('Good morning');
+      setGreetingIcon('🌅');
+    } else if (hours >= 12 && hours < 17) {
+      setGreeting('Good afternoon');
+      setGreetingIcon('☀️');
+    } else if (hours >= 17 && hours < 21) {
+      setGreeting('Good evening');
+      setGreetingIcon('🌇');
+    } else {
+      setGreeting("Glad you're back");
+      setGreetingIcon('🌙');
+    }
+  }, []);
 
   const tourSteps: Step[] = [
     {
@@ -479,12 +498,17 @@ export default function Dashboard() {
 
       <motion.div variants={itemVariants} className="flex flex-col lg:flex-row gap-8 items-start justify-between">
         <header className="space-y-2">
-          <h2 className="text-5xl font-black tracking-tighter">
-            {isNewUser ? (
-              <>Welcome, <span className="text-soft-blue">{displayName}</span>!</>
-            ) : (
-              <>Glad you're back, <span className="text-soft-blue">{firstName}</span>!</>
-            )}
+          <h2 className="text-5xl font-black tracking-tighter flex items-center gap-3">
+            <span>
+              {isNewUser ? 'Welcome' : greeting}, <span className="text-transparent bg-clip-text bg-linear-to-r from-soft-blue via-soft-purple to-soft-orange">{isNewUser ? displayName : firstName}</span>!
+            </span>
+            <motion.span 
+              animate={{ rotate: [0, 10, -10, 0] }}
+              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+              className="text-4xl filter drop-shadow-sm select-none"
+            >
+              {isNewUser ? '🚀' : greetingIcon}
+            </motion.span>
           </h2>
           <p className="text-text-dim font-bold uppercase tracking-widest text-xs flex flex-wrap items-center gap-2 mt-2">
             <Star className="w-4 h-4 text-soft-orange fill-soft-orange" /> Profile readiness: {profile?.readiness_score || 0}%
@@ -551,9 +575,12 @@ export default function Dashboard() {
       </AnimatePresence>
 
       {/* Hero banner — dynamic next lab */}
-      <motion.section variants={itemVariants} className="flex flex-col md:flex-row items-center justify-between gap-8 bg-surface border-4 border-border rounded-[2rem] md:rounded-[4rem] p-6 md:p-12 text-text-main overflow-hidden relative shadow-2xl group glass-glow">
-        <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-soft-blue/10 rounded-full blur-3xl -translate-y-1/4 translate-x-1/4 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-soft-purple/10 rounded-full blur-3xl translate-y-1/4 -translate-x-1/4 pointer-events-none" />
+      <motion.section 
+        variants={itemVariants} 
+        className="flex flex-col md:flex-row items-center justify-between gap-8 glass-panel rounded-[2rem] md:rounded-[4rem] p-6 md:p-12 text-text-main overflow-hidden relative shadow-2xl group animate-float"
+      >
+        <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-soft-blue/15 rounded-full blur-3xl -translate-y-1/4 translate-x-1/4 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-soft-purple/15 rounded-full blur-3xl translate-y-1/4 -translate-x-1/4 pointer-events-none" />
         
         <div className="z-10 space-y-6 max-w-lg">
            {profileLoading ? (
@@ -716,6 +743,60 @@ export default function Dashboard() {
           <button onClick={() => navigate('/certificates')} className="text-[10px] font-black uppercase tracking-widest text-soft-purple hover:underline text-left">Explore Certificates →</button>
         </div>
       </motion.div>
+
+      {/* Daily DevOps Quiz Section */}
+      {showQuizSection && (
+        <motion.div variants={itemVariants} className="w-full">
+          <div className="playful-card bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-blue-500/10 border-4 border-blue-300/30 backdrop-blur-sm shadow-2xl space-y-8 relative overflow-hidden">
+            {/* Decorative background */}
+            <div className="absolute top-0 right-0 w-72 h-72 bg-blue-400/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-400/5 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Header */}
+            <div className="relative z-10 flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white shadow-lg">
+                  <BookOpen className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black italic">Daily DevOps Quiz</h3>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-text-dim">5 questions • AI-Generated • Random daily</p>
+                </div>
+              </div>
+
+              {/* Quick Stats */}
+              {quizStats && (
+                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-4">
+                  <div className="text-center">
+                    <p className="text-xl font-black text-soft-blue">{quizStats.totalQuizzesCompleted}</p>
+                    <p className="text-[8px] font-bold uppercase text-text-dim">Completed</p>
+                  </div>
+                  <div className="w-px h-10 bg-border" />
+                  <div className="text-center">
+                    <p className="text-xl font-black text-soft-green">{quizStats.currentStreak}</p>
+                    <p className="text-[8px] font-bold uppercase text-text-dim">Streak 🔥</p>
+                  </div>
+                  <div className="w-px h-10 bg-border" />
+                  <div className="text-center">
+                    <p className="text-xl font-black text-soft-orange">{quizStats.totalXpEarned}</p>
+                    <p className="text-[8px] font-bold uppercase text-text-dim">Total XP</p>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+
+            {/* Quiz Component or Status */}
+            <div className="relative z-10">
+              {profile?.id && (
+                <DailyQuiz 
+                  userId={profile.id} 
+                  onComplete={handleQuizComplete}
+                />
+              )}
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Gamification Section */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 gap-8">
@@ -983,42 +1064,45 @@ export default function Dashboard() {
 
       <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
          {/* Weekly Goal Tracker */}
-         <div className="playful-card bg-text-main text-surface border-none shadow-2xl flex flex-col gap-8 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-8 opacity-10">
-               <Zap className="w-24 h-24" />
+         <div className="playful-card bg-surface text-text-main border-4 border-soft-blue/20 dark:border-soft-blue/10 shadow-2xl flex flex-col gap-8 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
+               <Zap className="w-24 h-24 text-soft-blue" />
             </div>
             <div>
-               <h3 className="text-2xl font-black italic">Weekly Goal</h3>
-               <p className="text-[9px] font-black uppercase tracking-widest text-surface/60">Stay on track, Commander</p>
+               <h3 className="text-2xl font-black italic text-text-main flex items-center gap-2">
+                 Weekly Goal
+                 <motion.span animate={{ y: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 2 }}>🚀</motion.span>
+               </h3>
+               <p className="text-[9px] font-black uppercase tracking-widest text-text-dim">Stay on track, Commander</p>
             </div>
             <div className="space-y-6 flex-1">
                <div className="space-y-2">
-                  <div className="flex justify-between text-[10px] font-black uppercase">
+                  <div className="flex justify-between text-[10px] font-black uppercase text-text-dim">
                      <span>Complete {weeklyLabsGoal} Labs</span>
-                     <span>{currentWeeklyLabs}/{weeklyLabsGoal}</span>
+                     <span className="text-soft-green font-bold">{currentWeeklyLabs}/{weeklyLabsGoal}</span>
                   </div>
-                  <div className="h-2 w-full bg-surface/20 rounded-full overflow-hidden">
+                  <div className="h-2.5 w-full bg-brand-bg rounded-full overflow-hidden border border-border">
                      <div 
-                        className="h-full bg-soft-green transition-all duration-700" 
+                        className="h-full bg-soft-green transition-all duration-700 shadow-[0_0_12px_#86EFAC]" 
                         style={{ width: `${Math.min((currentWeeklyLabs / weeklyLabsGoal) * 100, 100)}%` }} 
                      />
                   </div>
                </div>
                <div className="space-y-2">
-                  <div className="flex justify-between text-[10px] font-black uppercase">
+                  <div className="flex justify-between text-[10px] font-black uppercase text-text-dim">
                      <span>Earn {weeklyXpGoal.toLocaleString()} XP</span>
-                     <span>{currentWeeklyXp.toLocaleString()}/{weeklyXpGoal}</span>
+                     <span className="text-soft-blue font-bold">{currentWeeklyXp.toLocaleString()}/{weeklyXpGoal}</span>
                   </div>
-                  <div className="h-2 w-full bg-surface/20 rounded-full overflow-hidden">
+                  <div className="h-2.5 w-full bg-brand-bg rounded-full overflow-hidden border border-border">
                      <div 
-                        className="h-full bg-soft-blue transition-all duration-700" 
+                        className="h-full bg-soft-blue transition-all duration-700 shadow-[0_0_12px_#93C5FD]" 
                         style={{ width: `${Math.min((currentWeeklyXp / weeklyXpGoal) * 100, 100)}%` }} 
                      />
                   </div>
                </div>
-               <div className="p-4 bg-surface/10 rounded-2xl border border-surface/20">
-                  <p className="text-[10px] font-bold leading-relaxed">
-                    🎁 **Reward:** Earn 500 bonus XP upon goal completion!
+               <div className="p-4 bg-brand-bg/50 rounded-2xl border border-border">
+                  <p className="text-[10px] font-bold leading-relaxed text-text-dim">
+                     🎁 <strong className="text-text-main">Reward:</strong> Earn 500 bonus XP upon goal completion!
                   </p>
                </div>
             </div>

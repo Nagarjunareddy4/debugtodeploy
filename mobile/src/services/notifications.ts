@@ -14,6 +14,28 @@ Notifications.setNotificationHandler({
 });
 
 const ENGAGEMENT_MESSAGES = [
+  // --- DevOps Quiz Specific Challenges ---
+  {
+    title: "🧠 Daily DevOps Quiz is live!",
+    body: "Today's Kubernetes & CI/CD challenge is ready. Can you score 5/5 today?",
+    category: 'quiz'
+  },
+  {
+    title: "⚡ 5-Minute Quiz Challenge",
+    body: "Test your Docker and Terraform knowledge in 5 quick questions. Earn XP and level up!",
+    category: 'quiz'
+  },
+  {
+    title: "🏆 Maintain your Daily Streak!",
+    body: "Take today's DevOps quiz to secure your daily streak and earn bonus points.",
+    category: 'quiz'
+  },
+  {
+    title: "⚙️ Put your Sysadmin skills to the test",
+    body: "Today's Linux & Networking quiz is hot off the press. Let's see how much you know!",
+    category: 'quiz'
+  },
+  // --- General Engagement & Streak Guard ---
   {
     title: "🔥 Keep your streak alive, Captain!",
     body: "It's time for your daily DevOps training. Complete one task to maintain your streak.",
@@ -152,31 +174,66 @@ export async function setupDailyEngagementNotifications() {
   // 1. Clear existing to avoid duplicates
   await Notifications.cancelAllScheduledNotificationsAsync();
 
-  // 2. Schedule Daily Engagement at 6:00 PM (18:00)
-  const messages = getRandomMessages(3);
-  
-  for (let i = 0; i < 3; i++) {
-    const triggerDate = new Date();
-    triggerDate.setDate(triggerDate.getDate() + i);
-    triggerDate.setHours(18, 0, 0, 0);
+  // Helper to generate a random time within a specified hour range
+  const getRandomTimeBetween = (hourStart: number, hourEnd: number, daysOffset: number): Date => {
+    const date = new Date();
+    date.setDate(date.getDate() + daysOffset);
+    const randomHour = Math.floor(Math.random() * (hourEnd - hourStart + 1)) + hourStart;
+    const randomMinute = Math.floor(Math.random() * 60);
+    date.setHours(randomHour, randomMinute, 0, 0);
+    return date;
+  };
 
-    // If we're setting it for today (i=0) and it's already past 6 PM, skip today
-    if (triggerDate.getTime() <= now) {
-      triggerDate.setDate(triggerDate.getDate() + 3);
+  const quizMessages = ENGAGEMENT_MESSAGES.filter(m => m.category === 'quiz');
+  const otherMessages = ENGAGEMENT_MESSAGES.filter(m => m.category !== 'quiz');
+
+  const shuffledQuiz = [...quizMessages].sort(() => 0.5 - Math.random());
+  const shuffledOther = [...otherMessages].sort(() => 0.5 - Math.random());
+
+  // 2. Schedule 5 rolling organic slots at randomized optimal slots:
+  const slots = [
+    // Slot 1: Tomorrow Morning (9:00 AM - 11:30 AM) - Morning Quiz Challenge
+    {
+      date: getRandomTimeBetween(9, 11, 1),
+      message: shuffledQuiz[0]
+    },
+    // Slot 2: Tomorrow Evening (5:30 PM - 8:00 PM) - Evening Streak safeguard
+    {
+      date: getRandomTimeBetween(17, 20, 1),
+      message: shuffledOther[0]
+    },
+    // Slot 3: Day 2 Afternoon (1:30 PM - 4:00 PM) - Midday Lab push
+    {
+      date: getRandomTimeBetween(13, 16, 2),
+      message: shuffledOther[1]
+    },
+    // Slot 4: Day 2 Morning (9:30 AM - 11:45 AM) - Morning Quiz Challenge
+    {
+      date: getRandomTimeBetween(9, 11, 2),
+      message: shuffledQuiz[1]
+    },
+    // Slot 5: Day 3 Evening (6:00 PM - 8:30 PM) - Dynamic training recap
+    {
+      date: getRandomTimeBetween(18, 20, 3),
+      message: shuffledOther[2]
     }
+  ];
 
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: messages[i].title,
-        body: messages[i].body,
-        sound: true,
-        priority: Notifications.AndroidNotificationPriority.HIGH,
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: triggerDate,
-      },
-    });
+  for (const slot of slots) {
+    if (slot.date.getTime() > now) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: slot.message.title,
+          body: slot.message.body,
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: slot.date,
+        },
+      });
+    }
   }
 
   // 3. Schedule Weekly Debrief (Every Sunday at 8:00 PM)

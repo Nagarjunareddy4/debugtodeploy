@@ -112,6 +112,13 @@ export default function VideoLesson() {
 
   const cancelSpeech = useCallback(() => {
     try {
+      // Send cancel command to native React Native WebView if present
+      if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'SPEECH_CANCEL'
+        }));
+      }
+      
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
@@ -122,6 +129,14 @@ export default function VideoLesson() {
 
   const speakText = useCallback((text: string) => {
     try {
+      // Send speak command to native React Native WebView if present
+      if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'SPEECH_SPEAK',
+          payload: { text }
+        }));
+      }
+
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         const utt = new SpeechSynthesisUtterance(text);
