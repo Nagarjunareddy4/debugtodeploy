@@ -165,11 +165,11 @@ Format your response as valid JSON only (no markdown, no code blocks):
 /**
  * Check if question already exists (duplicate detection)
  */
-export async function isDuplicateQuestion(questionText: string): Promise<boolean> {
+export async function isDuplicateQuestion(questionText: string, supabaseClient = supabase): Promise<boolean> {
   try {
     const hash = await calculateQuestionHash(questionText);
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('generated_quiz_questions')
       .select('id')
       .eq('question_hash', hash)
@@ -187,10 +187,15 @@ export async function isDuplicateQuestion(questionText: string): Promise<boolean
 /**
  * Save generated question to database
  */
-export async function saveGeneratedQuestion(question: GeneratedQuizQuestion): Promise<string | null> {
+export async function saveGeneratedQuestion(question: GeneratedQuizQuestion, supabaseClient = supabase): Promise<string | null> {
   try {
+    // Prevent client-side database writes to keep browser console clean
+    if (typeof window !== 'undefined') {
+      return null;
+    }
+
     // Check for duplicate
-    const isDuplicate = await isDuplicateQuestion(question.question_text);
+    const isDuplicate = await isDuplicateQuestion(question.question_text, supabaseClient);
     if (isDuplicate) {
       console.warn('Question already exists, skipping');
       return null;
@@ -198,7 +203,7 @@ export async function saveGeneratedQuestion(question: GeneratedQuizQuestion): Pr
 
     const hash = await calculateQuestionHash(question.question_text);
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('generated_quiz_questions')
       .insert({
         category: question.category,
@@ -226,12 +231,12 @@ export async function saveGeneratedQuestion(question: GeneratedQuizQuestion): Pr
 /**
  * Get 5 random questions for today's quiz
  */
-export async function getTodaysQuizQuestions(): Promise<GeneratedQuizQuestion[]> {
+export async function getTodaysQuizQuestions(supabaseClient = supabase): Promise<GeneratedQuizQuestion[]> {
   try {
     const today = new Date().toISOString().split('T')[0];
 
     // Check if pool exists for today
-    const { data: poolData, error: poolError } = await supabase
+    const { data: poolData, error: poolError } = await supabaseClient
       .from('daily_quiz_pool')
       .select('question_ids')
       .eq('quiz_date', today)
@@ -244,17 +249,26 @@ export async function getTodaysQuizQuestions(): Promise<GeneratedQuizQuestion[]>
     if (poolData?.question_ids) {
       questionIds = poolData.question_ids;
     } else {
-      // Need to generate new pool for today
-      questionIds = await generateDailyQuizPool();
+      // In the browser (client-side), do not perform database writes to avoid RLS/403 errors.
+      // The client will automatically fall back to LocalStorage client-side AI generation.
+      if (typeof window !== 'undefined') {
+        console.log('Daily quiz pool not found in Supabase. Falling back to local client-side AI generation.');
+        return [];
+      }
+
+      // On the server, generate and save today's pool securely
+      questionIds = await generateDailyQuizPool(supabaseClient);
       
       // Save the pool
-      await supabase
+      const { error: insertError } = await supabaseClient
         .from('daily_quiz_pool')
         .insert({
           quiz_date: today,
           question_ids: questionIds,
           is_used: false
         });
+
+      if (insertError) throw insertError;
     }
 
     // Fetch the questions
@@ -263,7 +277,7 @@ export async function getTodaysQuizQuestions(): Promise<GeneratedQuizQuestion[]>
       return [];
     }
 
-    const { data: questions, error: questionsError } = await supabase
+    const { data: questions, error: questionsError } = await supabaseClient
       .from('generated_quiz_questions')
       .select('*')
       .in('id', questionIds)
@@ -291,7 +305,7 @@ export async function getTodaysQuizQuestions(): Promise<GeneratedQuizQuestion[]>
 /**
  * Generate pool of 5 new questions for today
  */
-async function generateDailyQuizPool(): Promise<string[]> {
+async function generateDailyQuizPool(supabaseClient = supabase): Promise<string[]> {
   const questionIds: string[] = [];
   const maxAttempts = 15; // Try up to 15 times to get 5 unique questions
   let attempts = 0;
@@ -304,11 +318,11 @@ async function generateDailyQuizPool(): Promise<string[]> {
     if (!newQuestion) continue;
 
     // Check if duplicate
-    const isDuplicate = await isDuplicateQuestion(newQuestion.question_text);
+    const isDuplicate = await isDuplicateQuestion(newQuestion.question_text, supabaseClient);
     if (isDuplicate) continue;
 
     // Save question
-    const questionId = await saveGeneratedQuestion(newQuestion);
+    const questionId = await saveGeneratedQuestion(newQuestion, supabaseClient);
     if (questionId) {
       questionIds.push(questionId);
     }

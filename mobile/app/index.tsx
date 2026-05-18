@@ -8,6 +8,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
 import { supabase } from '../src/services/supabase';
 import { registerForPushNotificationsAsync } from '../src/services/notifications';
+import * as Speech from 'expo-speech';
 
 const customUserAgent = Platform.OS === 'android'
   ? 'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
@@ -71,6 +72,7 @@ export default function App() {
         backgroundedAtRef.current = null;
       } else if (nextState.match(/inactive|background/)) {
         backgroundedAtRef.current = Date.now();
+        Speech.stop().catch(() => {});
       }
       appStateRef.current = nextState;
     });
@@ -157,6 +159,17 @@ export default function App() {
 
         // Trigger push registration now that we are authenticated natively
         await registerForPushNotificationsAsync();
+      } else if (data.type === 'SPEECH_SPEAK') {
+        const { text } = data.payload;
+        Speech.stop().then(() => {
+          Speech.speak(text, {
+            language: 'en-US',
+            rate: 0.95,
+            pitch: 1.0,
+          });
+        }).catch(err => console.warn('Native speech error:', err));
+      } else if (data.type === 'SPEECH_CANCEL') {
+        Speech.stop().catch(err => console.warn('Native speech stop error:', err));
       }
     } catch (err) {
       console.warn('WebView Bridge Error:', err);

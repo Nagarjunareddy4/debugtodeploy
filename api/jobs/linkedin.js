@@ -19,7 +19,6 @@ async function fetchFromLinkedInAlternative() {
     };
 
     if (!process.env.RAPIDAPI_KEY) {
-      console.log('[LinkedIn] RapidAPI key not configured, using fallback');
       return await fetchLinkedInFallback();
     }
 
@@ -51,7 +50,6 @@ async function fetchFromLinkedInAlternative() {
       }))
       .slice(0, 25);
   } catch (err) {
-    console.error('[LinkedIn] JSearch fetch error:', err.message);
     return await fetchLinkedInFallback();
   }
 }
@@ -101,7 +99,6 @@ async function fetchLinkedInFallback() {
       }))
       .slice(0, 25);
   } catch (err) {
-    console.error('[LinkedIn] Fallback fetch error:', err.message);
     return [];
   }
 }

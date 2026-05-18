@@ -29,9 +29,13 @@
 
 @layer base {
   body {
-    @apply bg-brand-bg text-text-main antialiased;
+    @apply bg-brand-bg text-text-main antialiased relative;
     min-height: 100vh;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    background-image: 
+      radial-gradient(circle at 15% 50%, rgba(147, 197, 253, 0.15), transparent 25%),
+      radial-gradient(circle at 85% 30%, rgba(240, 171, 252, 0.15), transparent 25%);
+    background-attachment: fixed;
+    transition: background-color 0.5s ease, color 0.5s ease;
   }
 
   :focus-visible {
@@ -42,31 +46,6 @@
     @apply sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-6 focus:py-3 focus:bg-text-main focus:text-surface focus:rounded-full focus:font-black focus:uppercase focus:tracking-widest focus:shadow-2xl;
   }
 }
-
-@layer components {
-  .playful-card {
-    @apply bg-surface border border-border rounded-3xl p-6 shadow-sm hover:shadow-md transition-all duration-300;
-  }
-
-  .btn-pill {
-    @apply px-6 py-3 rounded-full font-bold transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
-  }
-
-  .btn-accent {
-    @apply bg-text-main text-surface hover:opacity-90;
-  }
-
-  .nav-pill {
-    @apply flex items-center gap-3 px-5 py-3 rounded-full text-text-dim font-bold transition-all duration-200 cursor-pointer hover:bg-soft-blue/10 hover:text-text-main;
-  }
-
-  .nav-pill-active {
-    @apply bg-text-main text-surface shadow-lg;
-  }
-
-  .chip {
-    @apply px-3 py-1 rounded-full text-[10px] uppercase font-black tracking-widest;
-  }
 
   /* Premium Utilities */
   .holographic-pro {
@@ -105,7 +84,57 @@
   .glass-glow:hover::before {
     @apply translate-x-full;
   }
-}
+
+  /* Glassmorphism Panels */
+  .glass-panel {
+    @apply bg-surface/70 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] transition-all duration-500 ease-out hover:shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] hover:border-white/30 dark:hover:border-white/20;
+  }
+  
+  .glass-card {
+    @apply bg-surface/60 backdrop-blur-lg border border-white/10 dark:border-white/5 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:border-white/20 dark:hover:border-white/10;
+  }
+
+  .glass-button {
+    @apply relative overflow-hidden bg-surface/80 backdrop-blur-md border border-white/20 dark:border-white/10 shadow-lg transition-all duration-300 hover:scale-105 active:scale-95;
+  }
+  .glass-button::after {
+    content: '';
+    @apply absolute top-0 left-0 w-full h-full bg-linear-to-tr from-transparent via-white/20 to-transparent -translate-x-full transition-transform duration-500;
+  }
+  .glass-button:hover::after {
+    @apply translate-x-full;
+  }
+
+  .playful-card {
+    @apply bg-surface/70 backdrop-blur-lg border border-white/20 dark:border-white/10 rounded-3xl p-6 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:border-white/30 dark:hover:border-white/20;
+  }
+
+  .btn-pill {
+    @apply px-6 py-3 rounded-full font-bold transition-all duration-300 ease-out active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-soft-blue/20;
+  }
+
+  .btn-accent {
+    @apply relative overflow-hidden bg-surface/80 backdrop-blur-md border border-white/20 dark:border-white/10 shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 text-surface hover:opacity-100;
+  }
+  .btn-accent::after {
+    content: '';
+    @apply absolute top-0 left-0 w-full h-full bg-linear-to-tr from-transparent via-white/20 to-transparent -translate-x-full transition-transform duration-500;
+  }
+  .btn-accent:hover::after {
+    @apply translate-x-full;
+  }
+
+  .nav-pill {
+    @apply flex items-center gap-3 px-5 py-3 rounded-full text-text-dim font-bold transition-all duration-300 ease-out cursor-pointer hover:bg-surface/50 hover:backdrop-blur-md hover:text-text-main hover:shadow-md;
+  }
+
+  .nav-pill-active {
+    @apply bg-surface/80 backdrop-blur-xl border border-white/20 text-text-main shadow-[0_4px_16px_0_rgba(31,38,135,0.05)];
+  }
+
+  .chip {
+    @apply px-3 py-1 rounded-full text-[10px] uppercase font-black tracking-widest;
+  }
 
 @keyframes holograph {
   0% { transform: translateX(-50%) translateY(-50%) rotate(0deg); }
@@ -128,6 +157,25 @@
 
 .animate-shimmer {
   animation: shimmer 1.5s infinite;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 15px rgba(147, 197, 253, 0.4); }
+  50% { box-shadow: 0 0 30px rgba(147, 197, 253, 0.8); }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
 }
 
 

@@ -28,17 +28,17 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
   return (
     <nav
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-6 py-4",
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-500 px-6 py-4",
         isScrolled 
-          ? "bg-brand-bg/80 backdrop-blur-xl border-b border-border py-3" 
+          ? "glass-panel py-3" 
           : "bg-transparent"
       )}
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-3 group cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-          <img src="/logo.jpg" alt="DebugToDeploy" className="w-10 h-10 rounded-xl object-contain mix-blend-screen group-hover:scale-110 transition-transform" />
-          <span className="text-xl font-black italic tracking-tighter hidden sm:block">
+          <img src="/logo.jpg" alt="DebugToDeploy" className="w-10 h-10 rounded-xl object-contain mix-blend-screen group-hover:scale-110 transition-transform duration-500" />
+          <span className="text-xl font-black italic tracking-tighter hidden sm:block bg-clip-text text-transparent bg-linear-to-r from-text-main to-soft-blue">
             Debug<span className="text-soft-blue">To</span>Deploy
           </span>
         </div>
@@ -49,7 +49,7 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
             <a
               key={link.name}
               href={link.href}
-              className="text-sm font-bold text-text-dim hover:text-text-main transition-colors"
+              className="text-sm font-bold text-text-dim hover:text-text-main hover:-translate-y-0.5 transition-all duration-300"
             >
               {link.name}
             </a>
@@ -62,21 +62,21 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
             href="https://github.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 text-text-dim hover:text-text-main transition-colors"
+            className="p-2 text-text-dim hover:text-text-main hover:scale-110 transition-all duration-300"
           >
             <Github className="w-5 h-5" />
           </a>
           {session ? (
             <a
               href="/dashboard"
-              className="btn-pill bg-text-main text-surface flex items-center gap-2 text-xs uppercase tracking-widest"
+              className="btn-pill glass-button bg-text-main/90 text-surface flex items-center gap-2 text-xs uppercase tracking-widest"
             >
-              Go to Dashboard <ChevronRight className="w-4 h-4" />
+              Go to Dashboard <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </a>
           ) : (
             <button
               onClick={onAuthClick}
-              className="btn-pill bg-text-main text-surface text-xs uppercase tracking-widest hover:bg-soft-blue transition-colors"
+              className="btn-pill glass-button bg-text-main/90 text-surface text-xs uppercase tracking-widest hover:bg-soft-blue transition-colors"
             >
               Start Free
             </button>

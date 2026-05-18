@@ -78,7 +78,7 @@ async function fetchFromArbeitnow() {
       }))
       .slice(0, 20);
   } catch (err) {
-    console.error('[Jobs] Arbeitnow fetch error:', err.message);
+    // Silent fail
     return [];
   }
 }
@@ -114,7 +114,7 @@ async function fetchFromRemoteOK() {
       }))
       .slice(0, 20);
   } catch (err) {
-    console.error('[Jobs] RemoteOK fetch error:', err.message);
+    // Silent fail
     return [];
   }
 }
@@ -150,7 +150,7 @@ async function fetchFromWellfound() {
       }))
       .slice(0, 15);
   } catch (err) {
-    console.error('[Jobs] Wellfound fetch error:', err.message);
+    // Silent fail
     return [];
   }
 }
@@ -186,7 +186,7 @@ async function fetchFromWeWorkRemotely() {
       }))
       .slice(0, 15);
   } catch (err) {
-    console.error('[Jobs] WeWorkRemotely fetch error:', err.message);
+    // Silent fail
     return [];
   }
 }
@@ -195,7 +195,6 @@ async function fetchFromWeWorkRemotely() {
  * Main job scraping function - aggregates from multiple sources
  */
 async function scrapeJobs() {
-  console.log('[Jobs] Starting job scrape for India DevOps positions...');
   
   try {
     // Check cache first
@@ -267,18 +266,14 @@ async function scrapeJobs() {
       return dateB - dateA;
     });
 
-    console.log(`[Jobs] Found ${allJobs.length} unique DevOps positions for India`);
-    
-    // Cache the results
+    // deduplicate and cache
     jobCache.set(allJobs);
     
     return allJobs;
   } catch (error) {
-    console.error('[Jobs] Scraping error:', error);
     // Try to return cached data even if expired
     const cachedJobs = jobCache.cache;
     if (cachedJobs) {
-      console.warn(`[Jobs] Using stale cache (age: ${jobCache.getAgeSeconds()}s)`);
       return cachedJobs;
     }
     return [];

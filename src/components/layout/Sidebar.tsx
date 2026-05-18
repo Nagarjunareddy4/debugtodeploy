@@ -90,7 +90,7 @@ export default function Sidebar() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) fetchProfile(session.user.id);
+      if (session?.user) fetchProfile(session.user);
     });
 
     // Real-time subscription to profile changes
@@ -117,12 +117,15 @@ export default function Sidebar() {
     };
   }, [isOpen]);
 
-  const fetchProfile = async (id: string) => {
-    // Get both the profile row AND auth metadata in parallel
-    const [{ data }, { data: { user } }] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', id).single(),
-      supabase.auth.getUser(),
-    ]);
+  const fetchProfile = async (user: any) => {
+    if (!user) return;
+
+    // Get the profile row directly using the user ID
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
 
     // Auth Display name fallback
     const authName =
@@ -134,11 +137,11 @@ export default function Sidebar() {
     if (data) {
       // Patch the DB ONLY if the field is strictly null (meaning never set)
       if (data.full_name === null && authName) {
-        await supabase.from('profiles').update({ full_name: authName }).eq('id', id);
+        await supabase.from('profiles').update({ full_name: authName }).eq('id', user.id);
         data.full_name = authName;
       }
       setProfile(data);
-    } else if (user) {
+    } else {
       // Fallback: build from auth metadata
       setProfile({ full_name: authName, email: user.email, subscription_status: 'free' });
     }
@@ -168,7 +171,7 @@ export default function Sidebar() {
       )}
 
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-40 w-72 bg-surface border-r border-border flex flex-col transition-all duration-300 ease-in-out overflow-hidden",
+        "fixed inset-y-0 left-0 z-40 w-72 glass-panel flex flex-col transition-all duration-500 ease-in-out overflow-hidden border-r",
         !isOpen && "-translate-x-full lg:translate-x-0 shadow-none",
         isOpen && "translate-x-0 shadow-2xl lg:shadow-none",
         "lg:sticky lg:h-screen"

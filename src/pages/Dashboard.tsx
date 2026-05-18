@@ -55,6 +55,25 @@ export default function Dashboard() {
   const [quizAvailable, setQuizAvailable] = useState(true);
   const [quizStats, setQuizStats] = useState<any>(null);
   const [showQuizSection, setShowQuizSection] = useState(true);
+  const [greeting, setGreeting] = useState("Glad you're back");
+  const [greetingIcon, setGreetingIcon] = useState('☀️');
+
+  useEffect(() => {
+    const hours = new Date().getHours();
+    if (hours >= 5 && hours < 12) {
+      setGreeting('Good morning');
+      setGreetingIcon('🌅');
+    } else if (hours >= 12 && hours < 17) {
+      setGreeting('Good afternoon');
+      setGreetingIcon('☀️');
+    } else if (hours >= 17 && hours < 21) {
+      setGreeting('Good evening');
+      setGreetingIcon('🌇');
+    } else {
+      setGreeting("Glad you're back");
+      setGreetingIcon('🌙');
+    }
+  }, []);
 
   const tourSteps: Step[] = [
     {
@@ -479,12 +498,17 @@ export default function Dashboard() {
 
       <motion.div variants={itemVariants} className="flex flex-col lg:flex-row gap-8 items-start justify-between">
         <header className="space-y-2">
-          <h2 className="text-5xl font-black tracking-tighter">
-            {isNewUser ? (
-              <>Welcome, <span className="text-soft-blue">{displayName}</span>!</>
-            ) : (
-              <>Glad you're back, <span className="text-soft-blue">{firstName}</span>!</>
-            )}
+          <h2 className="text-5xl font-black tracking-tighter flex items-center gap-3">
+            <span>
+              {isNewUser ? 'Welcome' : greeting}, <span className="text-transparent bg-clip-text bg-linear-to-r from-soft-blue via-soft-purple to-soft-orange">{isNewUser ? displayName : firstName}</span>!
+            </span>
+            <motion.span 
+              animate={{ rotate: [0, 10, -10, 0] }}
+              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+              className="text-4xl filter drop-shadow-sm select-none"
+            >
+              {isNewUser ? '🚀' : greetingIcon}
+            </motion.span>
           </h2>
           <p className="text-text-dim font-bold uppercase tracking-widest text-xs flex flex-wrap items-center gap-2 mt-2">
             <Star className="w-4 h-4 text-soft-orange fill-soft-orange" /> Profile readiness: {profile?.readiness_score || 0}%
@@ -551,9 +575,12 @@ export default function Dashboard() {
       </AnimatePresence>
 
       {/* Hero banner — dynamic next lab */}
-      <motion.section variants={itemVariants} className="flex flex-col md:flex-row items-center justify-between gap-8 bg-surface border-4 border-border rounded-[2rem] md:rounded-[4rem] p-6 md:p-12 text-text-main overflow-hidden relative shadow-2xl group glass-glow">
-        <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-soft-blue/10 rounded-full blur-3xl -translate-y-1/4 translate-x-1/4 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-soft-purple/10 rounded-full blur-3xl translate-y-1/4 -translate-x-1/4 pointer-events-none" />
+      <motion.section 
+        variants={itemVariants} 
+        className="flex flex-col md:flex-row items-center justify-between gap-8 glass-panel rounded-[2rem] md:rounded-[4rem] p-6 md:p-12 text-text-main overflow-hidden relative shadow-2xl group animate-float"
+      >
+        <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-soft-blue/15 rounded-full blur-3xl -translate-y-1/4 translate-x-1/4 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-soft-purple/15 rounded-full blur-3xl translate-y-1/4 -translate-x-1/4 pointer-events-none" />
         
         <div className="z-10 space-y-6 max-w-lg">
            {profileLoading ? (
@@ -717,111 +744,6 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      {/* Gamification Section */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 gap-8">
-         {/* Achievement Badges */}
-         <div className="playful-card bg-surface border-none shadow-2xl space-y-8">
-            <div className="flex items-center justify-between">
-               <div>
-                  <h3 className="text-2xl font-black italic">Achievement Badges</h3>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-text-dim">Your roadmap milestones</p>
-               </div>
-               <div className="w-10 h-10 rounded-full bg-soft-orange/10 flex items-center justify-center text-soft-orange">
-                  <Star className="w-5 h-5 fill-soft-orange" />
-               </div>
-            </div>
-            <div className="flex overflow-x-auto pb-4 gap-6 no-scrollbar snap-x snap-mandatory">
-               {(function() {
-                 const roadmapData = typeof profile?.roadmap_data === 'string' 
-                   ? JSON.parse(profile.roadmap_data) 
-                   : profile?.roadmap_data;
-                   
-                 const completedTasks = profile?.completed_roadmap_tasks || [];
-                 console.log('DEBUG: Roadmap Data', roadmapData);
-                 
-                 const roadmapBadges = roadmapData?.stages?.map((stage: any, sIdx: number) => {
-                   const stageTasks = stage.tasks || [];
-                   const isEarned = stageTasks.length > 0 && stageTasks.every((task: any, tIdx: number) => {
-                     const taskId = `${stage.id || `stage-${sIdx + 1}`}-task-${tIdx}`;
-                     return completedTasks.includes(taskId);
-                   });
-                   
-                   return {
-                     name: stage.label,
-                     description: stage.description,
-                     tasks: stageTasks,
-                     icon: stage.icon || '🏆',
-                     earned: isEarned,
-                     date: isEarned ? 'Earned' : 'Locked'
-                   };
-                 }) || [];
-
-                 const finalBadges = roadmapBadges.length > 0 
-                   ? roadmapBadges
-                   : [
-                       { name: 'Docker Pilot', icon: '🐳', earned: (profile?.labs_completed || 0) >= 1, date: '1 Lab' },
-                       { name: 'K8s Healer', icon: '☸️', earned: (profile?.labs_completed || 0) >= 3, date: '3 Labs' },
-                       { name: 'Cloud Native', icon: '☁️', earned: (profile?.labs_completed || 0) >= 5, date: '5 Labs' },
-                       { name: 'SRE Master', icon: '⚡', earned: (profile?.level || 1) >= 5, date: 'Level 5' }
-                     ];
-
-                 return finalBadges.map((badge, i) => (
-                   <motion.div 
-                     key={i} 
-                     whileHover={{ 
-                       scale: 1.05, 
-                       rotateY: 10, 
-                       rotateX: -10,
-                       boxShadow: badge.earned 
-                         ? "0 25px 50px -12px rgba(251, 191, 36, 0.5)" 
-                         : "0 10px 15px -3px rgba(0, 0, 0, 0.1)"
-                     }}
-                     className={cn(
-                       "flex flex-col items-center gap-3 p-6 rounded-3xl border-4 transition-all relative overflow-hidden group cursor-pointer shrink-0 w-48 snap-center",
-                       badge.earned 
-                         ? "bg-surface border-soft-orange/30 shadow-xl" 
-                         : "bg-brand-bg opacity-40 border-border grayscale"
-                     )}
-                   >
-                      {/* Realistic Lighting Effect */}
-                      {badge.earned && (
-                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/20 pointer-events-none" />
-                      )}
-
-                       <RoadmapBadge3D
-                         stageName={badge.name}
-                         description={(badge as any).description}
-                          tasks={(badge as any).tasks}
-                         earned={badge.earned}
-                         size="md"
-                         showGlow={badge.earned}
-                       />
-
-                      <div className="text-center mt-2">
-                         <p className="text-[11px] font-black uppercase truncate max-w-[120px] leading-tight">
-                           {badge.name}
-                         </p>
-                         <p className={cn(
-                           "text-[8px] font-black uppercase mt-1 tracking-tighter",
-                           badge.earned ? "text-soft-orange" : "text-text-dim"
-                         )}>
-                           {badge.date}
-                         </p>
-                      </div>
-                      
-                      {/* Locked Overlay */}
-                      {!badge.earned && (
-                        <div className="absolute top-2 right-2">
-                          <Lock className="w-3 h-3 text-text-dim/30" />
-                        </div>
-                      )}
-                   </motion.div>
-                 ));
-               })()}
-            </div>
-         </div>
-      </motion.div>
-
       {/* Daily DevOps Quiz Section */}
       {showQuizSection && (
         <motion.div variants={itemVariants} className="w-full">
@@ -983,42 +905,45 @@ export default function Dashboard() {
 
       <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
          {/* Weekly Goal Tracker */}
-         <div className="playful-card bg-text-main text-surface border-none shadow-2xl flex flex-col gap-8 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-8 opacity-10">
-               <Zap className="w-24 h-24" />
+         <div className="playful-card bg-surface text-text-main border-4 border-soft-blue/20 dark:border-soft-blue/10 shadow-2xl flex flex-col gap-8 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
+               <Zap className="w-24 h-24 text-soft-blue" />
             </div>
             <div>
-               <h3 className="text-2xl font-black italic">Weekly Goal</h3>
-               <p className="text-[9px] font-black uppercase tracking-widest text-surface/60">Stay on track, Commander</p>
+               <h3 className="text-2xl font-black italic text-text-main flex items-center gap-2">
+                 Weekly Goal
+                 <motion.span animate={{ y: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 2 }}>🚀</motion.span>
+               </h3>
+               <p className="text-[9px] font-black uppercase tracking-widest text-text-dim">Stay on track, Commander</p>
             </div>
             <div className="space-y-6 flex-1">
                <div className="space-y-2">
-                  <div className="flex justify-between text-[10px] font-black uppercase">
+                  <div className="flex justify-between text-[10px] font-black uppercase text-text-dim">
                      <span>Complete {weeklyLabsGoal} Labs</span>
-                     <span>{currentWeeklyLabs}/{weeklyLabsGoal}</span>
+                     <span className="text-soft-green font-bold">{currentWeeklyLabs}/{weeklyLabsGoal}</span>
                   </div>
-                  <div className="h-2 w-full bg-surface/20 rounded-full overflow-hidden">
+                  <div className="h-2.5 w-full bg-brand-bg rounded-full overflow-hidden border border-border">
                      <div 
-                        className="h-full bg-soft-green transition-all duration-700" 
+                        className="h-full bg-soft-green transition-all duration-700 shadow-[0_0_12px_#86EFAC]" 
                         style={{ width: `${Math.min((currentWeeklyLabs / weeklyLabsGoal) * 100, 100)}%` }} 
                      />
                   </div>
                </div>
                <div className="space-y-2">
-                  <div className="flex justify-between text-[10px] font-black uppercase">
+                  <div className="flex justify-between text-[10px] font-black uppercase text-text-dim">
                      <span>Earn {weeklyXpGoal.toLocaleString()} XP</span>
-                     <span>{currentWeeklyXp.toLocaleString()}/{weeklyXpGoal}</span>
+                     <span className="text-soft-blue font-bold">{currentWeeklyXp.toLocaleString()}/{weeklyXpGoal}</span>
                   </div>
-                  <div className="h-2 w-full bg-surface/20 rounded-full overflow-hidden">
+                  <div className="h-2.5 w-full bg-brand-bg rounded-full overflow-hidden border border-border">
                      <div 
-                        className="h-full bg-soft-blue transition-all duration-700" 
+                        className="h-full bg-soft-blue transition-all duration-700 shadow-[0_0_12px_#93C5FD]" 
                         style={{ width: `${Math.min((currentWeeklyXp / weeklyXpGoal) * 100, 100)}%` }} 
                      />
                   </div>
                </div>
-               <div className="p-4 bg-surface/10 rounded-2xl border border-surface/20">
-                  <p className="text-[10px] font-bold leading-relaxed">
-                    🎁 **Reward:** Earn 500 bonus XP upon goal completion!
+               <div className="p-4 bg-brand-bg/50 rounded-2xl border border-border">
+                  <p className="text-[10px] font-bold leading-relaxed text-text-dim">
+                     🎁 <strong className="text-text-main">Reward:</strong> Earn 500 bonus XP upon goal completion!
                   </p>
                </div>
             </div>
