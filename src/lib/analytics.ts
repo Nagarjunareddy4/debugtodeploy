@@ -49,10 +49,7 @@ export const trackEvent = async (name: EventName, properties: Record<string, any
       ...properties,
     };
 
-    // 1. Log to console for development
-    console.log(`[Analytics] Tracked: ${name}`, eventPayload);
-
-    // 2. Log to Supabase for persistent tracking
+    // Log to Supabase for persistent tracking
     supabase.from('analytics_events').insert(eventPayload).then(({ error }) => {
       if (error && error.code !== 'PGRST116') {
         console.warn('Supabase analytics log failed:', error.message);

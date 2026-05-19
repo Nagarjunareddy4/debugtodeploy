@@ -25,7 +25,8 @@ import {
   Facebook,
   Instagram,
   Twitter,
-  LifeBuoy
+  LifeBuoy,
+  Smartphone
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
@@ -158,7 +159,7 @@ export default function Sidebar() {
     <>
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-4 right-4 z-50 p-3 bg-text-main text-surface rounded-full shadow-2xl transition-all active:scale-95"
+        className="lg:hidden fixed top-4 right-4 z-[70] p-3 bg-text-main text-surface rounded-full shadow-2xl transition-all active:scale-95"
       >
         {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
@@ -171,10 +172,10 @@ export default function Sidebar() {
       )}
 
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-40 w-72 glass-panel flex flex-col transition-all duration-500 ease-in-out overflow-hidden border-r",
+        "fixed inset-y-0 left-0 top-0 z-[60] w-72 glass-panel flex flex-col transition-all duration-500 ease-in-out overflow-hidden border-r",
         !isOpen && "-translate-x-full lg:translate-x-0 shadow-none",
         isOpen && "translate-x-0 shadow-2xl lg:shadow-none",
-        "lg:sticky lg:h-screen"
+        "lg:fixed lg:h-screen"
       )}>
         {/* Header - Logo (Fixed) */}
         <div className="flex-shrink-0 p-8 pb-4">
@@ -252,6 +253,25 @@ export default function Sidebar() {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Android App Button - Only on desktop for logged-in users */}
+            {profile && (
+              <div className="flex justify-center">
+                <motion.div
+                  className="hidden lg:flex relative group"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-soft-orange/20 border-2 border-soft-orange/30 flex items-center justify-center group-hover:border-soft-orange transition-all cursor-not-allowed opacity-50">
+                    <Smartphone className="w-6 h-6 text-soft-orange" />
+                  </div>
+                  <span className="absolute -top-2 -right-2 text-[8px] font-black uppercase bg-soft-orange text-white px-1.5 py-0.5 rounded-full tracking-wider animate-pulse">App</span>
+                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-surface border-2 border-border rounded-lg px-2 py-1 text-[10px] font-bold text-text-dim whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                    Android App (Testing)
+                  </div>
+                </motion.div>
               </div>
             )}
 

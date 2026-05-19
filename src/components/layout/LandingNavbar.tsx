@@ -69,16 +69,16 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
           {session ? (
             <a
               href="/dashboard"
-              className="btn-pill glass-button bg-text-main/90 text-surface flex items-center gap-2 text-xs uppercase tracking-widest"
+              className="btn-pill bg-soft-blue text-[#0F172A] flex items-center gap-2 text-xs uppercase tracking-widest font-black hover:bg-soft-purple transition-colors shadow-lg shadow-soft-blue/30"
             >
-              Go to Dashboard <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              Go to Dashboard <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </a>
           ) : (
             <button
               onClick={onAuthClick}
-              className="btn-pill glass-button bg-text-main/90 text-surface text-xs uppercase tracking-widest hover:bg-soft-blue transition-colors"
+              className="btn-pill bg-soft-blue text-[#0F172A] text-xs uppercase tracking-widest font-black hover:bg-soft-purple transition-colors whitespace-nowrap shadow-lg shadow-soft-blue/30"
             >
-              Start Free
+              Start Free Journey
             </button>
           )}
         </div>

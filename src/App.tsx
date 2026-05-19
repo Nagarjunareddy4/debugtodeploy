@@ -173,7 +173,6 @@ export default function App() {
         if (activeProfile.subscription_status === 'pro' && activeProfile.subscription_end_date) {
           const expiryDate = new Date(activeProfile.subscription_end_date);
           if (new Date() >= expiryDate) {
-            console.log('Subscription expired. Reverting to free tier.');
             await supabase.from('profiles').update({ 
               subscription_status: 'free',
               auto_renew: false 
@@ -263,7 +262,7 @@ export default function App() {
                   session ? (
                     <>
                       <Sidebar />
-                      <div className="flex-1 flex flex-col overflow-hidden">
+                      <div className="flex-1 flex flex-col overflow-hidden lg:ml-72">
                         <main id="main-content" className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto overflow-x-hidden main-content">
                           <Routes>
                             <Route path="/" element={<Dashboard />} />

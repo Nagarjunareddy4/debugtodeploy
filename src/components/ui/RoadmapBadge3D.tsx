@@ -77,7 +77,7 @@ export function getBadgeImageSrc(stageName: string, description?: string, tasks?
   const lowerTasks = tasks?.map(t => (typeof t === 'string' ? t : t.label).toLowerCase()).join(' ') || '';
   
   // Debug log to help identify why matches might be failing
-  console.log(`Badge Matching [${stageName}]:`, { name: lowerName, desc: lowerDesc.substring(0, 50) + '...', tasks: lowerTasks.substring(0, 50) + '...' });
+
 
   for (const entry of BADGE_MAP) {
     const match = entry.keywords.find(keyword => 
@@ -87,12 +87,12 @@ export function getBadgeImageSrc(stageName: string, description?: string, tasks?
     );
     
     if (match) {
-      console.log(`  -> Matched keyword [${match}] in category [${entry.src.split('/').slice(-2, -1)[0]}]`);
+
       return entry.src;
     }
   }
   
-  console.log(`  -> No match found for [${stageName}], falling back to Trophy.`);
+
   return FALLBACK_SRC;
 }
 

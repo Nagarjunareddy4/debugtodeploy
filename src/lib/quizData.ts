@@ -767,7 +767,7 @@ async function getOrCreateClientSideAIQuestions(): Promise<QuizQuestion[]> {
     try {
       const parsed = JSON.parse(cached);
       if (parsed.date === todayStr && Array.isArray(parsed.questions) && parsed.questions.length >= 5) {
-        console.log('Using cached client-side AI questions for today');
+
         return parsed.questions;
       }
     } catch (e) {
@@ -775,7 +775,7 @@ async function getOrCreateClientSideAIQuestions(): Promise<QuizQuestion[]> {
     }
   }
 
-  console.log('Generating fresh daily quiz questions via AI...');
+  // Generate fresh daily quiz questions via AI
   // Generate 7 questions to allow filtering out potential duplicates
   const generated = await generateClientSideAIQuestions(7);
   
@@ -843,7 +843,7 @@ export async function getDailyQuestions(): Promise<QuizQuestion[]> {
     const generatedQuestions = await getTodaysQuizQuestions();
 
     if (generatedQuestions && generatedQuestions.length >= 5) {
-      console.log('Successfully fetched daily quiz from Supabase!');
+
       return generatedQuestions
         .slice(0, 5)
         .map(normalizeQuestion);

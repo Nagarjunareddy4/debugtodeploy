@@ -4,7 +4,7 @@ import {
   Rocket, Brain, Zap, ShieldCheck, Terminal as TerminalIcon, 
   Map, CheckCircle2, ChevronRight, Star, ArrowRight,
   Sparkles, Cloud, Users, Award, Play, Github,
-  Facebook, Instagram, Twitter, Briefcase
+  Facebook, Instagram, Twitter, Briefcase, Smartphone
 } from 'lucide-react';
 import LandingNavbar from '../components/layout/LandingNavbar';
 import AuthModal from '../components/layout/AuthModal';
@@ -127,6 +127,95 @@ export default function Landing({ session }: { session: any }) {
               className="relative z-10 w-full h-auto drop-shadow-3xl hover:scale-105 transition-transform duration-700"
             />
           </motion.div>
+        </div>
+      </section>
+
+      {/* App Download Section */}
+      <section className="w-full py-20 md:py-32 px-6 flex justify-center">
+        <div className="max-w-7xl mx-auto w-full">
+          <div className="playful-card border-4 border-soft-blue/30 bg-gradient-to-br from-soft-blue/10 to-soft-purple/10 p-12 md:p-16 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-soft-blue/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+            
+            <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-soft-blue/20 flex items-center justify-center border-2 border-soft-blue">
+                    <Smartphone className="w-6 h-6 text-soft-blue" />
+                  </div>
+                  <span className="text-[11px] font-black uppercase tracking-widest bg-soft-blue/10 text-soft-blue px-3 py-1.5 rounded-full border border-soft-blue/20">Now Available</span>
+                </div>
+                
+                <h2 className="text-4xl md:text-5xl font-black italic tracking-tight leading-[1.1]">
+                  Take Your <span className="text-soft-blue">Training</span> <br /> On the Go
+                </h2>
+                
+                <p className="text-text-dim font-bold text-lg leading-relaxed max-w-xl">
+                  Master DevOps anywhere with our native mobile app. Practice lab exercises, track your progress, and prepare for interviews while you're commuting or in between meetings.
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                  <button
+                    disabled
+                    onClick={() => window.open('https://play.google.com/store/apps/details?id=com.debugtodeploy', '_blank')}
+                    className="btn-pill bg-text-main text-surface px-8 py-4 text-sm uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed hover:disabled:bg-text-main transition-colors flex items-center justify-center gap-2 relative group"
+                    title="Coming soon - Testing phase"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M3 3h18v18H3z" fill="none" stroke="currentColor" strokeWidth="2"/>
+                      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2"/>
+                    </svg>
+                    Android App
+                    {true && (
+                      <span className="absolute -top-1 -right-1 text-[8px] font-black uppercase bg-soft-orange text-white px-2 py-1 rounded-full tracking-wider animate-pulse">
+                        Beta
+                      </span>
+                    )}
+                  </button>
+                  
+                  <button
+                    disabled
+                    className="btn-pill bg-surface border-4 border-border px-8 py-4 text-sm uppercase tracking-widest disabled:opacity-40 cursor-not-allowed flex items-center justify-center gap-2"
+                    title="Coming soon"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
+                      <path d="M6 4v4m12-4v4"/>
+                    </svg>
+                    iOS Coming Soon
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-center items-center hidden md:block relative">
+                <div className="absolute inset-0 bg-soft-purple/20 blur-[80px] rounded-full" />
+                <motion.div
+                  animate={{ y: [0, -20, 0] }}
+                  transition={{ duration: 4, repeat: Infinity }}
+                  className="relative z-10 w-full"
+                >
+                  <div className="bg-surface border-4 border-border rounded-[40px] p-4 shadow-2xl max-w-sm mx-auto overflow-hidden">
+                    <div className="bg-gradient-to-b from-soft-blue to-soft-purple rounded-[36px] p-2 aspect-[9/16] flex items-center justify-center relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-b from-soft-blue/20 to-transparent" />
+                      <div className="relative z-10 w-full h-full bg-surface rounded-[32px] flex flex-col items-center justify-center p-4 space-y-6">
+                        <div className="w-24 h-24 rounded-2xl bg-soft-blue/10 border-2 border-soft-blue/30 flex items-center justify-center">
+                          <TerminalIcon className="w-12 h-12 text-soft-blue" />
+                        </div>
+                        <div className="text-center space-y-2">
+                          <h4 className="text-sm font-black italic">Cloud Labs</h4>
+                          <p className="text-[9px] font-bold text-text-dim">Practice in Real Environments</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <div className="w-2 h-2 rounded-full bg-soft-green" />
+                          <div className="w-2 h-2 rounded-full bg-soft-blue" />
+                          <div className="w-2 h-2 rounded-full bg-soft-purple" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
