@@ -117,6 +117,7 @@ export default function VideoLesson() {
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({
           type: 'SPEECH_CANCEL'
         }));
+        return;
       }
       
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -135,6 +136,7 @@ export default function VideoLesson() {
           type: 'SPEECH_SPEAK',
           payload: { text }
         }));
+        return;
       }
 
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {

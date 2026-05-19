@@ -80,7 +80,8 @@ export default function App() {
 
   const checkSession = async (session: any) => {
     // Enforce email verification for email signups
-    if (session?.user && session.user.app_metadata?.provider === 'email' && !session.user.email_confirmed_at) {
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (session?.user && session.user.app_metadata?.provider === 'email' && !session.user.email_confirmed_at && !isLocal) {
       await supabase.auth.signOut();
       setSession(null);
       setLoading(false);
@@ -263,7 +264,7 @@ export default function App() {
                     <>
                       <Sidebar />
                       <div className="flex-1 flex flex-col overflow-hidden">
-                        <main id="main-content" className="flex-1 p-8 overflow-y-auto main-content">
+                        <main id="main-content" className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto overflow-x-hidden main-content">
                           <Routes>
                             <Route path="/" element={<Dashboard />} />
                             <Route path="/roadmap" element={<Roadmap />} />

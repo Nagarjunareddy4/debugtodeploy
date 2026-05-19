@@ -28,6 +28,13 @@
 :root[data-theme="dark"]  { color-scheme: dark; }
 
 @layer base {
+  html, body {
+    max-width: 100%;
+    overflow-x: hidden !important;
+    position: relative;
+    width: 100%;
+  }
+
   body {
     @apply bg-brand-bg text-text-main antialiased relative;
     min-height: 100vh;
