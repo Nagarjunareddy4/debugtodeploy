@@ -171,7 +171,7 @@ export default function DailyQuiz({ userId, onComplete }: DailyQuizProps) {
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-96">
+      <div className="flex items-center justify-center min-h-[14rem] sm:min-h-96 w-full">
         <div className="text-center space-y-4">
           <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl mx-auto animate-pulse" />
           <p className="font-bold text-text-dim">Loading daily quiz...</p>
@@ -186,7 +186,7 @@ export default function DailyQuiz({ userId, onComplete }: DailyQuizProps) {
     const score = Math.round((correctCount / questions.length) * 100);
 
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="w-full max-w-2xl mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -326,7 +326,7 @@ export default function DailyQuiz({ userId, onComplete }: DailyQuizProps) {
 
   // Active quiz
   return (
-    <div className="w-full py-4 sm:py-8">
+    <div className="w-full py-4 sm:py-8 px-4 sm:px-0">
       <AnimatePresence mode="wait">
         <div key={`card-${currentCardIndex}`}>
           <FlipCard

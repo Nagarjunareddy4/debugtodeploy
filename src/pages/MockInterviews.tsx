@@ -26,6 +26,7 @@ import { supabase } from '../lib/supabase';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
 import { GeneratedInterview } from '../lib/generator';
 import { updateReadinessScore } from '../lib/readiness';
+import toast from 'react-hot-toast';
 
 // Map string icon names from AI to actual lucide-react components
 const iconMap: Record<string, any> = {
@@ -151,12 +152,33 @@ export default function MockInterviews() {
     };
   }, []);
 
+  // Bridge-aware TTS — routes to expo-speech on mobile, falls back to Web Speech API on desktop
+  const cancelSpeechBridge = () => {
+    try {
+      if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'SPEECH_CANCEL' }));
+        return;
+      }
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    } catch (e) { console.warn('Speech cancel error:', e); }
+  };
+
   const speak = (text: string) => {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US';
-    utterance.rate = 1.0;
-    window.speechSynthesis.speak(utterance);
+    try {
+      if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'SPEECH_SPEAK', payload: { text } }));
+        return;
+      }
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = 1.0;
+        window.speechSynthesis.speak(utterance);
+      }
+    } catch (e) { console.warn('Speech speak error:', e); }
   };
 
   const shuffleArray = <T,>(array: T[]): T[] => {
@@ -192,7 +214,7 @@ export default function MockInterviews() {
 
   const startSession = (scenario: GeneratedInterview) => {
     if (isLimitReached('interview', isPro)) {
-      alert(getLimitMessage('interview', isPro));
+      toast.error(getLimitMessage('interview', isPro));
       return;
     }
     setSelectedScenario(scenario);
@@ -247,7 +269,7 @@ export default function MockInterviews() {
       setMicActive(true);
       setCallActive(true);
     } catch {
-      alert('Camera/microphone access denied. Please allow permissions in your browser and try again.');
+      toast.error('Camera/microphone access denied. Please allow permissions in your browser settings.');
     }
   };
 
@@ -276,13 +298,24 @@ export default function MockInterviews() {
   };
 
   const startRecording = async () => {
+    setAudioTranscript('');
+    setUserAnswer('');
+    setAiResponse('');
+    setIsRecording(true);
+
+    // --- Native bridge path (Android WebView) ---
+    // getUserMedia is broken inside Android WebView sandboxes.
+    // Instead, we tell the native layer to start recording via expo-av.
+    // The native side will call Whisper directly and send back AUDIO_TRANSCRIPT_RESULT.
+    if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+      (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'AUDIO_RECORD_START' }));
+      return;
+    }
+
+    // --- Web / desktop path ---
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
-      setAudioTranscript('');
-      setUserAnswer('');
-      setAiResponse('');
-      setIsRecording(true);
 
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
@@ -304,55 +337,91 @@ export default function MockInterviews() {
           setIsTranscribing(false);
           return;
         }
-
-        try {
-          const formData = new FormData();
-          const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
-          formData.append('file', blob, `recording.${extension}`);
-          formData.append('model', 'whisper-1');
-          formData.append('language', 'en');
-
-          const { data: { session } } = await supabase.auth.getSession();
-          const whisperRes = await fetch('/api/openai-proxy?path=v1/audio/transcriptions', {
-            method: 'POST',
-            headers: {
-              ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
-            },
-            body: formData,
-          });
-          const whisperData = await whisperRes.json();
-          const transcript = (whisperData.text || '').trim();
-
-          if (!transcript) {
-            setAiResponse('No speech detected. Please try recording again.');
-            setIsTranscribing(false);
-            return;
-          }
-
-          setAudioTranscript(transcript);
-          setUserAnswer(transcript);
-          setIsTranscribing(false);
-          getAiFeedback(transcript);
-        } catch (err: any) {
-          setAiResponse(`Transcription error: ${err.message}`);
-          setIsTranscribing(false);
-        }
+        await transcribeAudioBlob(blob, mimeType);
       };
 
       recorder.start();
     } catch (error) {
       console.error('Error accessing microphone:', error);
-      alert('Microphone access denied. Please allow microphone permissions.');
+      setIsRecording(false);
+      toast.error('Microphone access denied. Please allow microphone permissions in your browser settings.');
+    }
+  };
+
+  // Shared transcription helper used by both web MediaRecorder and native bridge result
+  const transcribeAudioBlob = async (blob: Blob, mimeType: string) => {
+    setIsTranscribing(true);
+    try {
+      const formData = new FormData();
+      const extension = mimeType.includes('mp4') || mimeType.includes('m4a') ? 'm4a' : 'webm';
+      formData.append('file', blob, `recording.${extension}`);
+      formData.append('model', 'whisper-1');
+      formData.append('language', 'en');
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const whisperRes = await fetch('/api/openai-proxy?path=v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
+        body: formData,
+      });
+      const whisperData = await whisperRes.json();
+      const transcript = (whisperData.text || '').trim();
+
+      if (!transcript) {
+        setAiResponse('No speech detected. Please try recording again.');
+        setIsTranscribing(false);
+        return;
+      }
+
+      setAudioTranscript(transcript);
+      setUserAnswer(transcript);
+      setIsTranscribing(false);
+      getAiFeedback(transcript);
+    } catch (err: any) {
+      setAiResponse(`Transcription error: ${err.message}`);
+      setIsTranscribing(false);
     }
   };
 
   const stopRecording = () => {
     setIsRecording(false);
+    // Native bridge path — tell expo-av to stop and send back the audio
+    if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+      setIsTranscribing(true);
+      (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'AUDIO_RECORD_STOP' }));
+      return;
+    }
+    // Web path
     setIsTranscribing(true);
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
   };
+
+  // Listen for native bridge transcript result (AUDIO_TRANSCRIPT_RESULT posted from React Native)
+  // The native side records with expo-av, calls Whisper directly, and sends back plain text.
+  useEffect(() => {
+    const handleNativeMessage = async (event: MessageEvent) => {
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        if (data.type === 'AUDIO_TRANSCRIPT_RESULT') {
+          setIsTranscribing(false);
+          const { transcript, error } = data.payload;
+          if (error || !transcript) {
+            setAiResponse(error ? `Recording error: ${error}` : 'No speech detected. Please speak clearly and try again.');
+            return;
+          }
+          setAudioTranscript(transcript);
+          setUserAnswer(transcript);
+          getAiFeedback(transcript);
+        }
+      } catch { /* ignore non-JSON messages */ }
+    };
+    window.addEventListener('message', handleNativeMessage);
+    return () => window.removeEventListener('message', handleNativeMessage);
+  }, [currentQuestion, sessionQuestions, mode, userAnswer, history, completedQuestions, selectedScenario, interviewScenarios, isPro]);
 
   const markComplete = () => {
     setCompletedQuestions(prev => new Set([...prev, currentQuestion]));
@@ -480,7 +549,7 @@ Be specific, constructive, and encouraging.`;
   };
 
   const finishInterview = async () => {
-    window.speechSynthesis.cancel();
+    cancelSpeechBridge();
     stopVideoCall();
     
     const answered = history.filter(Boolean);
@@ -592,8 +661,7 @@ Be specific, constructive, and encouraging.`;
           >
             {interviewScenarios.length === 0 ? (
                <div className="col-span-3 text-center p-12 text-text-dim font-bold">
-                 No scenarios found. Please re-login to generate your personalized curriculum.
-                 <div className="mt-4 text-sm">Debug: interviewScenarios length: {interviewScenarios.length}</div>
+                 No interview scenarios found. Please log out and back in to generate your personalized curriculum.
                </div>
             ) : (
               interviewScenarios.map((scenario, index) => {
@@ -608,11 +676,9 @@ Be specific, constructive, and encouraging.`;
                     )}
                     onClick={() => {
                       if (isLocked) {
-                        alert("Please upgrade to Pro to unlock this Mock Interview scenario!");
+                        toast.error('Please upgrade to Pro to unlock this Mock Interview scenario!');
                         return;
                       }
-                      console.log('Interview card clicked - raw click event');
-                      console.log('Interview card clicked:', scenario);
                       startSession(scenario);
                     }}
                   >
@@ -770,7 +836,7 @@ Be specific, constructive, and encouraging.`;
             <div className="playful-card p-4 sm:p-6 border-none bg-surface shadow-2xl">
               <div className="flex flex-wrap justify-between items-start gap-3">
                 <div className="flex items-center gap-3">
-                  <button onClick={() => { setActiveTab('browse'); stopVideoCall(); window.speechSynthesis.cancel(); }} className="p-2 hover:bg-border rounded-full transition-colors shrink-0">
+                  <button onClick={() => { setActiveTab('browse'); stopVideoCall(); cancelSpeechBridge(); }} className="p-2 hover:bg-border rounded-full transition-colors shrink-0">
                     <ArrowLeft className="w-5 h-5" />
                   </button>
                   <div>

@@ -104,7 +104,7 @@ export default function FlipCard({
         className="relative w-full"
       >
         <div
-          className={`relative rounded-3xl p-6 min-h-[400px] flex flex-col justify-between transition-all ${
+          className={`relative rounded-3xl p-4 sm:p-6 min-h-[320px] sm:min-h-[400px] flex flex-col justify-between transition-all ${
             isCorrect === null
               ? 'bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700'
               : isCorrect

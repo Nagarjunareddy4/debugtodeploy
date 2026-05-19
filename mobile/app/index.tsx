@@ -9,6 +9,8 @@ import * as Linking from 'expo-linking';
 import { supabase } from '../src/services/supabase';
 import { registerForPushNotificationsAsync } from '../src/services/notifications';
 import * as Speech from 'expo-speech';
+import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
 
 const customUserAgent = Platform.OS === 'android'
   ? 'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
@@ -22,6 +24,9 @@ export default function App() {
   const [currentUrl, setCurrentUrl] = useState('https://debugtodeploy.com');
   const appStateRef = useRef(AppState.currentState);
   const backgroundedAtRef = useRef<number | null>(null);
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  // Stores the Supabase access token synced from the WebView session
+  const accessTokenRef = useRef<string | null>(null);
 
   // Animation States
   const [animationDone, setAnimationDone] = useState(false);
@@ -148,37 +153,144 @@ export default function App() {
   const onMessage = async (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
+
+      // ── TTS bridge ──────────────────────────────────────────
       if (data.type === 'AUTH_STATE_SYNC') {
         const { access_token, refresh_token } = data.payload;
-        
-        // Sync native session with web session
-        await supabase.auth.setSession({
-          access_token,
-          refresh_token
-        });
-
-        // Trigger push registration now that we are authenticated natively
+        // Cache token so native recording can call Whisper directly
+        accessTokenRef.current = access_token;
+        await supabase.auth.setSession({ access_token, refresh_token });
         await registerForPushNotificationsAsync();
+
       } else if (data.type === 'SPEECH_SPEAK') {
         const { text } = data.payload;
         try {
           await Speech.stop();
-          // Short delay to allow native TTS engine to reset and prevent race condition silence
           setTimeout(() => {
-            Speech.speak(text, {
-              language: 'en-US',
-              rate: 0.95,
-              pitch: 1.0,
-            });
+            Speech.speak(text, { language: 'en-US', rate: 0.95, pitch: 1.0 });
           }, 150);
         } catch (err) {
           console.warn('Native speech error:', err);
         }
+
       } else if (data.type === 'SPEECH_CANCEL') {
+        try { await Speech.stop(); } catch (err) { console.warn('Native speech stop error:', err); }
+
+      // ── Native audio recording bridge ────────────────────────
+      } else if (data.type === 'AUDIO_RECORD_START') {
         try {
-          await Speech.stop();
-        } catch (err) {
-          console.warn('Native speech stop error:', err);
+          // Stop any previous recording
+          if (recordingRef.current) {
+            try { await recordingRef.current.stopAndUnloadAsync(); } catch { /* already stopped */ }
+            recordingRef.current = null;
+          }
+          // Request permissions via expo-av (respects Android manifest)
+          const { granted } = await Audio.requestPermissionsAsync();
+          if (!granted) {
+            webViewRef.current?.injectJavaScript(
+              `window.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ type: 'AUDIO_RECORD_ERROR', payload: { message: 'Microphone permission denied' } }) })); true;`
+            );
+            return;
+          }
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: true,
+            playsInSilentModeIOS: true,
+          });
+          const { recording } = await Audio.Recording.createAsync(
+            Audio.RecordingOptionsPresets.HIGH_QUALITY
+          );
+          recordingRef.current = recording;
+        } catch (err: any) {
+          console.warn('Native recording start error:', err);
+          webViewRef.current?.injectJavaScript(
+            `window.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ type: 'AUDIO_RECORD_ERROR', payload: { message: '${String(err?.message || 'Recording failed').replace(/'/g, "'")}' } }) })); true;`
+          );
+        }
+
+      } else if (data.type === 'AUDIO_RECORD_STOP') {
+        try {
+          const recording = recordingRef.current;
+          if (!recording) {
+            webViewRef.current?.injectJavaScript(
+              `window.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ type: 'AUDIO_TRANSCRIPT_RESULT', payload: { transcript: '', error: 'No active recording found' } }) })); true;`
+            );
+            return;
+          }
+
+          await recording.stopAndUnloadAsync();
+          await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+          const uri = recording.getURI();
+          recordingRef.current = null;
+
+          if (!uri) {
+            webViewRef.current?.injectJavaScript(
+              `window.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ type: 'AUDIO_TRANSCRIPT_RESULT', payload: { transcript: '', error: 'Recording file not found' } }) })); true;`
+            );
+            return;
+          }
+
+          // ── Read audio as base64 using expo-file-system (works for file:// URIs) ──
+          const base64Audio = await FileSystem.readAsStringAsync(uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+
+          // ── Build multipart FormData for Whisper API ──
+          // React Native fetch supports multipart with uri-based file objects
+          const filename = Platform.OS === 'ios' ? 'recording.m4a' : 'recording.m4a';
+          const mimeType = 'audio/m4a';
+
+          const formData = new FormData();
+          formData.append('file', {
+            uri,
+            name: filename,
+            type: mimeType,
+          } as any);
+          formData.append('model', 'whisper-1');
+          formData.append('language', 'en');
+
+          // ── Get auth token (use cached ref or fall back to supabase session) ──
+          let authToken = accessTokenRef.current;
+          if (!authToken) {
+            const { data: sessionData } = await supabase.auth.getSession();
+            authToken = sessionData.session?.access_token || null;
+          }
+
+          // ── Call Whisper transcription API directly from native ──
+          const whisperRes = await fetch('https://debugtodeploy.com/api/openai-proxy?path=v1/audio/transcriptions', {
+            method: 'POST',
+            headers: {
+              ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+            },
+            body: formData,
+          });
+
+          if (!whisperRes.ok) {
+            const errText = await whisperRes.text();
+            throw new Error(`Whisper API error ${whisperRes.status}: ${errText.slice(0, 120)}`);
+          }
+
+          const whisperData = await whisperRes.json();
+          const transcript = (whisperData.text || '').trim();
+
+          // ── Inject only the plain transcript text back — no base64 over the bridge ──
+          const safeTranscript = transcript
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'");
+          webViewRef.current?.injectJavaScript(
+            `window.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ type: 'AUDIO_TRANSCRIPT_RESULT', payload: { transcript: '${safeTranscript}' } }) })); true;`
+          );
+
+          // Clean up temp recording file
+          await FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});
+
+        } catch (err: any) {
+          console.warn('Native recording stop error:', err);
+          const safeMsg = String(err?.message || 'Recording failed')
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'");
+          webViewRef.current?.injectJavaScript(
+            `window.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ type: 'AUDIO_TRANSCRIPT_RESULT', payload: { transcript: '', error: '${safeMsg}' } }) })); true;`
+          );
         }
       }
     } catch (err) {
@@ -199,6 +311,9 @@ export default function App() {
         bounces={false}
         androidLayerType="hardware"
         mediaPlaybackRequiresUserAction={false}
+        allowsProtectedMedia={true}
+        // @ts-ignore - mediaCapturePermissionGrantType is Android-specific
+        mediaCapturePermissionGrantType="grant"
         // @ts-ignore - onPermissionRequest typing is sometimes missing in older RN webview versions but works at runtime
         onPermissionRequest={(request: any) => {
           // Explicitly grant resources requested by the WebView for our domain or dev/preview environments
@@ -237,6 +352,18 @@ export default function App() {
             document.body.style.overflowX = 'hidden';
             // Prevent double-tap zoom on iOS
             document.addEventListener('dblclick', function(e) { e.preventDefault(); }, { passive: false });
+            // Guard: if getUserMedia is not available (Android WebView sandbox), flag it so
+            // the app-level bridge handler can take over instead of crashing silently.
+            if (typeof navigator !== 'undefined' && !navigator.mediaDevices) {
+              Object.defineProperty(navigator, 'mediaDevices', {
+                value: {
+                  getUserMedia: function() {
+                    return Promise.reject(new DOMException('getUserMedia not available in this WebView — using native bridge', 'NotAllowedError'));
+                  }
+                },
+                writable: false
+              });
+            }
           })();
           true;
         `}
