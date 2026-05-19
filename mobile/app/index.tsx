@@ -161,15 +161,25 @@ export default function App() {
         await registerForPushNotificationsAsync();
       } else if (data.type === 'SPEECH_SPEAK') {
         const { text } = data.payload;
-        Speech.stop().then(() => {
-          Speech.speak(text, {
-            language: 'en-US',
-            rate: 0.95,
-            pitch: 1.0,
-          });
-        }).catch(err => console.warn('Native speech error:', err));
+        try {
+          await Speech.stop();
+          // Short delay to allow native TTS engine to reset and prevent race condition silence
+          setTimeout(() => {
+            Speech.speak(text, {
+              language: 'en-US',
+              rate: 0.95,
+              pitch: 1.0,
+            });
+          }, 150);
+        } catch (err) {
+          console.warn('Native speech error:', err);
+        }
       } else if (data.type === 'SPEECH_CANCEL') {
-        Speech.stop().catch(err => console.warn('Native speech stop error:', err));
+        try {
+          await Speech.stop();
+        } catch (err) {
+          console.warn('Native speech stop error:', err);
+        }
       }
     } catch (err) {
       console.warn('WebView Bridge Error:', err);
