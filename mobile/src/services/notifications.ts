@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { Platform } from 'react-native';
+import { Platform, Linking } from 'react-native';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
@@ -11,6 +11,18 @@ Notifications.setNotificationHandler({
     shouldPlaySound: true,
     shouldSetBadge: false,
   } as any),
+});
+
+// FIX NOTIF-001: Handle notification taps — open deep link or app home
+Notifications.addNotificationResponseReceivedListener((response) => {
+  const data = response.notification.request.content.data as Record<string, string>;
+  const url = data?.url;
+  if (url) {
+    Linking.openURL(url).catch(() => {});
+  } else {
+    // Default: open the app (already in foreground or brings to front)
+    Linking.openURL('https://debugtodeploy.com').catch(() => {});
+  }
 });
 
 const ENGAGEMENT_MESSAGES = [
@@ -103,6 +115,9 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
   }
 
   if (finalStatus === 'granted') {
+    // Force immediate local notifications scheduling on fresh permission grant
+    await setupDailyEngagementNotifications(true);
+
     // Send a welcome notification if they haven't received it yet on this device
     const welcomeSent = await AsyncStorage.getItem('dtd_welcome_sent');
     if (!welcomeSent) {
@@ -162,11 +177,11 @@ export async function sendLocalNotification(title: string, body: string) {
   });
 }
 
-export async function setupDailyEngagementNotifications() {
+export async function setupDailyEngagementNotifications(force = false) {
   const lastScheduled = await AsyncStorage.getItem('dtd_last_notification_sync');
   const now = Date.now();
   
-  if (lastScheduled) {
+  if (lastScheduled && !force) {
     const hoursSinceLastSync = (now - parseInt(lastScheduled)) / (1000 * 60 * 60);
     if (hoursSinceLastSync < 6) return; // Only re-sync every 6 hours
   }

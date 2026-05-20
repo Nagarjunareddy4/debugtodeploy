@@ -74,6 +74,50 @@
     pointer-events: none;
   }
 
+  /* Premium Glow Hover Effects */
+  .hover-glow-blue {
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .hover-glow-blue:hover {
+    box-shadow: 0 0 30px rgba(147, 197, 253, 0.25);
+    border-color: rgba(147, 197, 253, 0.6) !important;
+    transform: translateY(-4px) scale(1.01);
+  }
+  
+  .hover-glow-purple {
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .hover-glow-purple:hover {
+    box-shadow: 0 0 30px rgba(240, 171, 252, 0.25);
+    border-color: rgba(240, 171, 252, 0.6) !important;
+    transform: translateY(-4px) scale(1.01);
+  }
+  
+  .hover-glow-orange {
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .hover-glow-orange:hover {
+    box-shadow: 0 0 30px rgba(251, 146, 60, 0.25);
+    border-color: rgba(251, 146, 60, 0.6) !important;
+    transform: translateY(-4px) scale(1.01);
+  }
+  
+  .hover-glow-green {
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .hover-glow-green:hover {
+    box-shadow: 0 0 30px rgba(134, 239, 172, 0.25);
+    border-color: rgba(134, 239, 172, 0.6) !important;
+    transform: translateY(-4px) scale(1.01);
+  }
+
+  .premium-bg-mesh {
+    background-image: 
+      radial-gradient(circle at 10% 20%, rgba(147, 197, 253, 0.08), transparent 30%),
+      radial-gradient(circle at 90% 80%, rgba(240, 171, 252, 0.08), transparent 30%),
+      radial-gradient(circle at 50% 50%, rgba(251, 146, 60, 0.05), transparent 40%);
+  }
+
   .magnetic-float {
     @apply transition-transform duration-300 ease-out;
   }

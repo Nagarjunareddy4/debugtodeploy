@@ -460,13 +460,13 @@ export default function Auth() {
                       onClick={() => signInWithSocial('google')}
                       disabled={loading}
                       className={cn(
-                        "flex items-center justify-center gap-3 px-6 py-4 border-2 rounded-3xl text-sm font-black uppercase tracking-widest transition-all",
+                        "flex items-center justify-center gap-3 px-6 py-4 border-2 rounded-3xl text-sm font-black uppercase tracking-widest transition-all hover-glow-blue",
                         loading 
                           ? "opacity-50 cursor-not-allowed text-text-dim/30" 
                           : "bg-surface border-border hover:border-soft-blue/30 cursor-pointer text-text-main"
                       )}
                     >
-                      <Chrome className="w-5 h-5 text-soft-blue" /> Google
+                      <Chrome className="w-5 h-5 text-soft-blue animate-pulse" /> Google
                     </motion.button>
                     <motion.button
                       whileHover={{ y: -4, backgroundColor: "rgba(255,255,255,0.05)" }}
@@ -474,13 +474,13 @@ export default function Auth() {
                       onClick={() => signInWithSocial('github')}
                       disabled={loading}
                       className={cn(
-                        "flex items-center justify-center gap-3 px-6 py-4 border-2 rounded-3xl text-sm font-black uppercase tracking-widest transition-all",
+                        "flex items-center justify-center gap-3 px-6 py-4 border-2 rounded-3xl text-sm font-black uppercase tracking-widest transition-all hover-glow-purple",
                         loading 
                           ? "opacity-50 cursor-not-allowed text-text-dim/30" 
                           : "bg-surface border-border hover:border-soft-purple/30 cursor-pointer text-text-main"
                       )}
                     >
-                      <Github className="w-5 h-5 text-soft-purple" /> GitHub
+                      <Github className="w-5 h-5 text-soft-purple animate-pulse" /> GitHub
                     </motion.button>
                   </div>
 

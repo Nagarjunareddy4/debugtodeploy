@@ -259,10 +259,14 @@ export default function Dashboard() {
 
     setIsSearching(true);
     setAiResponse(null);
+    // FIX API-001: 15-second timeout prevents indefinite loading states
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch('/api/openai-proxy?path=v1/chat/completions', {
         method: 'POST',
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
           ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
@@ -300,8 +304,13 @@ export default function Dashboard() {
       const note = (isPro && remaining === Infinity) ? '' : ` (${remaining} search${remaining !== 1 ? 'es' : ''} left today)`;
       setAiResponse((data.choices?.[0]?.message?.content || 'No response generated.') + note);
     } catch (err: any) {
-      setAiResponse(`Search failed: ${err.message || 'Verify your OpenAI API key in Settings.'}`);
+      if (err.name === 'AbortError') {
+        setAiResponse('Search timed out. The AI is taking too long — please try again.');
+      } else {
+        setAiResponse(`Search failed: ${err.message || 'Verify your OpenAI API key in Settings.'}`);
+      }
     } finally {
+      clearTimeout(timeoutId);
       setIsSearching(false);
     }
   };
@@ -685,7 +694,7 @@ export default function Dashboard() {
       {/* Personalized Growth Section */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* AI Insights Card */}
-        <div className="playful-card bg-surface border-4 border-soft-blue/20 flex flex-col gap-6 relative overflow-hidden">
+        <div className="playful-card bg-surface border-4 border-soft-blue/20 hover-glow-blue flex flex-col gap-6 relative overflow-hidden">
           <div className="absolute top-0 right-0 p-6 opacity-5">
             <Brain className="w-20 h-20 text-soft-blue" />
           </div>
@@ -716,7 +725,7 @@ export default function Dashboard() {
         </div>
 
         {/* Recommended Certifications */}
-        <div className="playful-card bg-surface border-4 border-soft-purple/20 flex flex-col gap-6">
+        <div className="playful-card bg-surface border-4 border-soft-purple/20 hover-glow-purple flex flex-col gap-6">
            <div className="flex items-center gap-3">
              <div className="w-10 h-10 rounded-xl bg-soft-purple/10 flex items-center justify-center text-soft-purple">
                 <Trophy className="w-5 h-5" />

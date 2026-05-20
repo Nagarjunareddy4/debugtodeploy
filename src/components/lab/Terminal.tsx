@@ -201,7 +201,7 @@ export default function Terminal({
     setHistory(prev => [...prev, ...lines]);
   }, []);
 
-  const callAI = async (prompt: string): Promise<string> => {
+  const callAI = async (prompt: string, systemPrompt?: string): Promise<string> => {
     const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch('/api/openai-proxy?path=v1/chat/completions', {
       method: 'POST',
@@ -214,7 +214,7 @@ export default function Terminal({
         messages: [
           {
             role: 'system',
-            content: `You are a DevOps terminal assistant running inside a Kubernetes lab environment.
+            content: systemPrompt || `You are a DevOps terminal assistant running inside a Kubernetes lab environment.
 Lab context: ${currentLab?.title || 'General DevOps Lab'}
 Current YAML in editor:
 \`\`\`yaml
@@ -224,8 +224,8 @@ Give SHORT, precise, terminal-style answers (under 120 words). Use bullet points
           },
           { role: 'user', content: prompt },
         ],
-        max_tokens: 250,
-        temperature: 0.4,
+        max_tokens: 350,
+        temperature: 0.2,
       }),
     });
     const data = await res.json();
@@ -377,11 +377,39 @@ Give SHORT, precise, terminal-style answers (under 120 words). Use bullet points
       return;
     }
 
-    // ── Unknown ──
-    append([
-      mkLine('error',  `command not found: ${raw.split(' ')[0]}`),
-      mkLine('info',   'Type "help" to see available commands'),
-    ]);
+    // ── Dynamic AI Simulation ──
+    setAiLoading(true);
+    try {
+      const systemPrompt = `You are a real Linux Bash / Kubernetes terminal simulator running on an Ubuntu worker node.
+The current workspace directory is /home/ubuntu/lab-workspace.
+The active manifest.yaml is:
+\`\`\`yaml
+${currentCode || '(empty)'}
+\`\`\`
+The user typed the command: "${raw}".
+Execute the command and return ONLY the raw terminal standard output or standard error (stdout/stderr) of this command. Do NOT wrap it in markdown code blocks, do NOT write explanations, do NOT be conversational. Return exactly what a Linux terminal would print.`;
+      
+      const answer = await callAI(`Execute command: "${raw}"`, systemPrompt);
+      setAiLoading(false);
+      
+      const lines = answer.split('\n');
+      append(lines.map(line => {
+        const lower = line.toLowerCase();
+        if (lower.includes('error:') || lower.includes('failed:') || lower.includes('crash') || lower.includes('backoff')) {
+          return mkLine('error', line);
+        }
+        if (lower.includes('success') || lower.includes('successfully') || lower.includes('ready') || lower.includes('configured')) {
+          return mkLine('success', line);
+        }
+        return mkLine('output', line);
+      }));
+    } catch {
+      setAiLoading(false);
+      append([
+        mkLine('error',  `command not found: ${raw.split(' ')[0]}`),
+        mkLine('info',   'Type "help" to see available commands'),
+      ]);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

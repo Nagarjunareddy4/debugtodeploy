@@ -63,19 +63,48 @@ export default function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
-        // Force navigation to reset password and bypass normal auth checks temporarily
-        window.location.hash = ''; // Clear hash just in case
+        window.location.hash = '';
         window.history.replaceState({}, document.title, '/reset-password');
-        setSession(session); // We need the session to update the password
+        setSession(session);
         setLoading(false);
         return;
       }
+
+      // FIX AUTH-001: Save consent for OAuth users (Google/GitHub) who bypass the signup form.
+      // Email signups call saveUserConsent() directly in Auth.tsx — OAuth users do not.
+      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
+        const provider = session.user.app_metadata?.provider;
+        const isSocialLogin = provider === 'google' || provider === 'github';
+        if (isSocialLogin) {
+          try {
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('accepted_terms')
+              .eq('id', session.user.id)
+              .single();
+            if (!prof?.accepted_terms) {
+              const { saveUserConsent } = await import('./lib/consent');
+              await saveUserConsent(session.user.id);
+            }
+          } catch (err) {
+            console.warn('OAuth consent save failed (non-critical):', err);
+          }
+        }
+      }
+
       checkSession(session);
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 1200);
+    return () => clearTimeout(timer);
   }, []);
 
   const checkSession = async (session: any) => {
@@ -107,19 +136,46 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isGenerating]);
 
-  // WEB-TO-MOBILE BRIDGE
+  // FIX BUG-008: Auth bridge polling — always return a cleanup function
+  // so the interval is cleared on unmount regardless of which branch runs.
   useEffect(() => {
-    if (session?.user && (window as any).ReactNativeWebView) {
-      (window as any).ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'AUTH_STATE_SYNC',
-        payload: {
-          id: session.user.id,
-          access_token: session.access_token,
-          refresh_token: session.refresh_token
-        }
-      }));
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const sendAuthSync = () => {
+      if (session?.user && (window as any).ReactNativeWebView) {
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'AUTH_STATE_SYNC',
+          payload: {
+            id: session.user.id,
+            access_token: session.access_token,
+            refresh_token: session.refresh_token
+          }
+        }));
+        return true;
+      }
+      return false;
+    };
+
+    if (session?.user) {
+      if (!sendAuthSync()) {
+        // Poll every 250ms for up to 5 seconds to catch the injected bridge
+        let attempts = 0;
+        intervalId = setInterval(() => {
+          attempts++;
+          if (sendAuthSync() || attempts > 20) {
+            if (intervalId) clearInterval(intervalId);
+            intervalId = null;
+          }
+        }, 250);
+      }
     }
+
+    // Always clean up — prevents memory leak on unmount or session change
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [session]);
+
 
   const syncProfile = async (user: any) => {
     try {
@@ -240,9 +296,8 @@ export default function App() {
 
   return (
     <>
-      {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
-      {!showSplash && (
-        isGenerating ? (
+      <div className={cn("flex-1 w-full transition-opacity duration-300", loading ? "opacity-0" : "opacity-100")}>
+        {isGenerating ? (
           <GenerationScreen />
         ) : (
           <Router>
@@ -321,8 +376,14 @@ export default function App() {
               }} 
             />
           </Router>
-        )
-      )}
+        )}
+      </div>
+
+      <AnimatePresence>
+        {showSplash && (
+          <SplashScreen key="splash-screen" />
+        )}
+      </AnimatePresence>
     </>
   );
 }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Check, X } from 'lucide-react';
-import { QuizQuestion } from '../lib/quizData';
+import { QuizQuestion } from '../../lib/quizData';
 
 interface FlipCardProps {
   question: QuizQuestion;
@@ -39,7 +39,7 @@ export default function FlipCard({
     }
   };
 
-  const containerVariants = {
+  const containerVariants: any = {
     hidden: { opacity: 0, x: 100 },
     visible: { 
       opacity: 1, 
