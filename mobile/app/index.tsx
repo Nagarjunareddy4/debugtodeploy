@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { StyleSheet, BackHandler, Platform, Animated, Easing, AppState, PermissionsAndroid } from 'react-native';
+import { StyleSheet, BackHandler, Platform, Animated, Easing, AppState, PermissionsAndroid, View, Text, TouchableOpacity } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -231,7 +231,7 @@ export default function App() {
 
           // ── Read audio as base64 using expo-file-system (works for file:// URIs) ──
           const base64Audio = await FileSystem.readAsStringAsync(uri, {
-            encoding: FileSystem.EncodingType.Base64,
+            encoding: 'base64',
           });
 
           // ── Build multipart FormData for Whisper API ──
@@ -332,8 +332,8 @@ export default function App() {
             request.deny();
           }
         }}
-        originWhitelist={['*']}
-        mixedContentMode="always"
+        originWhitelist={['https://debugtodeploy.com', 'https://*.vercel.app', 'http://localhost:*', 'http://10.0.2.2:*', 'http://192.168.*']}
+        mixedContentMode="never"
         scalesPageToFit={false}
         injectedJavaScript={`
           (function() {
@@ -401,8 +401,23 @@ export default function App() {
 
       {/* Error overlay - shown when WebView fails to load */}
       {hasError && animationDone && (
-        <Animated.View style={styles.errorContainer} pointerEvents="box-none">
-        </Animated.View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorTitle}>Connection Failed</Text>
+          <Text style={styles.errorBody}>
+            Unable to reach DebugToDeploy.{`\n`}Check your internet connection and try again.
+          </Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              setHasError(false);
+              webViewRef.current?.reload();
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -441,5 +456,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 5,
+    paddingHorizontal: 32,
+  },
+  errorIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  errorTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '900',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorBody: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+  },
+  retryButton: {
+    backgroundColor: '#00D2FF',
+    paddingHorizontal: 40,
+    paddingVertical: 14,
+    borderRadius: 50,
+  },
+  retryText: {
+    color: '#000000',
+    fontWeight: '900',
+    fontSize: 14,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
 });

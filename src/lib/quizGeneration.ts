@@ -364,7 +364,7 @@ export async function getQuestionStats(): Promise<{
   try {
     const { data: questions, error } = await supabase
       .from('generated_quiz_questions')
-      .select('category, difficulty');
+      .select('id, category, difficulty');
 
     if (error) throw error;
 

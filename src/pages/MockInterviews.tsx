@@ -71,12 +71,15 @@ export default function MockInterviews() {
   const [userAnswer, setUserAnswer] = useState('');
   const [weaknessAnalysis, setWeaknessAnalysis] = useState<string | null>(null);
   const [isGeneratingWeakness, setIsGeneratingWeakness] = useState(false);
+  const [recordingUrls, setRecordingUrls] = useState<Record<number, string>>({});
 
-  // Refs for MediaRecorder-based recording
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  // FIX INT-001: Ref to hold the latest getAiFeedback callback,
+  // preventing stale closures in the native bridge message listener.
+  const getAiFeedbackRef = useRef<(transcript: string) => void>(() => {});
 
   useEffect(() => {
     const fetchAndSubscribe = async () => {
@@ -337,6 +340,8 @@ export default function MockInterviews() {
           setIsTranscribing(false);
           return;
         }
+        const url = URL.createObjectURL(blob);
+        setRecordingUrls(prev => ({ ...prev, [currentQuestion]: url }));
         await transcribeAudioBlob(blob, mimeType);
       };
 
@@ -400,8 +405,16 @@ export default function MockInterviews() {
     }
   };
 
+  // FIX INT-001: Always keep the ref pointing at the latest version of getAiFeedback
+  // so the stable bridge listener below always calls the freshest copy.
+  useEffect(() => {
+    getAiFeedbackRef.current = getAiFeedback;
+  });
+
   // Listen for native bridge transcript result (AUDIO_TRANSCRIPT_RESULT posted from React Native)
   // The native side records with expo-av, calls Whisper directly, and sends back plain text.
+  // Uses a ref pattern so the event listener is registered only ONCE (empty deps),
+  // eliminating stale closure issues and duplicate listener accumulation.
   useEffect(() => {
     const handleNativeMessage = async (event: MessageEvent) => {
       try {
@@ -415,13 +428,14 @@ export default function MockInterviews() {
           }
           setAudioTranscript(transcript);
           setUserAnswer(transcript);
-          getAiFeedback(transcript);
+          // Call via ref — always uses the latest version with no stale captures
+          getAiFeedbackRef.current(transcript);
         }
       } catch { /* ignore non-JSON messages */ }
     };
     window.addEventListener('message', handleNativeMessage);
     return () => window.removeEventListener('message', handleNativeMessage);
-  }, [currentQuestion, sessionQuestions, mode, userAnswer, history, completedQuestions, selectedScenario, interviewScenarios, isPro]);
+  }, []); // Empty deps — safe because getAiFeedback is accessed via ref
 
   const markComplete = () => {
     setCompletedQuestions(prev => new Set([...prev, currentQuestion]));
@@ -980,8 +994,8 @@ Be specific, constructive, and encouraging.`;
 
                       {/* Transcript — shown after Whisper returns */}
                       {audioTranscript && (
-                        <div className="bg-surface border-2 border-border/50 rounded-2xl p-4 text-left">
-                          <div className="flex items-center justify-between mb-2">
+                        <div className="bg-surface border-2 border-border/50 rounded-2xl p-4 text-left space-y-3">
+                          <div className="flex items-center justify-between">
                             <p className="text-[10px] font-black uppercase tracking-widest text-text-dim">
                               Your Recorded Answer
                             </p>
@@ -990,6 +1004,14 @@ Be specific, constructive, and encouraging.`;
                             </span>
                           </div>
                           <p className="text-sm font-bold text-text-main leading-relaxed italic">"{audioTranscript}"</p>
+                          {recordingUrls[currentQuestion] && (
+                            <div className="pt-3 border-t border-border/50 flex flex-col gap-1.5">
+                              <p className="text-[9px] font-black uppercase tracking-widest text-text-dim">
+                                👂 Listen to Your Recorded Audio
+                              </p>
+                              <audio src={recordingUrls[currentQuestion]} controls className="w-full h-8 rounded-lg" />
+                            </div>
+                          )}
                         </div>
                       )}
 

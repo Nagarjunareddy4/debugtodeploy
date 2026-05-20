@@ -57,6 +57,7 @@ export interface Curriculum {
 }
 
 export interface ResumeData {
+  title?: string;
   summary: string;
   technicalSkills: {
     category: string;
