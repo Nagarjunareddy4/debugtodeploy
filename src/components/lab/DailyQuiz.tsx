@@ -296,7 +296,7 @@ export default function DailyQuiz({ userId, onComplete }: DailyQuizProps) {
   // Quiz in progress or already completed today
   if (hasCompletedToday) {
     return (
-      <div className="max-w-2xl mx-auto text-center py-12">
+      <div className="w-full max-w-2xl mx-auto text-center py-12">
         <div className="space-y-6">
           <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-3xl flex items-center justify-center mx-auto">
             <Trophy className="w-8 h-8 text-white" />
@@ -326,7 +326,7 @@ export default function DailyQuiz({ userId, onComplete }: DailyQuizProps) {
 
   // Active quiz
   return (
-    <div className="w-full py-4 sm:py-8 px-4 sm:px-0">
+    <div className="w-full max-w-2xl mx-auto py-4 sm:py-8 px-4 sm:px-0">
       <AnimatePresence mode="wait">
         <div key={`card-${currentCardIndex}`}>
           <FlipCard
