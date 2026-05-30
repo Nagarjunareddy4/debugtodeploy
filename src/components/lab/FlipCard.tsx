@@ -64,7 +64,7 @@ export default function FlipCard({
       initial="hidden"
       animate="visible"
       exit="exit"
-      className="w-full max-w-2xl mx-auto"
+      className="w-full max-w-[480px] mx-auto perspective-1000 group"
     >
       {/* Lock Overlay */}
       {isLocked && (
@@ -99,19 +99,22 @@ export default function FlipCard({
       {/* Main Card */}
       <motion.div
         animate={flipVariants[isFlipped ? 'back' : 'front']}
+        whileHover={{ scale: 1.02, rotateX: 2, rotateY: -2 }}
         transition={{ duration: 0.6, type: "spring", stiffness: 260, damping: 20 }}
-        style={{ perspective: '1000px' }}
+        style={{ perspective: '1000px', transformStyle: 'preserve-3d' }}
         className="relative w-full"
       >
         <div
-          className={`relative rounded-3xl p-4 sm:p-6 min-h-[320px] sm:min-h-[400px] flex flex-col justify-between transition-all ${
+          className={`relative rounded-[1.5rem] p-6 min-h-[300px] flex flex-col justify-between transition-all duration-500 ${
             isCorrect === null
-              ? 'bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700'
+              ? 'bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-700'
               : isCorrect
-              ? 'bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600'
-              : 'bg-gradient-to-br from-red-500 via-red-600 to-red-700'
-          } shadow-xl text-white`}
+              ? 'bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-700'
+              : 'bg-gradient-to-br from-red-500 via-red-600 to-red-800'
+          } shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] group-hover:shadow-[0_30px_60px_-15px_rgba(0,212,255,0.4)] text-white border border-white/20`}
         >
+          {/* Shine effect overlay */}
+          <div className="absolute inset-0 rounded-[1.5rem] bg-gradient-to-tr from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
           {/* Front Side */}
           {!isFlipped && (
             <motion.div
@@ -141,7 +144,7 @@ export default function FlipCard({
                     {question.difficulty.toUpperCase()}
                   </span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-black leading-tight">
+                <h2 className="text-xl sm:text-2xl font-black leading-tight">
                   {question.question}
                 </h2>
               </motion.div>
@@ -157,10 +160,10 @@ export default function FlipCard({
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handleSelectAnswer(index)}
-                    className={`w-full p-4 rounded-2xl font-semibold text-left transition-all ${
+                    className={`w-full p-3 sm:p-4 rounded-xl font-semibold text-left transition-all ${
                       selectedAnswer === index
-                        ? 'bg-white/30 backdrop-blur border-2 border-white scale-105 shadow-lg'
-                        : 'bg-white/10 backdrop-blur border-2 border-transparent hover:bg-white/15 hover:shadow'
+                        ? 'bg-white/30 backdrop-blur border-2 border-white scale-[1.02] shadow-[0_8px_16px_rgba(0,0,0,0.2)]'
+                        : 'bg-white/10 backdrop-blur border-2 border-transparent hover:bg-white/20 hover:scale-[1.01] hover:shadow'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -179,7 +182,7 @@ export default function FlipCard({
                           />
                         )}
                       </div>
-                      <span className="text-[15px] sm:text-base leading-snug">{option}</span>
+                      <span className="text-[13px] sm:text-sm leading-snug">{option}</span>
                     </div>
                   </motion.button>
                 ))}
@@ -259,7 +262,7 @@ export default function FlipCard({
                 <p className="font-bold text-xs uppercase tracking-wider mb-1 opacity-75">
                   Explanation
                 </p>
-                <p className="text-white/95 leading-relaxed text-sm sm:text-base">
+                <p className="text-white/95 leading-relaxed text-sm sm:text-lg">
                   {isCorrect ? question.explanation : question.wrongExplanation}
                 </p>
               </motion.div>
