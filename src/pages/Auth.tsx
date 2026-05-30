@@ -825,7 +825,7 @@ export default function Auth() {
         className="fixed bottom-6 text-center space-y-1 z-10 hidden md:block"
       >
         <p className="text-[8px] text-text-dim/30 font-bold tracking-[0.4em] uppercase">
-          SECURE TRANSIT ACTIVE · © {new Date().getFullYear()} Nagarjuna Reddy Annapureddy · DEBUGTODEPLOY V1.0
+          SECURE TRANSIT ACTIVE · © {new Date().getFullYear()} DebugToDeploy | Nagarjunareddy · DEBUGTODEPLOY V1.0
         </p>
       </motion.div>
     </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Rocket, Brain, Zap, ShieldCheck, Terminal as TerminalIcon, 
   Map, CheckCircle2, ChevronRight, Star, ArrowRight,
@@ -10,12 +10,13 @@ import LandingNavbar from '../components/layout/LandingNavbar';
 import AuthModal from '../components/layout/AuthModal';
 import { RoadmapBadge3D } from '../components/ui/RoadmapBadge3D';
 import { cn, useMeta } from '../lib/utils';
+import { Logo } from '../components/ui/Logo';
 
 export default function Landing({ session }: { session: any }) {
   useMeta(
     'DebugToDeploy | Master DevOps & Cloud Engineering', 
     'DebugToDeploy is the AI-powered career accelerator for DevOps engineers. Master Kubernetes, AWS, and Terraform with personalized roadmaps and live cloud labs.',
-    '/dashboard-mockup.png'
+    '/og-image.png'
   );
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -27,38 +28,58 @@ export default function Landing({ session }: { session: any }) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-brand-bg text-text-main overflow-x-hidden">
+    <div className="min-h-screen w-full bg-brand-bg text-text-main overflow-x-hidden relative">
       <LandingNavbar onAuthClick={() => openAuth('login')} session={session} />
       
       {/* Hero Section */}
-      <section className="relative w-full pt-32 pb-20 px-6 overflow-hidden flex justify-center">
-        {/* Animated Background Blobs */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-[10%] left-[10%] w-[40%] h-[40%] bg-soft-blue/5 rounded-full blur-[120px] animate-pulse" />
-          <div className="absolute bottom-[10%] right-[10%] w-[50%] h-[50%] bg-soft-purple/5 rounded-full blur-[120px] animate-pulse delay-700" />
+      <section className="relative w-full pt-36 pb-20 px-6 overflow-hidden flex justify-center items-center">
+        {/* Animated Background Blobs & Floating Lights */}
+        <div className="absolute inset-0 pointer-events-none z-0">
+          <motion.div 
+            animate={{ 
+              scale: [1, 1.2, 1],
+              opacity: [0.15, 0.25, 0.15],
+              x: [0, 40, 0],
+              y: [0, -40, 0]
+            }}
+            transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute top-[8%] left-[12%] w-[45%] h-[45%] bg-neon-cyan/20 rounded-full blur-[140px]" 
+          />
+          <motion.div 
+            animate={{ 
+              scale: [1.1, 0.9, 1.1],
+              opacity: [0.12, 0.22, 0.12],
+              x: [0, -50, 0],
+              y: [0, 50, 0]
+            }}
+            transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+            className="absolute bottom-[8%] right-[12%] w-[50%] h-[50%] bg-neon-purple/20 rounded-full blur-[150px]" 
+          />
+          <div className="absolute top-1/3 right-1/4 w-[350px] h-[350px] bg-neon-green/8 rounded-full blur-[120px] animate-pulse" />
         </div>
 
-        <div className="max-w-7xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center w-full">
+        <div className="max-w-7xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center w-full">
           <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-soft-blue/10 border border-soft-blue/20 mb-8"
+              transition={{ duration: 0.6 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel border border-neon-cyan/20 mb-8 bg-surface/40 hover:border-neon-cyan/40 transition-colors"
             >
-              <Sparkles className="w-4 h-4 text-soft-blue" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-soft-blue">
+              <Sparkles className="w-4 h-4 text-neon-cyan animate-neon-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-neon-cyan">
                 The AI-Powered DevOps Career Accelerator
               </span>
             </motion.div>
 
             <motion.h1
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 25 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-4xl sm:text-5xl md:text-7xl font-black italic tracking-tight mb-8 leading-[1.1] md:leading-[0.9]"
+              transition={{ delay: 0.1, duration: 0.6 }}
+              className="text-4xl sm:text-5xl md:text-7xl font-black italic tracking-tight mb-8 leading-[1.05]"
             >
-              DebugToDeploy: <br className="hidden md:block" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-soft-blue to-soft-purple">
+              DebugToDeploy:<br />
+              <span className="text-neon-gradient">
                 Accelerator
               </span>
             </motion.h1>
@@ -66,44 +87,48 @@ export default function Landing({ session }: { session: any }) {
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-lg text-text-dim font-bold max-w-xl mb-12 leading-relaxed"
+              transition={{ delay: 0.2, duration: 0.6 }}
+              className="text-lg text-text-dim font-bold max-w-xl mb-10 leading-relaxed"
             >
               Bridge the gap between theoretical knowledge and production expertise. 
               Build real-world infrastructure, fix complex cluster issues, and showcase 
-              your verified skills with a professional engineering portfolio.
+              your verified skills with a professional SRE portfolio.
             </motion.p>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
+              transition={{ delay: 0.3, duration: 0.6 }}
               className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto"
             >
-              <button
+              <motion.button
                 onClick={() => openAuth('signup')}
-                className="btn-pill bg-text-main text-surface px-10 py-5 text-sm uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-soft-blue transition-colors group"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="btn-pill btn-neon-primary px-10 py-5 text-xs tracking-widest flex items-center justify-center gap-2 group"
               >
-                Start Free Journey <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-              <a
+                Start Free Journey <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </motion.button>
+              <motion.a
                 href="#labs"
-                className="btn-pill bg-surface border-4 border-border px-10 py-5 text-sm uppercase tracking-widest flex items-center justify-center gap-2 hover:border-soft-blue transition-colors"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="btn-pill btn-ghost px-10 py-5 text-xs tracking-widest flex items-center justify-center gap-2"
               >
                 Explore Labs
-              </a>
+              </motion.a>
             </motion.div>
 
-            {/* Social Proof */}
+            {/* Social Proof with Premium Glass Avatars */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
+              transition={{ delay: 0.5, duration: 0.8 }}
               className="mt-16 flex flex-col lg:flex-row items-center gap-4"
             >
               <div className="flex -space-x-3">
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="w-10 h-10 rounded-full border-4 border-brand-bg bg-surface flex items-center justify-center text-[10px] font-black shadow-lg">
+                  <div key={i} className="w-10 h-10 rounded-full border-2 border-neon-cyan/30 glass-panel bg-surface/80 flex items-center justify-center text-[10px] font-black shadow-lg">
                     U{i}
                   </div>
                 ))}
@@ -114,39 +139,61 @@ export default function Landing({ session }: { session: any }) {
             </motion.div>
           </div>
 
+          {/* Interactive 3D Mockup Container */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.8, rotate: 5 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0 }}
-            transition={{ delay: 0.2, type: 'spring', damping: 15 }}
-            className="relative hidden lg:block"
+            initial={{ opacity: 0, scale: 0.9, rotateY: 10 }}
+            animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+            transition={{ delay: 0.25, type: 'spring', damping: 15 }}
+            className="relative hidden lg:block perspective-1000 z-10"
+            style={{ transformStyle: 'preserve-3d' }}
           >
-            <div className="absolute inset-0 bg-soft-blue/20 blur-[100px] rounded-full animate-pulse" />
-            <img 
-              src="/hero-3d.png" 
-              alt="DevOps 3D Illustration" 
-              className="relative z-10 w-full h-auto drop-shadow-3xl hover:scale-105 transition-transform duration-700"
-            />
+            <div className="absolute inset-0 bg-neon-cyan/15 blur-[120px] rounded-full animate-pulse-glow pointer-events-none" />
+            <motion.div
+              animate={{ y: [0, -12, 0] }}
+              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+              className="relative z-10 w-full"
+            >
+              <div className="glass-panel rounded-3xl p-3 border border-white/10 shadow-2xl relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-tr from-neon-cyan/5 via-transparent to-neon-purple/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                <img 
+                  src="/dashboard-mockup.png" 
+                  alt="DevOps 3D Dashboard Mockup" 
+                  className="rounded-2xl w-full h-auto object-cover shadow-inner transition-transform duration-700 group-hover:scale-[1.01]"
+                  onError={(e) => {
+                    // Fallback to og-image.png if mockup isn't present
+                    e.currentTarget.src = '/og-image.png';
+                  }}
+                />
+                
+                {/* Floating active users counter badge */}
+                <div className="absolute -top-5 -right-5 glass-panel border border-neon-cyan/30 px-4 py-2.5 rounded-2xl rotate-[6deg] shadow-2xl flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-neon-green animate-blink" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-text-main">342 Online Now</span>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         </div>
       </section>
 
-      {/* App Download Section */}
-      <section className="w-full py-20 md:py-32 px-6 flex justify-center">
+      {/* App Download Section (Redesigned with Premium Glassmorphism) */}
+      <section className="w-full py-24 px-6 flex justify-center">
         <div className="max-w-7xl mx-auto w-full">
-          <div className="playful-card border-4 border-soft-blue/30 bg-gradient-to-br from-soft-blue/10 to-soft-purple/10 p-12 md:p-16 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-soft-blue/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+          <div className="glass-panel border border-neon-cyan/20 bg-gradient-to-br from-neon-cyan/5 to-neon-purple/5 p-8 md:p-16 rounded-[2.5rem] relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-neon-cyan/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-neon-purple/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none" />
             
             <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
               <div className="space-y-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-soft-blue/20 flex items-center justify-center border-2 border-soft-blue">
-                    <Smartphone className="w-6 h-6 text-soft-blue" />
+                  <div className="w-12 h-12 rounded-2xl glass-panel border border-neon-cyan/30 flex items-center justify-center bg-surface/50">
+                    <Smartphone className="w-6 h-6 text-neon-cyan" />
                   </div>
-                  <span className="text-[11px] font-black uppercase tracking-widest bg-soft-blue/10 text-soft-blue px-3 py-1.5 rounded-full border border-soft-blue/20">Now Available</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest bg-neon-cyan/10 text-neon-cyan px-3 py-1.5 rounded-full border border-neon-cyan/20">Now Available</span>
                 </div>
                 
                 <h2 className="text-4xl md:text-5xl font-black italic tracking-tight leading-[1.1]">
-                  Take Your <span className="text-soft-blue">Training</span> <br /> On the Go
+                  Take Your <span className="text-neon-cyan">Training</span> <br /> On the Go
                 </h2>
                 
                 <p className="text-text-dim font-bold text-lg leading-relaxed max-w-xl">
@@ -154,60 +201,54 @@ export default function Landing({ session }: { session: any }) {
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                  <button
-                    disabled
-                    onClick={() => window.open('https://play.google.com/store/apps/details?id=com.debugtodeploy', '_blank')}
-                    className="btn-pill bg-text-main text-surface px-8 py-4 text-sm uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed hover:disabled:bg-text-main transition-colors flex items-center justify-center gap-2 relative group"
-                    title="Coming soon - Testing phase"
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => openAuth('signup')}
+                    className="btn-pill btn-neon-primary px-8 py-4 text-xs tracking-widest relative"
                   >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M3 3h18v18H3z" fill="none" stroke="currentColor" strokeWidth="2"/>
-                      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2"/>
-                    </svg>
-                    Android App
-                    {true && (
-                      <span className="absolute -top-1 -right-1 text-[8px] font-black uppercase bg-soft-orange text-white px-2 py-1 rounded-full tracking-wider animate-pulse">
-                        Beta
-                      </span>
-                    )}
-                  </button>
+                    Get App Beta
+                    <span className="absolute -top-1.5 -right-1.5 text-[8px] font-black uppercase bg-neon-orange text-white px-2 py-0.5 rounded-full tracking-wider animate-pulse shadow-md">
+                      Beta
+                    </span>
+                  </motion.button>
                   
-                  <button
+                  <motion.button
                     disabled
-                    className="btn-pill bg-surface border-4 border-border px-8 py-4 text-sm uppercase tracking-widest disabled:opacity-40 cursor-not-allowed flex items-center justify-center gap-2"
-                    title="Coming soon"
+                    whileTap={{ scale: 0.97 }}
+                    className="btn-pill btn-ghost px-8 py-4 text-xs tracking-widest opacity-40 cursor-not-allowed"
                   >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
-                      <path d="M6 4v4m12-4v4"/>
-                    </svg>
                     iOS Coming Soon
-                  </button>
+                  </motion.button>
                 </div>
               </div>
 
-              <div className="flex justify-center items-center hidden md:block relative">
-                <div className="absolute inset-0 bg-soft-purple/20 blur-[80px] rounded-full" />
+              {/* Redesigned interactive phone frame mock */}
+              <div className="flex justify-center items-center relative">
+                <div className="absolute inset-0 bg-neon-purple/20 blur-[100px] rounded-full" />
                 <motion.div
-                  animate={{ y: [0, -20, 0] }}
-                  transition={{ duration: 4, repeat: Infinity }}
-                  className="relative z-10 w-full"
+                  animate={{ y: [0, -15, 0] }}
+                  transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                  className="relative z-10 w-full max-w-sm"
                 >
-                  <div className="bg-surface border-4 border-border rounded-[40px] p-4 shadow-2xl max-w-sm mx-auto overflow-hidden">
-                    <div className="bg-gradient-to-b from-soft-blue to-soft-purple rounded-[36px] p-2 aspect-[9/16] flex items-center justify-center relative overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-b from-soft-blue/20 to-transparent" />
-                      <div className="relative z-10 w-full h-full bg-surface rounded-[32px] flex flex-col items-center justify-center p-4 space-y-6">
-                        <div className="w-24 h-24 rounded-2xl bg-soft-blue/10 border-2 border-soft-blue/30 flex items-center justify-center">
-                          <TerminalIcon className="w-12 h-12 text-soft-blue" />
-                        </div>
+                  <div className="glass-panel border-4 border-white/10 rounded-[44px] p-3.5 shadow-2xl bg-surface/60 overflow-hidden">
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 w-32 h-6 bg-surface-2 rounded-full border border-white/5 z-20 flex items-center justify-center">
+                      <div className="w-2.5 h-2.5 rounded-full bg-black/60 mr-1" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-black/40" />
+                    </div>
+                    
+                    <div className="bg-gradient-to-b from-neon-cyan to-neon-purple rounded-[36px] p-0.5 aspect-[9/18.5] flex items-center justify-center relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-b from-neon-cyan/20 to-transparent" />
+                      <div className="relative z-10 w-full h-full bg-surface-2 rounded-[34px] flex flex-col items-center justify-center p-6 space-y-6">
+                        <Logo className="w-16 h-16" />
                         <div className="text-center space-y-2">
-                          <h4 className="text-sm font-black italic">Cloud Labs</h4>
-                          <p className="text-[9px] font-bold text-text-dim">Practice in Real Environments</p>
+                          <h4 className="text-base font-black italic uppercase tracking-wider text-neon-cyan">Cloud Sandboxes</h4>
+                          <p className="text-[10px] font-bold text-text-dim uppercase tracking-wider">Practice in Real Environments</p>
                         </div>
                         <div className="flex gap-2">
-                          <div className="w-2 h-2 rounded-full bg-soft-green" />
-                          <div className="w-2 h-2 rounded-full bg-soft-blue" />
-                          <div className="w-2 h-2 rounded-full bg-soft-purple" />
+                          <div className="w-2 h-2 rounded-full bg-neon-green animate-blink" />
+                          <div className="w-2 h-2 rounded-full bg-neon-cyan" />
+                          <div className="w-2 h-2 rounded-full bg-neon-purple" />
                         </div>
                       </div>
                     </div>
@@ -219,70 +260,77 @@ export default function Landing({ session }: { session: any }) {
         </div>
       </section>
 
-
-      {/* Key Features Grid */}
-      <section id="features" className="w-full py-20 md:py-32 px-6 flex justify-center">
+      {/* Key Features Grid (Redesigned Cards) */}
+      <section id="features" className="w-full py-24 px-6 flex justify-center">
         <div className="max-w-7xl mx-auto w-full">
           <div className="text-center mb-20 space-y-4 px-4">
-            <h2 className="text-4xl md:text-7xl font-black italic tracking-tighter leading-[0.9]">Master the <span className="text-soft-blue underline decoration-4 underline-offset-8">Modern Stack</span></h2>
-            <p className="text-text-dim font-bold max-w-2xl mx-auto text-base md:text-lg">One platform. All the tools. Zero fluff. We focus on what matters most to hiring managers.</p>
+            <h2 className="text-4xl md:text-7xl font-black italic tracking-tighter leading-[0.95]">
+              Master the <span className="text-neon-cyan underline decoration-2 underline-offset-8">Modern Stack</span>
+            </h2>
+            <p className="text-text-dim font-bold max-w-2xl mx-auto text-base md:text-lg">
+              One platform. All the tools. Zero fluff. We focus on what matters most to hiring managers.
+            </p>
           </div>
 
-          <div className="flex overflow-x-auto gap-8 pb-12 pt-4 px-4 snap-x snap-mandatory no-scrollbar -mx-4 md:mx-0 md:px-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
               {
                 icon: Briefcase,
                 title: "AI Job Board",
                 desc: "Real-time job opportunities matched to your roadmap goal and technical readiness score.",
-                color: "text-soft-blue",
-                bg: "bg-soft-blue/10"
+                color: "text-neon-cyan border-neon-cyan/20",
+                bg: "bg-neon-cyan/10"
               },
               {
                 icon: Users,
                 title: "Global Leaderboard",
                 desc: "Compete with engineers worldwide. Climb the ranks by completing labs and passing interviews.",
-                color: "text-soft-purple",
-                bg: "bg-soft-purple/10"
+                color: "text-neon-purple border-neon-purple/20",
+                bg: "bg-neon-purple/10"
               },
               {
                 icon: Brain,
                 title: "Interview Analytics",
                 desc: "Deep AI analysis of your mock interview performance with personalized coaching insights.",
-                color: "text-soft-orange",
-                bg: "bg-soft-orange/10"
+                color: "text-neon-orange border-neon-orange/20",
+                bg: "bg-neon-orange/10"
               },
               {
                 icon: TerminalIcon,
                 title: "Production Labs",
                 desc: "Don't just code. Solve production incidents in live cloud environments.",
-                color: "text-soft-green",
-                bg: "bg-soft-green/10"
+                color: "text-neon-green border-neon-green/20",
+                bg: "bg-neon-green/10"
               },
               {
                 icon: ShieldCheck,
                 title: "Verified Skills",
                 desc: "Prove your expertise with certificates backed by actual lab performance data.",
-                color: "text-soft-blue",
-                bg: "bg-soft-blue/10"
+                color: "text-neon-blue border-neon-blue/20",
+                bg: "bg-neon-blue/10"
               },
               {
                 icon: Award,
                 title: "Elite Portfolio",
                 desc: "A public profile that speaks louder than a resume to hiring managers.",
-                color: "text-soft-green",
-                bg: "bg-soft-green/10"
+                color: "text-neon-green border-neon-green/20",
+                bg: "bg-neon-green/10"
               }
             ].map((feature, i) => (
               <motion.div
                 key={i}
-                whileHover={{ y: -10 }}
-                className="flex-none w-[320px] md:w-[350px] snap-center playful-card flex flex-col items-start gap-6 border-4"
+                initial={{ opacity: 0, y: 25 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.5, delay: i * 0.05 }}
+                whileHover={{ y: -8 }}
+                className={cn("glass-card border rounded-3xl p-8 flex flex-col items-start gap-6", feature.color)}
               >
-                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border-2 border-current/20", feature.bg, feature.color)}>
-                  <feature.icon className="w-7 h-7" />
+                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border border-white/5", feature.bg)}>
+                  <feature.icon className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black italic mb-2">{feature.title}</h3>
+                  <h3 className="text-xl font-black italic mb-3 text-text-main">{feature.title}</h3>
                   <p className="text-text-dim font-bold text-sm leading-relaxed">{feature.desc}</p>
                 </div>
               </motion.div>
@@ -291,14 +339,17 @@ export default function Landing({ session }: { session: any }) {
         </div>
       </section>
 
-      {/* Hands-on Labs Highlight */}
-      <section id="labs" className="w-full py-20 md:py-32 px-6 bg-[#0B0F1A] text-white relative overflow-hidden flex justify-center">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-soft-blue/10 rounded-full blur-[150px] -translate-y-1/2 translate-x-1/2" />
+      {/* Hands-on Labs Highlight (Super Premium Terminal) */}
+      <section id="labs" className="w-full py-24 px-6 bg-[#03060C] text-white relative overflow-hidden flex justify-center">
+        <div className="absolute top-0 right-0 w-[550px] h-[550px] bg-neon-cyan/8 rounded-full blur-[140px] -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-[550px] h-[550px] bg-neon-green/5 rounded-full blur-[140px] translate-y-1/2 -translate-x-1/2" />
         
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20 items-center w-full">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20 items-center w-full z-10">
           <div className="space-y-8">
-            <div className="chip bg-soft-green/20 text-soft-green border border-soft-green/20">The Practice Arena</div>
-            <h2 className="text-5xl font-black italic tracking-tighter leading-[0.9]">Real Labs. <br/> Real <span className="text-soft-green">Infrastructure.</span></h2>
+            <div className="chip bg-neon-green/10 text-neon-green border border-neon-green/20">The Practice Arena</div>
+            <h2 className="text-5xl font-black italic tracking-tighter leading-[0.95]">
+              Real Labs. <br/> Real <span className="text-neon-green">Infrastructure.</span>
+            </h2>
             <p className="text-white/60 font-bold text-lg leading-relaxed">
               No more theoretical slides. Jump into interactive terminals and fix actual 
               Kubernetes crashes, Terraform drift, and CI/CD pipeline failures.
@@ -306,36 +357,55 @@ export default function Landing({ session }: { session: any }) {
             <ul className="space-y-4">
               {['AWS / Azure / GCP Sandboxes', 'Kubernetes Cluster Debugging', 'Terraform & IaC Challenges', 'Jenkins & GitHub Actions Labs'].map((item, i) => (
                 <li key={i} className="flex items-center gap-3 font-black text-xs uppercase tracking-widest text-white/80">
-                  <CheckCircle2 className="w-5 h-5 text-soft-green" /> {item}
+                  <CheckCircle2 className="w-5 h-5 text-neon-green" /> {item}
                 </li>
               ))}
             </ul>
-            <button onClick={() => openAuth('signup')} className="btn-pill bg-white text-[#0B0F1A] px-10 py-5 text-sm uppercase tracking-widest hover:bg-soft-green transition-colors">
+            <motion.button 
+              onClick={() => openAuth('signup')} 
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="btn-pill btn-neon-primary py-5 px-10 text-xs tracking-widest"
+            >
               Access All Labs
-            </button>
+            </motion.button>
           </div>
+          
           <div className="relative">
-             <div className="bg-surface/10 backdrop-blur-xl border-4 border-white/10 rounded-[2.5rem] p-4 shadow-2xl">
-                <div className="bg-[#1e1e1e] rounded-2xl overflow-hidden shadow-inner">
-                   <div className="flex items-center gap-2 px-4 py-3 bg-white/5 border-b border-white/5">
-                      <div className="w-3 h-3 rounded-full bg-[#ff5f56]" />
-                      <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
-                      <div className="w-3 h-3 rounded-full bg-[#27c93f]" />
-                      <span className="ml-4 text-[10px] font-mono text-white/40 uppercase tracking-widest">terminal — k8s-debug-01</span>
+             <div className="terminal-glass p-4">
+                <div className="bg-[#05080F]/90 rounded-xl overflow-hidden shadow-inner border border-white/5">
+                   <div className="flex items-center justify-between px-4 py-3.5 bg-white/5 border-b border-white/5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-[#ff5f56]" />
+                        <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
+                        <div className="w-3 h-3 rounded-full bg-[#27c93f]" />
+                      </div>
+                      <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">terminal — k8s-debug-01</span>
+                      <div className="w-10" /> {/* Spacer */}
                    </div>
-                   <div className="p-6 font-mono text-sm space-y-2">
-                      <p className="text-soft-green">$ kubectl get pods</p>
-                      <p className="text-white">NAME &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; READY &nbsp; STATUS &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RESTARTS &nbsp; AGE</p>
+                   <div className="p-6 font-mono text-sm space-y-3">
+                      <p className="text-neon-green flex items-center gap-2">
+                        <span>$</span> 
+                        <motion.span
+                          initial={{ width: 0 }}
+                          animate={{ width: "auto" }}
+                          transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 3 }}
+                          className="overflow-hidden whitespace-nowrap block"
+                        >
+                          kubectl get pods
+                        </motion.span>
+                      </p>
+                      <p className="text-white/60">NAME &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; READY &nbsp; STATUS &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RESTARTS &nbsp; AGE</p>
                       <p className="text-white">nginx-deployment &nbsp; 0/1 &nbsp;&nbsp;&nbsp; CrashLoopBackOff &nbsp; 5 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 12m</p>
-                      <p className="text-soft-red mt-4">ERROR: ImagePullBackOff</p>
-                      <p className="text-white animate-pulse">_</p>
+                      <p className="text-neon-orange mt-4 animate-pulse">ERROR: ImagePullBackOff</p>
+                      <p className="text-white/40 animate-blink">_</p>
                    </div>
                 </div>
              </div>
              {/* Floating badge */}
-             <div className="absolute -bottom-10 -left-10 playful-card bg-surface border-4 border-soft-blue rotate-[-5deg] p-4">
+             <div className="absolute -bottom-8 -left-8 glass-panel border border-neon-cyan/30 rotate-[-5deg] p-5 rounded-3xl bg-surface">
                 <div className="flex items-center gap-3">
-                    <Zap className="w-8 h-8 text-soft-orange" />
+                    <Zap className="w-8 h-8 text-neon-orange animate-pulse" />
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-text-dim leading-none mb-1">Instant Access</p>
                         <p className="text-lg font-black italic text-text-main">0.2s Boot Time</p>
@@ -347,11 +417,11 @@ export default function Landing({ session }: { session: any }) {
       </section>
 
       {/* 3D Achievement Showcase */}
-      <section className="w-full py-20 md:py-32 px-6 flex justify-center bg-brand-bg overflow-hidden">
+      <section className="w-full py-24 px-6 flex justify-center bg-brand-bg overflow-hidden">
         <div className="max-w-7xl mx-auto w-full text-center">
           <div className="mb-20 space-y-4">
-            <h2 className="text-4xl md:text-7xl font-black italic tracking-tighter leading-[0.9]">
-              Earn <span className="text-soft-orange">Verified</span> <br/> 3D Achievements
+            <h2 className="text-4xl md:text-7xl font-black italic tracking-tighter leading-[0.95]">
+              Earn <span className="text-neon-orange">Verified</span> <br/> 3D Achievements
             </h2>
             <p className="text-text-dim font-bold max-w-2xl mx-auto">
               Every milestone in your AI roadmap translates into a high-quality 3D trophy. 
@@ -361,35 +431,35 @@ export default function Landing({ session }: { session: any }) {
 
           <div className="flex overflow-x-auto gap-8 pb-12 pt-4 px-4 snap-x snap-mandatory no-scrollbar -mx-4 md:mx-0 md:px-0">
             {[
-              { name: 'Docker Pilot', icon: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Whale/3D/whale_3d.png', color: 'bg-soft-blue/10' },
-              { name: 'K8s Healer', icon: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Steering%20Wheel/3D/steering_wheel_3d.png', color: 'bg-soft-green/10' },
-              { name: 'SRE Master', icon: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Rocket/3D/rocket_3d.png', color: 'bg-soft-purple/10' },
-              { name: 'Cloud Architect', icon: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cloud/3D/cloud_3d.png', color: 'bg-soft-orange/10' },
-              { name: 'Git Guru', icon: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Link/3D/link_3d.png', color: 'bg-soft-blue/10' },
-              { name: 'SRE Monitor', icon: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bar%20Chart/3D/bar_chart_3d.png', color: 'bg-soft-green/10' }
+              { name: 'Docker Pilot', earned: true, color: 'bg-neon-cyan/5 border-neon-cyan/20' },
+              { name: 'K8s Healer', earned: true, color: 'bg-neon-green/5 border-neon-green/20' },
+              { name: 'SRE Master', earned: true, color: 'bg-neon-purple/5 border-neon-purple/20' },
+              { name: 'Cloud Architect', earned: true, color: 'bg-neon-orange/5 border-neon-orange/20' },
+              { name: 'Git Guru', earned: true, color: 'bg-neon-cyan/5 border-neon-cyan/20' },
+              { name: 'SRE Monitor', earned: true, color: 'bg-neon-green/5 border-neon-green/20' }
             ].map((badge, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
+                transition={{ delay: i * 0.08, duration: 0.5 }}
                 viewport={{ once: true }}
-                whileHover={{ y: -10, rotateY: 10, rotateX: -10 }}
-                className="flex-none w-[280px] md:w-[320px] snap-center playful-card flex flex-col items-center gap-6 p-10 border-4 relative overflow-hidden group cursor-pointer"
+                whileHover={{ y: -8, rotateY: 8, rotateX: -8 }}
+                className={cn("flex-none w-[280px] md:w-[320px] snap-center glass-card border rounded-3xl flex flex-col items-center gap-6 p-10 relative overflow-hidden group cursor-pointer", badge.color)}
               >
-                <div className={cn("w-32 h-32 rounded-3xl flex items-center justify-center relative z-10", badge.color)}>
+                <div className="w-32 h-32 rounded-3xl flex items-center justify-center relative z-10">
                   <RoadmapBadge3D 
                     stageName={badge.name} 
-                    earned={true} 
+                    earned={badge.earned} 
                     size="lg" 
                     showGlow={true}
                   />
                 </div>
                 <div>
-                  <p className="text-xs font-black uppercase tracking-widest text-text-dim mb-1">Badge Unlocked</p>
-                  <h3 className="text-xl font-black italic">{badge.name}</h3>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-dim mb-1">Badge Unlocked</p>
+                  <h3 className="text-xl font-black italic text-text-main">{badge.name}</h3>
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
               </motion.div>
             ))}
           </div>
@@ -397,55 +467,61 @@ export default function Landing({ session }: { session: any }) {
       </section>
 
       {/* Pricing Comparison */}
-      <section id="pricing" className="w-full py-20 md:py-32 px-6 flex justify-center">
+      <section id="pricing" className="w-full py-24 px-6 flex justify-center">
         <div className="max-w-7xl mx-auto w-full">
           <div className="text-center mb-20 space-y-4">
-            <h2 className="text-4xl md:text-6xl font-black italic tracking-tighter">Choose Your <span className="text-soft-purple">Clearance</span></h2>
+            <h2 className="text-4xl md:text-6xl font-black italic tracking-tighter">
+              Choose Your <span className="text-neon-purple">Clearance</span>
+            </h2>
             <p className="text-text-dim font-bold">Invest in your career. Upgrade anytime.</p>
           </div>
 
           <div className="flex flex-col items-center gap-16 max-w-5xl mx-auto">
-            {/* Pricing Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10 w-full">
-            {/* Free Tier */}
-            <div className="playful-card border-4 flex flex-col items-center text-center p-12">
-              <div className="mb-8">
-                <h3 className="text-2xl font-black italic mb-2">Free Fleet</h3>
-                <p className="text-text-dim font-bold text-sm">The foundation for your engineering journey.</p>
+              {/* Free Tier */}
+              <div className="glass-card border border-white/10 flex flex-col items-center text-center p-12 rounded-3xl">
+                <div className="mb-8">
+                  <h3 className="text-2xl font-black italic mb-2 text-text-main">Free Fleet</h3>
+                  <p className="text-text-dim font-bold text-sm">The foundation for your engineering journey.</p>
+                </div>
+                <div className="text-4xl font-black italic mb-8">$0 <span className="text-sm font-bold text-text-dim not-italic uppercase tracking-widest ml-2">/ month</span></div>
+                <ul className="space-y-4 mb-12 flex-1 w-full text-left max-w-xs mx-auto">
+                  {[
+                    '1 AI Roadmap / week',
+                    '2 AI Assistant searches / day',
+                    'Basic Cloud Labs access',
+                    'Community Support',
+                    'Standard Portfolio'
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-center gap-3 text-sm font-bold text-text-main">
+                      <CheckCircle2 className="w-5 h-5 text-neon-green shrink-0" /> {item}
+                    </li>
+                  ))}
+                </ul>
+                <motion.button 
+                  onClick={() => openAuth('signup')} 
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="btn-pill btn-ghost w-full py-4 text-xs"
+                >
+                  Get Started Free
+                </motion.button>
               </div>
-              <div className="text-4xl font-black italic mb-8">$0 <span className="text-sm font-bold text-text-dim not-italic uppercase tracking-widest ml-2">/ month</span></div>
-              <ul className="space-y-4 mb-12 flex-1 w-full">
-                {[
-                  '1 AI Roadmap / week',
-                  '2 AI Assistant searches / day',
-                  'Basic Cloud Labs access',
-                  'Community Support',
-                  'Standard Portfolio'
-                ].map((item, i) => (
-                  <li key={i} className="flex items-center justify-center gap-3 text-sm font-bold text-text-main">
-                    <CheckCircle2 className="w-5 h-5 text-soft-green shrink-0" /> {item}
-                  </li>
-                ))}
-              </ul>
-              <button onClick={() => openAuth('signup')} className="btn-pill border-4 border-border text-text-main py-4 px-8 uppercase tracking-widest text-xs hover:border-soft-blue transition-colors w-full">
-                Get Started Free
-              </button>
-            </div>
 
-              {/* Pro Tier */}
-              <div className="playful-card border-4 border-soft-purple relative overflow-hidden bg-soft-purple/5 shadow-2xl shadow-soft-purple/10 p-12 flex flex-col items-center text-center">
+              {/* Pro Tier (Neon Glow Edge) */}
+              <div className="glass-panel border-2 border-neon-purple/40 relative overflow-hidden bg-neon-purple/5 shadow-2xl p-12 flex flex-col items-center text-center rounded-3xl group">
                 <div className="absolute top-6 right-6">
-                   <div className="chip bg-soft-purple text-[#0F172A] shadow-lg shadow-soft-purple/20">Fleet Captain</div>
+                   <div className="chip bg-neon-purple text-[#05080F] shadow-lg shadow-neon-purple/20">Fleet Captain</div>
                 </div>
                 <div className="mb-8">
-                  <h3 className="text-2xl font-black italic mb-2">Fleet Captain (Pro)</h3>
+                  <h3 className="text-2xl font-black italic mb-2 text-text-main">Fleet Captain (Pro)</h3>
                   <p className="text-text-dim font-bold text-sm">Full-throttle engineering with unlimited AI power.</p>
                 </div>
                 <div className="flex items-baseline justify-center gap-2 mb-8">
-                  <span className="text-5xl font-black italic">$6</span>
+                  <span className="text-5xl font-black italic text-text-main">$6</span>
                   <span className="text-xs font-bold text-text-dim uppercase tracking-[0.2em]">/ month</span>
                 </div>
-                <ul className="space-y-4 mb-12 flex-1 w-full">
+                <ul className="space-y-4 mb-12 flex-1 w-full text-left max-w-xs mx-auto">
                   {[
                     'Unlimited Interactive Cloud Sandbox',
                     'AI Portfolio & Resume Builder',
@@ -455,28 +531,33 @@ export default function Landing({ session }: { session: any }) {
                     'PDF Resume Export & Sharing',
                     'Early Access to Beta Features'
                   ].map((item, i) => (
-                    <li key={i} className="flex items-center justify-center gap-3 text-sm font-bold text-text-main">
-                      <CheckCircle2 className="w-5 h-5 text-soft-purple shrink-0" /> {item}
+                    <li key={i} className="flex items-center gap-3 text-sm font-bold text-text-main">
+                      <CheckCircle2 className="w-5 h-5 text-neon-purple shrink-0" /> {item}
                     </li>
                   ))}
                 </ul>
-                <button onClick={() => openAuth('signup')} className="btn-pill bg-text-main text-surface py-5 px-8 uppercase tracking-widest text-xs hover:bg-soft-purple transition-colors shadow-2xl shadow-soft-purple/20 w-full">
+                <motion.button 
+                  onClick={() => openAuth('signup')} 
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="btn-pill btn-neon-primary w-full py-5 text-xs shadow-2xl shadow-neon-purple/25"
+                >
                   Command the Fleet
-                </button>
+                </motion.button>
               </div>
             </div>
 
-            {/* Refund Policy / Trust Badge */}
-            <div className="flex items-center gap-4 px-8 py-4 bg-surface border-2 border-border rounded-full">
-               <ShieldCheck className="w-6 h-6 text-soft-green" />
-               <p className="text-[10px] font-black uppercase tracking-widest text-text-dim">14-Day Money Back Guarantee • Secure Payment Processing</p>
+            {/* Guarantee Badge */}
+            <div className="flex items-center gap-4 px-8 py-4 glass-panel border border-neon-cyan/20 rounded-full bg-surface/50">
+               <ShieldCheck className="w-6 h-6 text-neon-green animate-neon-pulse" />
+               <p className="text-[10px] font-black uppercase tracking-widest text-text-main">14-Day Money Back Guarantee • Secure Payment Processing</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Testimonials */}
-      <section className="w-full py-20 md:py-32 px-6 bg-surface/30 border-y border-border flex justify-center">
+      <section className="w-full py-24 px-6 bg-surface-2 border-y border-border flex justify-center">
         <div className="max-w-7xl mx-auto w-full">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             {[
@@ -500,17 +581,19 @@ export default function Landing({ session }: { session: any }) {
               }
             ].map((t, i) => (
               <div key={i} className="space-y-6 flex flex-col items-center text-center group">
-                <div className="flex gap-1 group-hover:scale-110 transition-transform">
-                  {[1, 2, 3, 4, 5].map(s => <Star key={s} className="w-4 h-4 fill-soft-orange text-soft-orange" />)}
+                <div className="flex gap-1 group-hover:scale-110 transition-transform duration-300">
+                  {[1, 2, 3, 4, 5].map(s => <Star key={s} className="w-4 h-4 fill-neon-orange text-neon-orange" />)}
                 </div>
-                <p className="text-xl font-bold italic leading-relaxed">"{t.text}"</p>
-                  <div className="flex items-center justify-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-soft-blue/20 flex items-center justify-center font-black text-soft-blue">{t.avatar}</div>
-                    <div className="text-left">
-                      <p className="font-black italic text-sm">{t.name}</p>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-text-dim">{t.role}</p>
-                    </div>
+                <p className="text-xl font-bold italic leading-relaxed text-text-main">"{t.text}"</p>
+                <div className="flex items-center justify-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl glass-panel border border-neon-cyan/30 flex items-center justify-center font-black text-neon-cyan bg-surface/50">
+                    {t.avatar}
                   </div>
+                  <div className="text-left">
+                    <p className="font-black italic text-sm text-text-main">{t.name}</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-dim">{t.role}</p>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -518,85 +601,116 @@ export default function Landing({ session }: { session: any }) {
       </section>
 
       {/* FAQ Section */}
-      <section id="faq" className="w-full py-20 md:py-32 px-6 flex justify-center">
+      <section id="faq" className="w-full py-24 px-6 flex justify-center">
         <div className="max-w-7xl mx-auto w-full">
-          <h2 className="text-4xl font-black italic tracking-tighter mb-16 text-center">Frequently Asked <span className="text-soft-orange">Questions</span></h2>
-          <div className="space-y-4">
+          <h2 className="text-4xl font-black italic tracking-tighter mb-16 text-center text-text-main">
+            Frequently Asked <span className="text-neon-orange">Questions</span>
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {[
               { q: "Is the sandbox really free?", a: "Yes! Every user gets access to a limited number of cloud lab environments every month. Pro users get unlimited access." },
               { q: "How accurate is the AI roadmap?", a: "Our AI is trained on thousands of DevOps job descriptions and career paths. It updates weekly to reflect industry trends." },
               { q: "Do I need a credit card to start?", a: "No. You can start generating roadmaps and exploring labs with just an email." },
               { q: "What certifications do I get?", a: "You get milestones certificates that you can share on LinkedIn. These are proof of your practical lab completions." }
             ].map((item, i) => (
-              <div key={i} className="playful-card border-4 flex flex-col items-center text-center p-8">
-                <h4 className="text-lg font-black italic mb-4 flex items-center gap-3 justify-center">
-                    <div className="w-2 h-2 rounded-full bg-soft-orange" /> {item.q}
+              <div key={i} className="glass-card border border-white/5 flex flex-col items-center text-center p-8 rounded-3xl">
+                <h4 className="text-lg font-black italic mb-4 flex items-center gap-3 justify-center text-text-main">
+                    <div className="w-2.5 h-2.5 rounded-full bg-neon-orange animate-pulse" /> {item.q}
                 </h4>
-                <p className="text-text-dim font-bold text-sm">{item.a}</p>
+                <p className="text-text-dim font-bold text-sm leading-relaxed">{item.a}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Final CTA */}
+      {/* Final CTA with Glowing Grid Pattern */}
       <section className="w-full py-40 px-6 relative overflow-hidden flex justify-center">
-        <div className="absolute inset-0 bg-text-main" />
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_50%_50%,rgba(147,197,253,0.5)_1px,transparent_1px)] bg-[length:40px_40px]" />
+        <div className="absolute inset-0 bg-[#05080F]" />
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_50%_50%,rgba(0,212,255,0.5)_1.5px,transparent_1.5px)] bg-[length:45px_45px] z-0" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-full bg-gradient-to-b from-neon-cyan/5 via-transparent to-transparent blur-2xl z-0 pointer-events-none" />
         
         <div className="max-w-4xl mx-auto relative z-10 text-center space-y-12 w-full">
-          <h2 className="text-5xl md:text-7xl font-black italic tracking-tighter text-surface leading-[0.9]">Ready to Become an <br /> <span className="text-soft-blue">Architect?</span></h2>
-          <p className="text-surface/60 font-bold text-xl max-w-xl mx-auto">Join the 5,000+ engineers who are building the future of infrastructure.</p>
+          <h2 className="text-5xl md:text-7xl font-black italic tracking-tighter text-white leading-[1.05]">
+            Ready to Become an <br /> <span className="text-neon-cyan">Architect?</span>
+          </h2>
+          <p className="text-white/60 font-bold text-xl max-w-xl mx-auto">Join the 5,000+ engineers who are building the future of infrastructure.</p>
+          
           <div className="flex flex-col sm:flex-row justify-center gap-6">
-            <button onClick={() => openAuth('signup')} className="btn-pill bg-soft-blue text-[#0F172A] px-12 py-6 text-base uppercase tracking-widest hover:bg-white transition-colors">
+            <motion.button 
+              onClick={() => openAuth('signup')} 
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="btn-pill btn-neon-primary px-12 py-6 text-sm tracking-widest shadow-2xl"
+            >
               Start Free Journey
-            </button>
-            <button onClick={() => openAuth('login')} className="btn-pill bg-transparent border-4 border-surface/20 text-surface px-12 py-6 text-base uppercase tracking-widest hover:border-surface transition-colors">
+            </motion.button>
+            <motion.button 
+              onClick={() => openAuth('login')} 
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="btn-pill btn-ghost px-12 py-6 text-sm tracking-widest"
+            >
               Login to Account
-            </button>
+            </motion.button>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="w-full py-20 px-6 border-t border-border flex justify-center">
+      <footer className="w-full py-20 px-6 border-t border-border flex justify-center bg-[#05080F]/90 backdrop-blur-md">
         <div className="max-w-7xl mx-auto w-full">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-20">
-          <div className="col-span-1 md:col-span-2 space-y-6">
-            <div className="flex items-center gap-3">
-              <img src="/logo.jpg" alt="DebugToDeploy" className="w-10 h-10 rounded-xl object-contain mix-blend-screen" />
-              <span className="text-xl font-black italic tracking-tighter">Debug<span className="text-soft-blue">To</span>Deploy</span>
+            <div className="col-span-1 md:col-span-2 space-y-6">
+              <div className="flex items-center gap-3">
+                <Logo className="w-10 h-10" />
+                <span className="text-xl font-black italic tracking-tighter">
+                  <span
+                    style={{
+                      background: 'linear-gradient(135deg, #00D4FF 0%, #00FF88 50%, #00D4FF 100%)',
+                      backgroundSize: '200% 100%',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                    }}
+                  >
+                    Debug<span>To</span>Deploy
+                  </span>
+                </span>
+              </div>
+              <p className="text-text-dim font-bold max-w-sm">The AI-Powered career accelerator for modern infrastructure engineers.</p>
             </div>
-            <p className="text-text-dim font-bold max-w-sm">The AI-Powered career accelerator for modern infrastructure engineers.</p>
+            <div>
+              <h4 className="font-black text-xs uppercase tracking-widest mb-6 text-text-main">Platform</h4>
+              <ul className="space-y-4 text-sm font-bold text-text-dim">
+                <li><a href="#features" className="hover:text-neon-cyan transition-colors">Features</a></li>
+                <li><a href="#labs" className="hover:text-neon-cyan transition-colors">Cloud Labs</a></li>
+                <li><a href="#pricing" className="hover:text-neon-cyan transition-colors">Pricing</a></li>
+                <li><a href="/roadmap" className="hover:text-neon-cyan transition-colors">Roadmaps</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-black text-xs uppercase tracking-widest mb-6 text-text-main">Legal</h4>
+              <ul className="space-y-4 text-sm font-bold text-text-dim">
+                <li><a href="/privacy" className="hover:text-neon-cyan transition-colors">Privacy Policy</a></li>
+                <li><a href="/terms" className="hover:text-neon-cyan transition-colors">Terms of Service</a></li>
+                <li><a href="/support" className="hover:text-neon-cyan transition-colors">Support</a></li>
+              </ul>
+            </div>
           </div>
-          <div>
-            <h4 className="font-black text-xs uppercase tracking-widest mb-6">Platform</h4>
-            <ul className="space-y-4 text-sm font-bold text-text-dim">
-              <li><a href="#features" className="hover:text-soft-blue">Features</a></li>
-              <li><a href="#labs" className="hover:text-soft-blue">Cloud Labs</a></li>
-              <li><a href="#pricing" className="hover:text-soft-blue">Pricing</a></li>
-              <li><a href="/roadmap" className="hover:text-soft-blue">Roadmaps</a></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-black text-xs uppercase tracking-widest mb-6">Legal</h4>
-            <ul className="space-y-4 text-sm font-bold text-text-dim">
-              <li><a href="/privacy" className="hover:text-soft-blue">Privacy Policy</a></li>
-              <li><a href="/terms" className="hover:text-soft-blue">Terms of Service</a></li>
-              <li><a href="/support" className="hover:text-soft-blue">Support</a></li>
-            </ul>
-          </div>
-          </div>
+          
           <div className="flex flex-col md:flex-row justify-between items-center gap-10 pt-10 border-t border-border">
             <div className="flex flex-col items-center md:items-start gap-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim text-center md:text-left">© {new Date().getFullYear()} DebugToDeploy. Developed by Nagarjuna Reddy Annapureddy.</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim text-center md:text-left">
+                © {new Date().getFullYear()} DebugToDeploy | Nagarjunareddy.
+              </p>
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim">All Rights Reserved.</p>
             </div>
             <div className="flex items-center gap-6">
                {[
-                 { icon: Facebook, link: "https://www.facebook.com/profile.php?id=61589307951543", color: "bg-blue-600 text-white", label: "Facebook" },
-                 { icon: Twitter, link: "https://x.com/DebugToDeploy", color: "bg-text-main text-surface", label: "Twitter" },
-                 { icon: Instagram, link: "https://www.instagram.com/debugtodeploy?igsh=MTlxcmoyNG9obWN1OA==", color: "bg-pink-600 text-white", label: "Instagram" }
+                 { icon: Facebook, link: "https://www.facebook.com/profile.php?id=61589307951543", color: "bg-blue-600 text-white border-blue-600/30", label: "Facebook" },
+                 { icon: Twitter, link: "https://x.com/DebugToDeploy", color: "bg-text-main text-surface border-white/10", label: "Twitter" },
+                 { icon: Instagram, link: "https://www.instagram.com/debugtodeploy?igsh=MTlxcmoyNG9obWN1OA==", color: "bg-pink-600 text-white border-pink-600/30", label: "Instagram" }
                ].map((social, i) => (
                  <motion.a
                    key={i}
@@ -610,15 +724,15 @@ export default function Landing({ session }: { session: any }) {
                      scale: 1.1,
                      boxShadow: "0 20px 40px rgba(0,0,0,0.3)"
                    }}
-                   whileTap={{ scale: 0.9, rotateX: 0, rotateY: 0 }}
+                   whileTap={{ scale: 0.9 }}
                    className={cn(
-                     "w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all border-2 border-white/10 relative group",
+                     "w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all border relative group",
                      social.color
                    )}
                    style={{ transformStyle: 'preserve-3d' }}
                  >
                    <social.icon className="w-5 h-5 relative z-10" />
-                   <div className="absolute inset-0 rounded-2xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                   <div className="absolute inset-0 rounded-2xl bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                  </motion.a>
                ))}
                
@@ -626,7 +740,7 @@ export default function Landing({ session }: { session: any }) {
 
                <button 
                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} 
-                 className="text-[10px] font-black uppercase tracking-widest text-soft-blue hover:underline whitespace-nowrap"
+                 className="text-[10px] font-black uppercase tracking-widest text-neon-cyan hover:underline whitespace-nowrap"
                >
                  Back to Top
                </button>
