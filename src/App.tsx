@@ -27,6 +27,7 @@ import Terms from './pages/Terms';
 import Landing from './pages/Landing';
 import DeleteAccount from './pages/DeleteAccount';
 import PublicProfile from './pages/PublicProfile';
+import AdminPanel from './pages/AdminPanel';
 import AiSupportBot from './components/AiSupportBot';
 import SplashScreen from './components/common/SplashScreen';
 import ConsentModal from './components/ConsentModal';
@@ -100,10 +101,12 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Guaranteed splash screen dismissal after 2 seconds to ensure the app never hangs,
+  // while avoiding the blank screen bug by rendering the main skeleton under the fade.
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 1200);
+    }, 2000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -292,7 +295,7 @@ export default function App() {
     }
   };
 
-  if (loading && !showSplash) return null;
+  // Never return null here — the SplashScreen overlay handles the loading state visually.
 
   return (
     <>
@@ -336,6 +339,7 @@ export default function App() {
                             <Route path="/checkout" element={<Checkout />} />
                             <Route path="/support" element={<Support />} />
                             <Route path="/p/:id" element={<PublicProfile />} />
+                            <Route path="/admin" element={<AdminPanel />} />
                             <Route path="*" element={<Navigate to="/" />} />
                           </Routes>
                         </main>

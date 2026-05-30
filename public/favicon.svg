@@ -1,6 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#1E293B"/>
-  <path d="M50 30 L40 45 L50 60 L60 45 Z" fill="#F8FAFC"/>
-  <rect x="48" y="65" width="4" height="10" fill="#F8FAFC" rx="1"/>
-  <circle cx="50" cy="50" r="15" stroke="#F8FAFC" stroke-width="2" fill="none" opacity="0.2"/>
+  <defs>
+    <linearGradient id="arrowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00D4FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00FF88;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <!-- Dark background with rounded corners -->
+  <rect width="100" height="100" rx="22" fill="#05080F"/>
+  <!-- Chevron 1 (left, cyan) -->
+  <path d="M26 30 L38 42 L26 54" stroke="#00D4FF" stroke-width="6.5" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <!-- Chevron 2 (right, green) -->
+  <path d="M40 30 L52 42 L40 54" stroke="#00FF88" stroke-width="6.5" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <!-- Cursor/dash -->
+  <rect x="26" y="62" width="14" height="5" rx="2.5" fill="url(#arrowGrad)" filter="url(#glow)"/>
+  <!-- Deploy line -->
+  <line x1="43" y1="64.5" x2="74" y2="64.5" stroke="#00FF88" stroke-width="2.5" stroke-linecap="round" filter="url(#glow)"/>
+  <!-- Arrow head -->
+  <path d="M70 60 L77 64.5 L70 69" stroke="#00FF88" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
 </svg>

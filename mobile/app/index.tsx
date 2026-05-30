@@ -300,7 +300,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
-      <StatusBar style="light" backgroundColor="#0A0A0B" translucent={false} />
+      <StatusBar style="light" backgroundColor="#0A1628" translucent={false} />
       {/* WebView loads the main web app */}
       <WebView
         ref={webViewRef}
@@ -393,7 +393,7 @@ export default function App() {
       {!animationDone && (
         <Animated.View style={[styles.splashContainer, { opacity: opacityAnim }]} pointerEvents="none">
           <Animated.Image
-            source={require('../assets/images/logo.jpg')}
+            source={require('../assets/images/icon.png')}
             style={[styles.logo, { transform: [{ scale: scaleAnim }] }]}
           />
         </Animated.View>
@@ -426,33 +426,34 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0B',
+    backgroundColor: '#0A1628',
   },
   webview: {
     flex: 1,
-    backgroundColor: '#0A0A0B',
+    backgroundColor: '#0A1628',
   },
   loadingContainer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#0A0A0B',
+    backgroundColor: '#0A1628',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
   },
   splashContainer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#0A0A0B',
+    backgroundColor: '#0A1628',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
   },
   logo: {
-    width: 200,
-    height: 200,
+    width: 150,
+    height: 150,
+    borderRadius: 30,
   },
   errorContainer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#0A0A0B',
+    backgroundColor: '#0A1628',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 5,

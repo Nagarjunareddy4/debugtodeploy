@@ -26,7 +26,8 @@ import {
   Instagram,
   Twitter,
   LifeBuoy,
-  Smartphone
+  Smartphone,
+  Shield
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
@@ -82,10 +83,19 @@ const navItems = [
   { icon: CreditCard, label: 'Pricing', path: '/pricing' },
 ];
 
+// Admin password is read from VITE_ADMIN_PASSWORD in .env at build/dev time.
+// Change it in .env and restart dev server — the new password is picked up automatically.
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '';
+
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [showUserDetails, setShowUserDetails] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [adminPass, setAdminPass] = useState('');
+  const [adminError, setAdminError] = useState('');
+  const [adminShake, setAdminShake] = useState(false);
+  const longPressTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const { mode, setMode } = useTheme();
   const navigate = useNavigate();
 
@@ -177,8 +187,27 @@ export default function Sidebar() {
         isOpen && "translate-x-0 shadow-2xl lg:shadow-none",
         "lg:fixed lg:h-screen"
       )}>
-        {/* Header - Logo (Fixed) */}
-        <div className="flex-shrink-0 p-8 pb-4">
+        {/* Header - Logo (Fixed) — long-press 800ms to open hidden admin gate */}
+        <div
+          className="flex-shrink-0 p-8 pb-4 select-none"
+          onMouseDown={() => {
+            longPressTimer.current = setTimeout(() => {
+              setAdminPass('');
+              setAdminError('');
+              setShowAdminModal(true);
+            }, 800);
+          }}
+          onMouseUp={() => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }}
+          onMouseLeave={() => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }}
+          onTouchStart={() => {
+            longPressTimer.current = setTimeout(() => {
+              setAdminPass('');
+              setAdminError('');
+              setShowAdminModal(true);
+            }, 800);
+          }}
+          onTouchEnd={() => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }}
+        >
           <LogoFull />
         </div>
 
@@ -230,6 +259,7 @@ export default function Sidebar() {
                 );
               })}
             </nav>
+
 
             {profile && profile.subscription_status !== 'pro' && !profile.is_deactivated && (
               <div className="px-2 mt-8">
@@ -423,6 +453,104 @@ export default function Sidebar() {
 
       {showUserDetails && (
         <div className="fixed inset-0 z-30" onClick={() => setShowUserDetails(false)} />
+      )}
+
+      {/* ── Hidden Admin Gate Modal (long-press logo to reveal) ── */}
+      {showAdminModal && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-[9998] bg-black/70 backdrop-blur-md"
+            onClick={() => setShowAdminModal(false)}
+          />
+          {/* Modal */}
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85, y: 20 }}
+              animate={adminShake
+                ? { opacity: 1, scale: 1, x: [-8, 8, -6, 6, -4, 4, 0] }
+                : { opacity: 1, scale: 1, x: 0, y: 0 }
+              }
+              transition={adminShake ? { duration: 0.4 } : { type: 'spring', damping: 18 }}
+              className="pointer-events-auto w-full max-w-sm glass-panel rounded-3xl p-8 border border-neon-cyan/20 shadow-2xl shadow-black/60 relative overflow-hidden"
+            >
+              {/* Glow */}
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(0,212,255,0.08),transparent_60%)] pointer-events-none" />
+
+              <div className="relative z-10 space-y-6">
+                {/* Icon + title */}
+                <div className="flex flex-col items-center gap-3 text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-neon-cyan/10 border border-neon-cyan/25 flex items-center justify-center">
+                    <Shield className="w-7 h-7 text-neon-cyan" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black tracking-tight text-text-main">Admin Access</h2>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-text-dim mt-1">Enter admin password to continue</p>
+                  </div>
+                </div>
+
+                {/* Password input */}
+                <div className="space-y-2">
+                  <input
+                    type="password"
+                    autoFocus
+                    value={adminPass}
+                    onChange={e => { setAdminPass(e.target.value); setAdminError(''); }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        if (adminPass === ADMIN_PASSWORD) {
+                          setShowAdminModal(false);
+                          navigate('/admin');
+                        } else {
+                          setAdminError('Incorrect password. Try again.');
+                          setAdminShake(true);
+                          setTimeout(() => setAdminShake(false), 500);
+                          setAdminPass('');
+                        }
+                      }
+                      if (e.key === 'Escape') setShowAdminModal(false);
+                    }}
+                    placeholder="••••••••••••"
+                    className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3.5 text-sm font-bold text-text-main outline-none focus:border-neon-cyan focus:ring-2 focus:ring-neon-cyan/15 transition-all text-center tracking-widest placeholder:tracking-normal"
+                  />
+                  {adminError && (
+                    <p className="text-red-400 text-[10px] font-black text-center tracking-wider">{adminError}</p>
+                  )}
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowAdminModal(false)}
+                    className="flex-1 py-3 rounded-xl border border-border text-xs font-black uppercase tracking-wider text-text-dim hover:text-text-main hover:border-border/80 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (adminPass === ADMIN_PASSWORD) {
+                        setShowAdminModal(false);
+                        navigate('/admin');
+                      } else {
+                        setAdminError('Incorrect password. Try again.');
+                        setAdminShake(true);
+                        setTimeout(() => setAdminShake(false), 500);
+                        setAdminPass('');
+                      }
+                    }}
+                    className="flex-1 py-3 rounded-xl bg-neon-cyan text-[#05080F] text-xs font-black uppercase tracking-wider hover:brightness-110 transition-all shadow-lg shadow-neon-cyan/20"
+                  >
+                    Unlock
+                  </button>
+                </div>
+
+                <p className="text-[9px] text-center text-text-dim/50 font-bold tracking-widest uppercase">
+                  Password set via <code className="font-mono text-neon-cyan/60">VITE_ADMIN_PASSWORD</code>
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        </>
       )}
     </>
   );
