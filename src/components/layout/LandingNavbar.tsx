@@ -46,10 +46,9 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
           whileTap={{ scale: 0.98 }}
         >
           <img
-            src="/icon.png"
+            src="/favicon.svg"
             alt="DebugToDeploy"
             className="w-10 h-10 rounded-xl object-cover logo-icon"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/favicon.svg'; }}
           />
           <span className="text-lg font-black tracking-tighter hidden sm:block uppercase">
             <span

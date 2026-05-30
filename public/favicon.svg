@@ -1,27 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <defs>
-    <linearGradient id="arrowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#00D4FF;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#00FF88;stop-opacity:1" />
+    <linearGradient id="chevronGrad" x1="0%" y1="0%" x2="100%" y2="0%" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00D4FF" />
+      <stop offset="100%" stop-color="#00FF88" />
     </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+    <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00D4FF" stop-opacity="0" />
+      <stop offset="30%" stop-color="#00D4FF" stop-opacity="1" />
+      <stop offset="100%" stop-color="#00FF88" stop-opacity="1" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
       <feMerge>
         <feMergeNode in="coloredBlur"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
   </defs>
-  <!-- Dark background with rounded corners -->
-  <rect width="100" height="100" rx="22" fill="#05080F"/>
-  <!-- Chevron 1 (left, cyan) -->
-  <path d="M26 30 L38 42 L26 54" stroke="#00D4FF" stroke-width="6.5" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
-  <!-- Chevron 2 (right, green) -->
-  <path d="M40 30 L52 42 L40 54" stroke="#00FF88" stroke-width="6.5" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
-  <!-- Cursor/dash -->
-  <rect x="26" y="62" width="14" height="5" rx="2.5" fill="url(#arrowGrad)" filter="url(#glow)"/>
-  <!-- Deploy line -->
-  <line x1="43" y1="64.5" x2="74" y2="64.5" stroke="#00FF88" stroke-width="2.5" stroke-linecap="round" filter="url(#glow)"/>
-  <!-- Arrow head -->
-  <path d="M70 60 L77 64.5 L70 69" stroke="#00FF88" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  
+  <rect width="100" height="100" rx="24" fill="#05080F" />
+  
+  <!-- Left Chevron -->
+  <polygon points="20,30 32,30 50,48 32,66 20,66 38,48" fill="#00D4FF" filter="url(#glow)" />
+  
+  <!-- Right Chevron -->
+  <polygon points="38,30 50,30 68,48 50,66 38,66 56,48" fill="url(#chevronGrad)" filter="url(#glow)" />
+  
+  <!-- Underscore -->
+  <rect x="62" y="56" width="14" height="10" rx="2" fill="#00FF88" filter="url(#glow)" />
+  
+  <!-- Arrow Line -->
+  <line x1="14" y1="76" x2="78" y2="76" stroke="url(#lineGrad)" stroke-width="2" stroke-linecap="round" filter="url(#glow)" />
+  
+  <!-- Arrowhead -->
+  <polygon points="76,70 88,76 76,82 79,76" fill="#00FF88" filter="url(#glow)" />
 </svg>

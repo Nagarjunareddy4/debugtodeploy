@@ -346,7 +346,7 @@ export default function App() {
                         <AiSupportBot />
                         <footer className="shrink-0 border-t border-border bg-surface/50 backdrop-blur-sm py-3 px-8">
                           <p className="text-center text-[9px] text-text-dim/50 font-bold tracking-widest">
-                            © {new Date().getFullYear()} Nagarjunareddy Annapureddy. All rights reserved.
+                            © {new Date().getFullYear()} DebugToDeploy | Nagarjunareddy. All rights reserved.
                           </p>
                         </footer>
                       </div>

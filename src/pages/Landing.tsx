@@ -702,7 +702,7 @@ export default function Landing({ session }: { session: any }) {
           <div className="flex flex-col md:flex-row justify-between items-center gap-10 pt-10 border-t border-border">
             <div className="flex flex-col items-center md:items-start gap-4">
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim text-center md:text-left">
-                © {new Date().getFullYear()} DebugToDeploy. Developed by Nagarjuna Reddy Annapureddy.
+                © {new Date().getFullYear()} DebugToDeploy | Nagarjunareddy.
               </p>
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim">All Rights Reserved.</p>
             </div>

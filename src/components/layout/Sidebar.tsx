@@ -83,9 +83,16 @@ const navItems = [
   { icon: CreditCard, label: 'Pricing', path: '/pricing' },
 ];
 
-// Admin password is read from VITE_ADMIN_PASSWORD in .env at build/dev time.
-// Change it in .env and restart dev server — the new password is picked up automatically.
-const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '';
+// Admin password hash is injected at build time via vite.config.ts
+// It reads ADMIN_PASSWORD from .env and replaces __ADMIN_PASSWORD_HASH__ with the SHA-256 hash
+declare const __ADMIN_PASSWORD_HASH__: string;
+
+const hashInput = async (input: string) => {
+  const msgBuffer = new TextEncoder().encode(input);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -496,9 +503,10 @@ export default function Sidebar() {
                     autoFocus
                     value={adminPass}
                     onChange={e => { setAdminPass(e.target.value); setAdminError(''); }}
-                    onKeyDown={e => {
+                    onKeyDown={async e => {
                       if (e.key === 'Enter') {
-                        if (adminPass === ADMIN_PASSWORD) {
+                        const hashed = await hashInput(adminPass);
+                        if (hashed === __ADMIN_PASSWORD_HASH__) {
                           setShowAdminModal(false);
                           navigate('/admin');
                         } else {
@@ -527,8 +535,9 @@ export default function Sidebar() {
                     Cancel
                   </button>
                   <button
-                    onClick={() => {
-                      if (adminPass === ADMIN_PASSWORD) {
+                    onClick={async () => {
+                      const hashed = await hashInput(adminPass);
+                      if (hashed === __ADMIN_PASSWORD_HASH__) {
                         setShowAdminModal(false);
                         navigate('/admin');
                       } else {
@@ -545,7 +554,7 @@ export default function Sidebar() {
                 </div>
 
                 <p className="text-[9px] text-center text-text-dim/50 font-bold tracking-widest uppercase">
-                  Password set via <code className="font-mono text-neon-cyan/60">VITE_ADMIN_PASSWORD</code>
+                  Password managed securely via <code className="font-mono text-neon-cyan/60">ADMIN_PASSWORD</code>
                 </p>
               </div>
             </motion.div>

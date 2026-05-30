@@ -1,15 +1,19 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import crypto from 'crypto';
 import {defineConfig, loadEnv} from 'vite';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
+  const adminPass = env.ADMIN_PASSWORD || env.VITE_ADMIN_PASSWORD || '';
+  const adminPassHash = adminPass ? crypto.createHash('sha256').update(adminPass).digest('hex') : '';
   return {
     plugins: [react(), tailwindcss()],
     define: {
       'process.env.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(env.NEXT_PUBLIC_SUPABASE_URL),
       'process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+      '__ADMIN_PASSWORD_HASH__': JSON.stringify(adminPassHash),
     },
     resolve: {
       alias: {

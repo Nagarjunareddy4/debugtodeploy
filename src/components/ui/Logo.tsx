@@ -5,15 +5,25 @@ import React from 'react';
  * Vector SVG guarantees 0ms load time, no flicker, and pixel-perfect scaling.
  */
 export const Logo = ({ className = "w-10 h-10" }: { className?: string }) => {
+  const uniqueId = React.useId().replace(/:/g, "");
+  const chevronGrad = `chevronGrad-${uniqueId}`;
+  const lineGrad = `lineGrad-${uniqueId}`;
+  const logoGlow = `logoGlow-${uniqueId}`;
+
   return (
     <div className={`relative ${className} flex-shrink-0 flex items-center justify-center`}>
       <svg className="w-full h-full logo-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id={chevronGrad} x1="0%" y1="0%" x2="100%" y2="0%" gradientUnits="userSpaceOnUse">
             <stop offset="0%" stopColor="#00D4FF" />
             <stop offset="100%" stopColor="#00FF88" />
           </linearGradient>
-          <filter id="logoGlow" x="-25%" y="-25%" width="150%" height="150%">
+          <linearGradient id={lineGrad} x1="0%" y1="0%" x2="100%" y2="0%" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#00D4FF" stopOpacity="0" />
+            <stop offset="30%" stopColor="#00D4FF" stopOpacity="1" />
+            <stop offset="100%" stopColor="#00FF88" stopOpacity="1" />
+          </linearGradient>
+          <filter id={logoGlow} x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur stdDeviation="3" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
@@ -21,14 +31,23 @@ export const Logo = ({ className = "w-10 h-10" }: { className?: string }) => {
             </feMerge>
           </filter>
         </defs>
-        <rect width="100" height="100" rx="22" fill="#05080F" />
         
-        <path d="M26 30 L38 42 L26 54" stroke="#00D4FF" strokeWidth="6.5" strokeLinecap="round" strokeLinejoin="round" filter="url(#logoGlow)" />
-        <path d="M40 30 L52 42 L40 54" stroke="#00FF88" strokeWidth="6.5" strokeLinecap="round" strokeLinejoin="round" filter="url(#logoGlow)" />
+        <rect width="100" height="100" rx="24" fill="#05080F" />
         
-        <rect x="26" y="62" width="14" height="5" rx="2.5" fill="url(#logoGrad)" filter="url(#logoGlow)" />
-        <line x1="43" y1="64.5" x2="74" y2="64.5" stroke="#00FF88" strokeWidth="2.5" strokeLinecap="round" filter="url(#logoGlow)" />
-        <path d="M70 60 L77 64.5 L70 69" stroke="#00FF88" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" filter="url(#logoGlow)" />
+        {/* Left Chevron */}
+        <polygon points="20,30 32,30 50,48 32,66 20,66 38,48" fill="#00D4FF" filter={`url(#${logoGlow})`} />
+        
+        {/* Right Chevron */}
+        <polygon points="38,30 50,30 68,48 50,66 38,66 56,48" fill={`url(#${chevronGrad})`} filter={`url(#${logoGlow})`} />
+        
+        {/* Underscore */}
+        <rect x="62" y="56" width="14" height="10" rx="2" fill="#00FF88" filter={`url(#${logoGlow})`} />
+        
+        {/* Arrow Line */}
+        <line x1="14" y1="76" x2="78" y2="76" stroke={`url(#${lineGrad})`} strokeWidth="2" strokeLinecap="round" filter={`url(#${logoGlow})`} />
+        
+        {/* Arrowhead */}
+        <polygon points="76,70 88,76 76,82 79,76" fill="#00FF88" filter={`url(#${logoGlow})`} />
       </svg>
     </div>
   );
