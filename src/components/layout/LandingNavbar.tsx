@@ -45,7 +45,7 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
           <span className="ldg-mono text-sm font-semibold tracking-tight hidden sm:block">
             debug<span className="text-[#00D4FF]">→</span>deploy
           </span>
-        </div>
+        </motion.div>
 
         {/* Desktop Nav Links */}
         <div className="hidden md:flex items-center gap-1">
@@ -55,8 +55,9 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
               href={link.href}
               className="ldg-mono px-4 py-2 text-[0.78rem] text-[var(--ldg-text-dim)] hover:text-[var(--ldg-text)] transition-colors"
             >
-              {link.name}
-            </a>
+              <span className="relative z-10">{link.name}</span>
+              <span className="absolute inset-0 rounded-xl bg-gradient-to-br from-neon-cyan/0 to-neon-green/0 group-hover:from-neon-cyan/8 group-hover:to-neon-green/5 transition-all duration-300" />
+            </motion.a>
           ))}
         </div>
 
@@ -82,6 +83,7 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
         <button
           className="md:hidden p-2 ldg-hairline border rounded-sm text-[var(--ldg-text)]"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          whileTap={{ scale: 0.93 }}
         >
           <AnimatePresence mode="wait">
             {mobileMenuOpen ? (
@@ -116,7 +118,7 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {link.name}
-                </a>
+                </motion.a>
               ))}
               <div className="pt-3 mt-2 border-t border-[var(--ldg-wire)]">
                 {session ? (

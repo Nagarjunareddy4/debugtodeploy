@@ -96,6 +96,8 @@ export default function FlipCard({
               : 'bg-[#181D27] border-[#FF5C5C]/60 text-white shadow-[-8px_-8px_18px_rgba(255,92,92,0.04),10px_10px_24px_rgba(0,0,0,0.7)]'
           }`}
         >
+          {/* Shine effect overlay */}
+          <div className="absolute inset-0 rounded-[1.5rem] bg-gradient-to-tr from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
           {/* Front Side */}
           {!isFlipped && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
