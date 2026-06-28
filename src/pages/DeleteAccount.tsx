@@ -3,6 +3,9 @@ import { LogoFull } from '../components/ui/Logo';
 import { Mail, Trash2, Shield, AlertCircle } from 'lucide-react';
 import { usePageTitle } from '../lib/utils';
 
+declare const __CONTACT_EMAIL__: string;
+const CONTACT_EMAIL = typeof __CONTACT_EMAIL__ !== 'undefined' ? __CONTACT_EMAIL__ : 'support@debugtodeploy.com';
+
 export default function DeleteAccount() {
   usePageTitle('Account Deletion Request');
 
@@ -33,10 +36,10 @@ export default function DeleteAccount() {
                 To initiate the permanent deletion of your account, please send an email from your <span className="text-text-main">registered email address</span> to:
               </p>
               <a 
-                href="mailto:debugtodeploy@gmail.com?subject=Account Deletion Request"
+                href={`mailto:${CONTACT_EMAIL}?subject=Account Deletion Request`}
                 className="text-2xl font-black text-soft-blue hover:underline block pt-2"
               >
-                debugtodeploy@gmail.com
+                {CONTACT_EMAIL}
               </a>
             </div>
           </div>

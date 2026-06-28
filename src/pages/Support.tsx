@@ -4,6 +4,14 @@ import { Mail, Clock, Send, ShieldCheck, ArrowRight, X, Star, Heart, CheckCircle
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 
+declare const __FORMSPREE_ID__: string;
+declare const __CONTACT_EMAIL__: string;
+
+const FORMSPREE_URL = (typeof __FORMSPREE_ID__ !== 'undefined' && __FORMSPREE_ID__)
+  ? `https://formspree.io/f/${__FORMSPREE_ID__}`
+  : '';
+const CONTACT_EMAIL = typeof __CONTACT_EMAIL__ !== 'undefined' ? __CONTACT_EMAIL__ : 'support@debugtodeploy.com';
+
 export default function Support() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -30,7 +38,7 @@ export default function Support() {
     
     setIsSubmitting(true);
     try {
-      await fetch("https://formspree.io/f/xgorjnag", {
+      await fetch(FORMSPREE_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify({
@@ -113,10 +121,10 @@ export default function Support() {
             <h3 className="text-xl font-black mb-2">Email Dispatch</h3>
             <p className="text-text-dim text-sm font-bold mb-4">Direct uplink to our support engineers for complex technical issues.</p>
             <a
-              href="mailto:debugtodeploy@gmail.com"
+              href={`mailto:${CONTACT_EMAIL}`}
               className="mt-6 flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-soft-blue/30 transition-all group/btn"
             >
-              <span className="text-[11px] sm:text-sm font-bold break-all pr-2">debugtodeploy@gmail.com</span>
+              <span className="text-[11px] sm:text-sm font-bold break-all pr-2">{CONTACT_EMAIL}</span>
               <ArrowRight className="w-4 h-4 shrink-0" />
             </a>
           </div>
@@ -206,7 +214,7 @@ export default function Support() {
                     setIsSubmitting(true);
                     const formData = new FormData(e.currentTarget);
                     try {
-                      const res = await fetch("https://formspree.io/f/xgorjnag", {
+                      const res = await fetch(FORMSPREE_URL, {
                         method: "POST",
                         body: formData,
                         headers: { 'Accept': 'application/json' }

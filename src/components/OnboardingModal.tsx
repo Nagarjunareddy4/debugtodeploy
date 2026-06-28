@@ -31,22 +31,21 @@ export default function OnboardingModal({ isOpen, onDismiss }: OnboardingModalPr
 
   const handleComplete = () => {
     const finalGoal = isCustomGoal ? customGoal : goal;
-    
+
     if (isCustomGoal) {
       if (!customGoal.trim()) {
         toast.error('Please specify your custom goal');
         return;
       }
 
-      // Relevance check
       const relevantKeywords = [
-        'devops', 'sre', 'cloud', 'platform', 'infrastructure', 'sre', 
-        'reliability', 'automation', 'linux', 'kubernetes', 'k8s', 'docker', 
+        'devops', 'sre', 'cloud', 'platform', 'infrastructure', 'sre',
+        'reliability', 'automation', 'linux', 'kubernetes', 'k8s', 'docker',
         'aws', 'azure', 'gcp', 'terraform', 'ansible', 'jenkins', 'cicd', 'ci/cd',
         'architect', 'engineer', 'admin', 'operations', 'security', 'devsecops'
       ];
-      
-      const isRelevant = relevantKeywords.some(keyword => 
+
+      const isRelevant = relevantKeywords.some(keyword =>
         customGoal.toLowerCase().includes(keyword)
       );
 
@@ -55,80 +54,86 @@ export default function OnboardingModal({ isOpen, onDismiss }: OnboardingModalPr
         return;
       }
     }
-    
-    // Mark as seen so it doesn't pop up again even if generation fails or takes time
+
     localStorage.setItem('hasSeenOnboarding', 'true');
-    
-    // Navigate to roadmap page to trigger generation
-    navigate('/roadmap', { 
-      state: { 
-        triggerUpdate: true, 
+
+    navigate('/roadmap', {
+      state: {
+        triggerUpdate: true,
         newGoal: finalGoal,
         newExperience: experience
-      } 
+      }
     });
   };
 
   return (
-    <div className="fixed top-0 left-0 w-full h-full min-h-[100dvh] z-[200] flex items-center justify-center p-4 sm:p-6 bg-surface/90 backdrop-blur-xl overflow-y-auto">
+    <div className="fixed top-0 left-0 w-full h-full min-h-[100dvh] z-[200] flex items-center justify-center p-4 sm:p-6 bg-surface/95 backdrop-blur-md overflow-y-auto">
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-xl bg-surface border-4 border-border rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-8 md:p-12 shadow-[0_0_100px_rgba(0,0,0,0.5)] relative overflow-hidden my-auto"
+        initial={{ scale: 0.96, opacity: 0, y: 12 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-xl bg-surface clay p-6 sm:p-8 md:p-12 relative my-auto"
       >
-        <div className="absolute top-0 right-0 w-64 h-64 bg-soft-blue/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        
-        <button 
+        <button
           onClick={handleDismiss}
-          className="absolute top-6 right-6 p-2 rounded-full hover:bg-border/20 transition-all z-[210] text-text-dim"
+          className="absolute top-6 right-6 p-2 hover:bg-surface-2 transition-colors z-[210] text-text-dim"
         >
           <X className="w-5 h-5" />
         </button>
+
+        <div className="flex items-center gap-2 mb-8 font-mono text-[10px] uppercase tracking-widest text-text-dim">
+          <span className={cn(step === 1 ? "text-neon-cyan" : "")}>01 · level</span>
+          <span className="w-6 h-px bg-border" />
+          <span className={cn(step === 2 ? "text-neon-cyan" : "")}>02 · goal</span>
+        </div>
 
         <AnimatePresence mode="wait">
           {step === 1 && (
             <motion.div
               key="step1"
-              initial={{ x: 20, opacity: 0 }}
+              initial={{ x: 16, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -20, opacity: 0 }}
+              exit={{ x: -16, opacity: 0 }}
+              transition={{ duration: 0.25 }}
               className="relative z-10 space-y-8"
             >
               <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 rounded-2xl bg-soft-blue/10 flex items-center justify-center text-soft-blue border border-soft-blue/20">
-                  <Rocket className="w-6 h-6" />
+                <div className="w-11 h-11 clay-flat flex items-center justify-center text-neon-cyan">
+                  <Rocket className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black italic tracking-tighter">Welcome to the Fleet</h2>
-                  <p className="text-xs font-bold text-text-dim uppercase tracking-widest">Let's tailor your experience</p>
+                  <h2 className="text-2xl font-bold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>Set your starting point</h2>
+                  <p className="text-xs text-text-dim">A couple questions, then we build your roadmap</p>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <label className="text-[10px] font-black uppercase tracking-widest text-text-dim ml-2">What is your current experience level?</label>
+                <label className="font-mono text-[10px] uppercase tracking-widest text-text-dim">Current experience level</label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {['Beginner', 'Intermediate', 'Advanced'].map(lvl => (
-                    <button
+                    <motion.button
                       key={lvl}
+                      whileHover={{ y: -3 }}
+                      whileTap={{ scale: 0.97 }}
                       onClick={() => setExperience(lvl)}
                       className={cn(
-                        "p-4 rounded-2xl border-2 font-bold text-sm transition-all",
-                        experience === lvl 
-                          ? "bg-soft-blue/10 border-soft-blue text-soft-blue" 
-                          : "bg-surface border-border text-text-dim hover:border-text-dim/30"
+                        "p-4 bg-surface font-medium text-sm transition-colors text-left clay-sm",
+                        experience === lvl
+                          ? "ring-1 ring-inset ring-neon-cyan text-neon-cyan"
+                          : "text-text-dim hover:text-text-main"
                       )}
                     >
                       {lvl}
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               </div>
 
               <button
                 onClick={() => setStep(2)}
-                className="w-full flex items-center justify-center gap-2 py-4 rounded-full bg-text-main text-surface font-black uppercase text-xs hover:scale-105 active:scale-95 transition-all"
+                className="btn-pill btn-neon-primary w-full flex items-center justify-center gap-2 py-4"
               >
-                Next Step <ChevronRight className="w-4 h-4" />
+                Continue <ChevronRight className="w-4 h-4" />
               </button>
             </motion.div>
           )}
@@ -136,76 +141,81 @@ export default function OnboardingModal({ isOpen, onDismiss }: OnboardingModalPr
           {step === 2 && (
             <motion.div
               key="step2"
-              initial={{ x: 20, opacity: 0 }}
+              initial={{ x: 16, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -20, opacity: 0 }}
+              exit={{ x: -16, opacity: 0 }}
+              transition={{ duration: 0.25 }}
               className="relative z-10 space-y-8"
             >
               <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 rounded-2xl bg-soft-purple/10 flex items-center justify-center text-soft-purple border border-soft-purple/20">
-                  <Brain className="w-6 h-6" />
+                <div className="w-11 h-11 clay-flat flex items-center justify-center text-neon-cyan">
+                  <Brain className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black italic tracking-tighter">Target Destination</h2>
-                  <p className="text-xs font-bold text-text-dim uppercase tracking-widest">Where are we flying?</p>
+                  <h2 className="text-2xl font-bold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>What's the target role?</h2>
+                  <p className="text-xs text-text-dim">We'll build a roadmap toward this</p>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <label className="text-[10px] font-black uppercase tracking-widest text-text-dim ml-2">What is your ultimate career goal?</label>
+                <label className="font-mono text-[10px] uppercase tracking-widest text-text-dim">Career goal</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {[
-                    { label: 'DevOps Engineer', color: 'soft-blue' },
-                    { label: 'Cloud Engineer', color: 'soft-green' },
-                    { label: 'Kubernetes Engineer', color: 'soft-purple' },
-                    { label: 'SRE Engineer', color: 'soft-orange' },
-                    { label: 'Platform Engineer', color: 'soft-blue' }
-                  ].map(g => (
-                    <button
-                      key={g.label}
+                    'DevOps Engineer',
+                    'Cloud Engineer',
+                    'Kubernetes Engineer',
+                    'SRE Engineer',
+                    'Platform Engineer'
+                  ].map(label => (
+                    <motion.button
+                      key={label}
+                      whileHover={{ y: -3 }}
+                      whileTap={{ scale: 0.97 }}
                       onClick={() => {
-                        setGoal(g.label);
+                        setGoal(label);
                         setIsCustomGoal(false);
                       }}
                       className={cn(
-                        "p-4 rounded-2xl border-2 font-bold text-sm transition-all text-left",
-                        !isCustomGoal && goal === g.label 
-                          ? `bg-${g.color}/10 border-${g.color} text-${g.color}` 
-                          : "bg-surface border-border text-text-dim hover:border-text-dim/30"
+                        "p-4 bg-surface font-medium text-sm transition-colors text-left clay-sm",
+                        !isCustomGoal && goal === label
+                          ? "ring-1 ring-inset ring-neon-cyan text-neon-cyan"
+                          : "text-text-dim hover:text-text-main"
                       )}
                     >
-                      {g.label}
-                    </button>
+                      {label}
+                    </motion.button>
                   ))}
-                  <button
+                  <motion.button
+                    whileHover={{ y: -3 }}
+                    whileTap={{ scale: 0.97 }}
                     onClick={() => setIsCustomGoal(true)}
                     className={cn(
-                      "p-4 rounded-2xl border-2 font-bold text-sm transition-all text-left",
-                      isCustomGoal 
-                        ? "bg-text-main/10 border-text-main text-text-main" 
-                        : "bg-surface border-border text-text-dim hover:border-text-dim/30"
+                      "p-4 bg-surface font-medium text-sm transition-colors text-left clay-sm",
+                      isCustomGoal
+                        ? "ring-1 ring-inset ring-neon-cyan text-neon-cyan"
+                        : "text-text-dim hover:text-text-main"
                     )}
                   >
-                    Other / Custom Goal
-                  </button>
+                    Other / custom
+                  </motion.button>
                 </div>
 
                 {isCustomGoal && (
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="space-y-2"
                   >
-                    <label className="text-[10px] font-black uppercase tracking-widest text-text-dim ml-2">Type your specific role (e.g. SRE Manager, Cloud Security)</label>
+                    <label className="font-mono text-[10px] uppercase tracking-widest text-text-dim">Type your specific role</label>
                     <input
                       type="text"
                       value={customGoal}
                       onChange={(e) => setCustomGoal(e.target.value)}
                       placeholder="e.g. Infrastructure Architect"
-                      className="w-full p-4 rounded-2xl bg-brand-bg border-2 border-border focus:border-soft-purple focus:ring-0 transition-all font-bold text-sm"
+                      className="w-full p-4 bg-brand-bg clay-input border-2 border-border focus:border-neon-cyan focus:ring-0 transition-colors font-medium text-sm outline-none rounded-xl"
                       autoFocus
                     />
-                    <p className="text-[9px] font-bold text-text-dim/60 ml-2 italic">Note: Custom goals must be relevant to DevOps, SRE, or Cloud Engineering.</p>
+                    <p className="text-[10px] text-text-dim/70">Must be relevant to DevOps, SRE, or Cloud Engineering.</p>
                   </motion.div>
                 )}
               </div>
@@ -213,15 +223,15 @@ export default function OnboardingModal({ isOpen, onDismiss }: OnboardingModalPr
               <div className="flex gap-3">
                 <button
                   onClick={() => setStep(1)}
-                  className="px-6 py-4 rounded-full bg-surface border-2 border-border text-text-dim font-black uppercase text-xs hover:border-text-dim/30 transition-all"
+                  className="btn-pill btn-ghost px-6 py-4"
                 >
                   Back
                 </button>
                 <button
                   onClick={handleComplete}
-                  className="flex-1 flex items-center justify-center gap-2 py-4 rounded-full bg-soft-purple text-white font-black uppercase text-xs hover:scale-105 active:scale-95 transition-all shadow-xl shadow-soft-purple/30"
+                  className="btn-pill btn-neon-primary flex-1 flex items-center justify-center gap-2 py-4"
                 >
-                  Generate Curriculum <Check className="w-4 h-4" />
+                  Generate roadmap <Check className="w-4 h-4" />
                 </button>
               </div>
             </motion.div>

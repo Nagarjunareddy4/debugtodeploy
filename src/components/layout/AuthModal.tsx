@@ -6,6 +6,7 @@ import { cn } from '../../lib/utils';
 import { toast } from 'react-hot-toast';
 import ConsentCheckbox from '../ConsentCheckbox';
 import { saveUserConsent } from '../../lib/consent';
+import { Logo } from '../ui/Logo';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -209,9 +210,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
 
             <div className="p-8 sm:p-12">
               <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-soft-blue/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-soft-blue/20">
-                  <Rocket className="w-8 h-8 text-soft-blue" />
-                </div>
+                <Logo className="w-16 h-16 mx-auto mb-4" />
                 <div className="relative">
                   {(authMode === 'forgot' || authMode === 'verify') && (
                     <motion.button

@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { 
-  Terminal, 
-  Lock, 
-  CheckCircle2, 
-  ChevronRight, 
-  Zap, 
-  Cloud, 
+import {
+  Terminal,
+  Lock,
+  CheckCircle2,
+  ChevronRight,
+  Zap,
+  Cloud,
   ShieldCheck,
   Flame,
   Brain
@@ -16,6 +16,7 @@ import { supabase } from '../lib/supabase';
 import { cn, usePageTitle } from '../lib/utils';
 import { GeneratedLab } from '../lib/generator';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
+import { PlanBadge } from '../components/ui/PlanBadge';
 
 const iconMap: Record<string, any> = {
   'Cloud': Cloud,
@@ -25,23 +26,6 @@ const iconMap: Record<string, any> = {
   'Flame': Flame,
   'Brain': Brain,
 };
-
-const colorMap: Record<string, { bg: string; bgSoft: string; text: string }> = {
-  'soft-blue': { bg: 'bg-soft-blue', bgSoft: 'bg-soft-blue/10', text: 'text-soft-blue' },
-  'soft-green': { bg: 'bg-soft-green', bgSoft: 'bg-soft-green/10', text: 'text-soft-green' },
-  'soft-purple': { bg: 'bg-soft-purple', bgSoft: 'bg-soft-purple/10', text: 'text-soft-purple' },
-  'soft-orange': { bg: 'bg-soft-orange', bgSoft: 'bg-soft-orange/10', text: 'text-soft-orange' },
-  'soft-red': { bg: 'bg-soft-red', bgSoft: 'bg-soft-red/10', text: 'text-soft-red' },
-  'blue': { bg: 'bg-soft-blue', bgSoft: 'bg-soft-blue/10', text: 'text-soft-blue' },
-  'green': { bg: 'bg-soft-green', bgSoft: 'bg-soft-green/10', text: 'text-soft-green' },
-  'purple': { bg: 'bg-soft-purple', bgSoft: 'bg-soft-purple/10', text: 'text-soft-purple' },
-  'orange': { bg: 'bg-soft-orange', bgSoft: 'bg-soft-orange/10', text: 'text-soft-orange' },
-  'red': { bg: 'bg-soft-red', bgSoft: 'bg-soft-red/10', text: 'text-soft-red' },
-};
-
-function getColorClasses(colorName?: string) {
-  return colorMap[colorName || 'soft-blue'] || colorMap['soft-blue'];
-}
 
 export default function LabList() {
   usePageTitle('Cloud Sandbox');
@@ -58,13 +42,12 @@ export default function LabList() {
       if (session?.user) fetchUserData();
     });
 
-    // Real-time subscription to profile changes for curriculum updates
     const channel = supabase
       .channel('lablist-profile-sync')
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'profiles' 
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'profiles'
       }, (payload) => {
         if (payload.new) {
           setCompletedLabsCount(payload.new.labs_completed || 0);
@@ -100,43 +83,45 @@ export default function LabList() {
   if (loading) return null;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-12">
-      <header className="flex flex-col md:flex-row justify-between items-end gap-6">
-        <div className="space-y-4">
-          <h2 className="text-5xl font-black tracking-tighter italic">Cloud Sandbox</h2>
-          <p className="text-text-dim font-bold uppercase tracking-[0.2em] text-xs">Scenario-based hands-on learning</p>
+    <div className="max-w-6xl mx-auto space-y-10">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 pb-8 border-b border-border">
+        <div className="space-y-3">
+          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-neon-cyan flex items-center gap-2">
+            <span className="w-1.5 h-1.5 bg-neon-cyan" /> sandbox queue
+          </span>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>Cloud Sandbox</h1>
+          <p className="text-text-dim text-sm">Scenario-based labs that fail the way real infrastructure fails.</p>
         </div>
-        <div className="flex flex-col md:flex-row items-center gap-4">
-          <div className="playful-card py-4 px-8 bg-surface border-none shadow-xl flex items-center gap-4">
-             <div className="w-10 h-10 bg-soft-blue/20 rounded-full flex items-center justify-center text-soft-blue">
-                <CheckCircle2 className="w-6 h-6" />
-             </div>
-             <div>
-                <span className="text-[10px] font-black uppercase text-text-dim leading-none">Completed</span>
-                <p className="text-xl font-black">{completedLabsCount} / {labsData.length}</p>
-             </div>
-          </div>
-          {!isPro && (
-            <div className="text-[10px] font-black uppercase tracking-widest text-soft-orange bg-soft-orange/10 px-4 py-2 rounded-full border border-soft-orange/20">
-              {getRemainingUsage('lab', isPro)} lab generations left this week
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="clay-sm px-5 py-3 flex items-center gap-4">
+            <CheckCircle2 className="w-5 h-5 text-neon-cyan" />
+            <div>
+              <p className="font-mono text-[9px] uppercase tracking-widest text-text-dim leading-none">Completed</p>
+              <p className="text-lg font-bold mt-1">{completedLabsCount} / {labsData.length}</p>
             </div>
-          )}
+          </div>
+          <div className="clay-sm px-5 py-3 flex items-center gap-3">
+            <PlanBadge status={isPro ? 'pro' : 'free'} size="md" />
+            {!isPro && (
+              <span className="font-mono text-[10px] uppercase tracking-widest text-text-dim">
+                {getRemainingUsage('lab', isPro)} left this week
+              </span>
+            )}
+          </div>
         </div>
       </header>
 
       {labsData.length === 0 ? (
-        <div className="text-center p-12 text-text-dim font-bold">
-           No labs found. Please re-login to generate your personalized curriculum.
+        <div className="text-center p-12 text-text-dim font-mono text-sm clay-flat">
+          No labs found. Please re-login to generate your personalized curriculum.
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {labsData.map((lab, index) => {
-            // Free users can ONLY access the first lab (index 0).
-            // All other labs are locked regardless of progress.
             const isLockedBySubscription = !isPro && index > 0;
             const isLockedByProgress = index > completedLabsCount;
             const isLocked = isLockedBySubscription || isLockedByProgress;
-            
+
             const isCompleted = index < completedLabsCount;
             const isNext = index === completedLabsCount && !isLocked;
             const IconComponent = iconMap[lab.icon] || Cloud;
@@ -144,63 +129,55 @@ export default function LabList() {
             return (
               <motion.div
                 key={lab.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.1 }}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                whileHover={!isLocked || isLockedBySubscription ? { y: -5 } : {}}
+                whileTap={!isLocked || isLockedBySubscription ? { scale: 0.98 } : {}}
                 onClick={() => {
                   if (isLockedBySubscription) {
-                    alert('Upgrade to Pro to unlock the full curriculum and all remaining labs!');
                     navigate('/pricing');
                     return;
                   }
                   if (isLockedByProgress) return;
-                  
-                  // Unlimited access to allowed lab
                   navigate(`/labs/${lab.id}`);
                 }}
                 className={cn(
-                  "playful-card group border-none shadow-2xl relative transition-all",
-                  isLocked ? "bg-brand-bg opacity-40 grayscale cursor-not-allowed" : "bg-surface cursor-pointer hover:scale-[1.03]",
-                  isNext && "border-4 border-soft-blue ring-8 ring-soft-blue/10 ring-offset-4 ring-offset-brand-bg",
-                  isLockedBySubscription && "hover:grayscale-0 transition-all cursor-pointer" // Allow clicking for upgrade
+                  "group relative bg-surface-2 p-7 flex flex-col clay-sm",
+                  isLocked && !isLockedBySubscription ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
+                  isNext && "ring-1 ring-inset ring-neon-cyan"
                 )}
               >
-                {isLocked && (
-                  <div className="absolute top-4 right-4 flex items-center gap-2">
-                    {isLockedBySubscription && (
-                      <span className="text-[8px] font-black bg-soft-orange text-white px-2 py-0.5 rounded-full shadow-lg">PRO ONLY</span>
-                    )}
-                    <Lock className="w-5 h-5 text-text-dim" />
+                <div className="flex items-start justify-between mb-6">
+                  <div className="w-11 h-11 clay-flat flex items-center justify-center text-neon-cyan">
+                    <IconComponent className="w-5 h-5" />
                   </div>
-                )}
-                {isCompleted && (
-                  <div className="absolute top-4 right-4 text-soft-green">
-                    <CheckCircle2 className="w-6 h-6 fill-soft-green/20" />
-                  </div>
-                )}
-
-                 <div className={cn("w-20 h-20 rounded-[2rem] flex items-center justify-center mb-8 shadow-xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-3", getColorClasses(lab.color).bg, "text-white")}>
-                  <IconComponent className="w-10 h-10" />
+                  {isLocked && (
+                    <div className="flex items-center gap-2">
+                      {isLockedBySubscription && (
+                        <span className="font-mono text-[8px] uppercase tracking-widest border border-neon-cyan/40 text-neon-cyan px-1.5 py-0.5">Pro only</span>
+                      )}
+                      <Lock className="w-4 h-4 text-text-dim" />
+                    </div>
+                  )}
+                  {isCompleted && <CheckCircle2 className="w-5 h-5 text-neon-green" />}
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className={cn("text-[9px] font-black uppercase tracking-widest py-1 px-3 rounded-full", getColorClasses(lab.color).bgSoft, getColorClasses(lab.color).text)}>
-                      {lab.difficulty}
-                    </span>
-                    <span className="text-[9px] font-black uppercase tracking-widest text-text-dim">+ {lab.xp} XP</span>
+                <div className="space-y-2 mb-6 flex-1">
+                  <div className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-widest text-text-dim">
+                    <span>{lab.difficulty}</span>
+                    <span>·</span>
+                    <span>+{lab.xp} XP</span>
                   </div>
-                  <h3 className="text-2xl font-black tracking-tighter">{lab.title}</h3>
+                  <h3 className="text-xl font-bold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>{lab.title}</h3>
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-border flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-widest text-text-dim">
-                    {isLocked ? 'Locked' : isCompleted ? 'Completed' : 'Next Up'}
+                <div className="pt-4 border-t border-border flex items-center justify-between">
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-text-dim">
+                    {isLocked ? 'Locked' : isCompleted ? 'Completed' : 'Next up'}
                   </span>
                   {!isLocked && (
-                    <button className="p-3 bg-text-main text-surface rounded-2xl shadow-xl group-hover:bg-soft-blue transition-colors">
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
+                    <ChevronRight className="w-4 h-4 text-text-dim group-hover:text-neon-cyan group-hover:translate-x-0.5 transition-all" />
                   )}
                 </div>
               </motion.div>

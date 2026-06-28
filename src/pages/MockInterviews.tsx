@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
+import { Notify } from '../lib/notifications';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
 import { GeneratedInterview } from '../lib/generator';
 import { updateReadinessScore } from '../lib/readiness';
@@ -584,6 +585,7 @@ Be specific, constructive, and encouraging.`;
         }).eq('id', user.id);
         
         await updateReadinessScore(user.id);
+        Notify.interviewGraded(Math.round(averageScore * 10));
       }
     }
     

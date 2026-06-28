@@ -252,7 +252,7 @@ export async function getTodaysQuizQuestions(supabaseClient = supabase): Promise
       // In the browser (client-side), do not perform database writes to avoid RLS/403 errors.
       // The client will automatically fall back to LocalStorage client-side AI generation.
       if (typeof window !== 'undefined') {
-        console.log('Daily quiz pool not found in Supabase. Falling back to local client-side AI generation.');
+        console.warn('Daily quiz pool not found in Supabase. Falling back to local client-side AI generation.');
         return [];
       }
 

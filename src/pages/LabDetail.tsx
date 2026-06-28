@@ -24,6 +24,7 @@ import { cn } from '../lib/utils';
 import { GeneratedLab, GeneratedLabStep } from '../lib/generator';
 import { updateReadinessScore } from '../lib/readiness';
 import { trackEvent } from '../lib/analytics';
+import { Notify } from '../lib/notifications';
 import Terminal from '../components/lab/Terminal';
 
 export default function LabDetail() {
@@ -226,6 +227,29 @@ export default function LabDetail() {
 
       await updateReadinessScore(user.id);
       trackEvent('lab_completed', { lab_id: id, lab_title: lab.title, xp_gained: xpGain });
+      Notify.labCompleted(lab.title, xpGain, labIdStr);
+
+      // Check for newly-unlocked badges (labs_completed/level just changed)
+      const { data: updatedProfile } = await supabase
+        .from('profiles')
+        .select('labs_completed, level')
+        .eq('id', user.id)
+        .single();
+
+      if (updatedProfile) {
+        const labsCompleted = updatedProfile.labs_completed || 0;
+        const level = updatedProfile.level || 1;
+        const BADGE_THRESHOLDS: { name: string; check: () => boolean }[] = [
+          { name: 'Docker Pilot', check: () => labsCompleted === 1 },
+          { name: 'K8s Healer', check: () => labsCompleted === 3 },
+          { name: 'Cloud Native', check: () => labsCompleted === 5 },
+          { name: 'SRE Master', check: () => level === 5 },
+        ];
+        const newlyUnlocked = BADGE_THRESHOLDS.find(b => b.check());
+        if (newlyUnlocked) {
+          Notify.achievement(newlyUnlocked.name);
+        }
+      }
     } catch (err: any) {
       console.error('Error saving lab completion:', err);
       alert(`Could not save lab progress: ${err.message}`);
@@ -282,23 +306,22 @@ export default function LabDetail() {
 
   return (
     <div className="flex flex-col gap-4 max-w-[1600px] mx-auto pb-8">
-      <header className="flex flex-wrap justify-between items-center gap-3 px-2">
+      <header className="flex flex-wrap justify-between items-center gap-3 px-2 pb-4 border-b border-border">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/labs')} className="p-2.5 hover:bg-surface rounded-2xl border-2 border-transparent hover:border-border transition-all shrink-0">
+          <button onClick={() => navigate('/labs')} className="p-2.5 hover:bg-surface-2 border border-transparent hover:border-border transition-all shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="min-w-0">
-            <h2 className="text-lg sm:text-2xl font-black truncate max-w-[220px] sm:max-w-none">{currentStep.title}</h2>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className={cn("text-[10px] font-black uppercase px-2 py-0.5 rounded-full", `text-${lab.color} bg-${lab.color}/10`)}>
-                 {lab.difficulty}
-              </span>
-              <span className="text-[10px] font-black uppercase text-text-dim">Step {stepIndex + 1} of {totalSteps}</span>
+            <h2 className="text-lg sm:text-2xl font-bold truncate max-w-[220px] sm:max-w-none" style={{ fontFamily: 'var(--font-display)' }}>{currentStep.title}</h2>
+            <div className="flex items-center gap-2 flex-wrap font-mono text-[10px] uppercase tracking-widest text-text-dim">
+              <span className="text-neon-cyan">{lab.difficulty}</span>
+              <span>·</span>
+              <span>Step {stepIndex + 1} of {totalSteps}</span>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex gap-1.5">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex gap-1">
             {lab.steps.map((s, i) => (
               <button
                 key={i}
@@ -307,23 +330,23 @@ export default function LabDetail() {
                   saveLabState(i, codes, successes);
                 }}
                 className={cn(
-                  "w-7 h-7 rounded-full text-xs font-black border-2 transition-all",
-                  successes[i] ? "bg-soft-green text-white border-soft-green" :
-                  i === stepIndex ? "bg-text-main text-surface border-text-main scale-110" :
-                  "bg-brand-bg border-border text-text-dim hover:border-soft-blue"
+                  "w-7 h-7 text-xs font-mono border transition-all",
+                  successes[i] ? "bg-neon-green/10 text-neon-green border-neon-green" :
+                  i === stepIndex ? "bg-text-main text-surface border-text-main" :
+                  "bg-brand-bg border-border text-text-dim hover:border-neon-cyan"
                 )}
               >
                 {successes[i] ? '✓' : i + 1}
               </button>
             ))}
           </div>
-          <button 
+          <button
             onClick={runCode}
             disabled={isRunning || currentSuccess}
-            className="btn-pill bg-text-main text-surface flex items-center gap-2 px-5 py-2.5 text-sm disabled:opacity-50"
+            className="btn-pill btn-neon-primary flex items-center gap-2 px-5 py-2.5 text-sm disabled:opacity-50"
           >
             {isRunning ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
-            RUN LAB
+            Run lab
           </button>
         </div>
       </header>
@@ -331,37 +354,37 @@ export default function LabDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 px-2" style={{ minHeight: '70vh' }}>
         {/* Left Sidebar: Instructions */}
         <div className="lg:col-span-3 space-y-6">
-          <div className="playful-card bg-surface border-none shadow-2xl p-8 space-y-6 sticky top-4">
-             <div className="flex items-center gap-3 text-soft-blue">
-                <TerminalIcon className="w-5 h-5" />
-                <h3 className="font-black uppercase tracking-widest text-xs">Guided Instructions</h3>
+          <div className="bg-surface clay-flat p-7 space-y-6 sticky top-4">
+             <div className="flex items-center gap-3 text-neon-cyan font-mono text-[10px] uppercase tracking-widest">
+                <TerminalIcon className="w-4 h-4" />
+                <h3>Guided instructions</h3>
              </div>
-             <div className="space-y-4">
-                <h4 className="text-xl font-black italic">{currentStep.title}</h4>
-                <div className="prose prose-sm text-text-dim font-bold leading-relaxed">
+             <div className="space-y-3">
+                <h4 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)' }}>{currentStep.title}</h4>
+                <div className="prose prose-sm text-text-dim leading-relaxed text-sm">
                    {currentStep.description}
                 </div>
              </div>
              
              <div className="pt-6 border-t border-border space-y-4">
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-text-dim">
-                   <Sparkles className="w-3 h-3 text-soft-orange" /> Troubleshooting Help
+                <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-text-dim">
+                   <Sparkles className="w-3 h-3 text-neon-cyan" /> Troubleshooting help
                 </div>
                 <button 
                   onClick={getAiHelp}
-                  className="w-full py-3 rounded-xl bg-soft-orange/10 border-2 border-soft-orange/30 text-soft-orange font-black text-[10px] uppercase tracking-widest hover:bg-soft-orange hover:text-white transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3 border border-neon-cyan/40 text-neon-cyan font-mono text-[10px] uppercase tracking-widest hover:bg-neon-cyan hover:text-[#150C00] transition-all flex items-center justify-center gap-2"
                 >
-                   Ask AI Assistant
+                   Ask AI assistant
                 </button>
              </div>
 
              <div className="pt-4 space-y-2">
-                <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-text-dim italic">
+                <div className="flex justify-between font-mono text-[9px] uppercase tracking-widest text-text-dim">
                    <span>Progress</span>
                    <span>{Math.round(((stepIndex + 1) / totalSteps) * 100)}%</span>
                 </div>
-                <div className="h-1.5 w-full bg-border rounded-full overflow-hidden">
-                   <div className="h-full bg-soft-blue transition-all duration-500" style={{ width: `${((stepIndex + 1) / totalSteps) * 100}%` }} />
+                <div className="h-1 w-full bg-border overflow-hidden">
+                   <div className="h-full bg-neon-cyan transition-all duration-500" style={{ width: `${((stepIndex + 1) / totalSteps) * 100}%` }} />
                 </div>
              </div>
           </div>
@@ -369,27 +392,27 @@ export default function LabDetail() {
 
         {/* Center: IDE & Terminal */}
         <div className="lg:col-span-9 grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div className="playful-card flex flex-col p-0 border-none bg-surface shadow-2xl relative overflow-hidden" style={{ minHeight: '400px' }}>
-            <div className="flex items-center justify-between px-6 py-4 border-b-2 border-border bg-brand-bg/20">
-              <div className="flex items-center gap-3">
-                <Code2 className="w-4 h-4 text-text-dim" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-text-dim">manifest.yaml</span>
+          <div className="flex flex-col p-0 bg-surface clay-flat relative overflow-hidden" style={{ minHeight: '400px' }}>
+            <div className="flex items-center justify-between px-6 py-3.5 border-b border-border">
+              <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-widest text-text-dim">
+                <Code2 className="w-4 h-4" />
+                <span>manifest.yaml</span>
               </div>
               {currentSuccess && (
-                <div className="flex items-center gap-2 text-soft-green font-black text-[10px] uppercase">
+                <div className="flex items-center gap-2 text-neon-green font-mono text-[10px] uppercase tracking-widest">
                    <CheckCircle className="w-3 h-3" /> Validated
                 </div>
               )}
             </div>
             <div className="flex-1 overflow-hidden relative">
-               <div className="absolute inset-y-0 left-0 w-12 bg-brand-bg/30 border-r-2 border-border flex flex-col items-center py-4 font-mono text-[10px] text-text-dim opacity-50 select-none">
+               <div className="absolute inset-y-0 left-0 w-12 bg-surface-2 border-r border-border flex flex-col items-center py-4 font-mono text-[10px] text-text-dim opacity-50 select-none">
                   {Array.from({ length: 20 }).map((_, i) => <div key={i}>{i+1}</div>)}
                </div>
                <textarea 
                  value={currentCode}
                  onChange={(e) => setCurrentCode(e.target.value)}
                  readOnly={currentSuccess}
-                 className="w-full h-full pl-16 pr-8 py-4 bg-transparent resize-none font-mono text-sm leading-relaxed outline-none focus:bg-brand-bg/5 transition-colors"
+                 className="w-full h-full pl-16 pr-8 py-4 bg-transparent resize-none font-mono text-sm leading-relaxed outline-none focus:bg-surface-2/40 transition-colors"
                />
             </div>
           </div>
@@ -410,48 +433,45 @@ export default function LabDetail() {
           <AnimatePresence>
             {currentSuccess && !allDone && (
               <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="absolute inset-0 bg-soft-green/95 backdrop-blur-sm flex flex-col items-center justify-center p-12 text-center text-white z-30"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="absolute inset-0 bg-[#0A0C10]/97 flex flex-col items-center justify-center p-12 text-center z-30 border border-neon-green/30"
               >
-                <CheckCircle className="w-20 h-20 mb-6" />
-                <h3 className="text-3xl font-black italic tracking-tighter mb-2">Step {stepIndex + 1} Complete!</h3>
-                <p className="font-black text-lg uppercase tracking-widest mb-10 opacity-80">
+                <CheckCircle className="w-12 h-12 mb-6 text-neon-green" />
+                <span className="font-mono text-[10px] uppercase tracking-widest text-neon-green mb-2">step resolved</span>
+                <h3 className="text-2xl font-bold mb-2 text-white" style={{ fontFamily: 'var(--font-display)' }}>Step {stepIndex + 1} complete</h3>
+                <p className="font-mono text-xs text-white/50 mb-10">
                   {stepIndex + 1 < totalSteps ? `${totalSteps - stepIndex - 1} step(s) remaining` : ''}
                 </p>
                 {stepIndex + 1 < totalSteps && (
                   <button 
                     onClick={goNext}
-                    className="bg-white text-soft-green px-10 py-4 rounded-full font-black text-xl shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
+                    className="btn-pill btn-neon-primary px-8 py-3.5 flex items-center gap-2"
                   >
-                    <SkipForward className="w-6 h-6" /> Next Step
+                    <SkipForward className="w-4 h-4" /> Next step
                   </button>
                 )}
               </motion.div>
             )}
             {allDone && (
               <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="absolute inset-0 bg-soft-green/95 backdrop-blur-sm flex flex-col items-center justify-center p-12 text-center text-white z-30"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="absolute inset-0 bg-[#0A0C10]/97 flex flex-col items-center justify-center p-12 text-center z-30 border border-neon-cyan/30"
               >
-                <div className="relative mb-8">
-                   <motion.div animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }} transition={{ duration: 2, repeat: Infinity }} className="relative z-10">
-                      <Trophy className="w-24 h-24" />
-                   </motion.div>
-                   <motion.div animate={{ scale: [1, 2, 1], opacity: [0.5, 0, 0.5] }} transition={{ duration: 1, repeat: Infinity }} className="absolute inset-0 bg-white rounded-full" />
-                </div>
-                <h3 className="text-4xl font-black italic tracking-tighter mb-4 flex items-center gap-4"> 
-                   <PartyPopper className="w-8 h-8" /> LAB COMPLETE!
+                <Trophy className="w-12 h-12 mb-6 text-neon-cyan" />
+                <span className="font-mono text-[10px] uppercase tracking-widest text-neon-cyan mb-2">incident resolved</span>
+                <h3 className="text-3xl font-bold mb-3 text-white" style={{ fontFamily: 'var(--font-display)' }}>
+                   Lab complete
                 </h3>
-                <p className="font-black text-xl uppercase tracking-widest mb-12 opacity-80">All {totalSteps} steps finished!</p>
+                <p className="font-mono text-xs text-white/50 mb-10">All {totalSteps} steps finished · +{lab.xp} XP</p>
                 <button 
                   onClick={completeLab}
                   disabled={completing}
-                  className="bg-white text-soft-green px-12 py-5 rounded-full font-black text-xl shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-pill btn-neon-primary px-10 py-4 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {completing ? <RefreshCw className="w-6 h-6 animate-spin" /> : <Sparkles className="w-6 h-6" />} 
-                  {completing ? 'SAVING PROGRESS...' : 'ONWARD TO NEXT LAB'}
+                  {completing ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />} 
+                  {completing ? 'Saving progress…' : 'Continue to next lab'}
                 </button>
               </motion.div>
             )}
@@ -464,16 +484,16 @@ export default function LabDetail() {
         <button
           onClick={goPrev}
           disabled={stepIndex === 0}
-          className="flex items-center gap-2 font-black text-xs uppercase tracking-widest text-text-dim hover:text-text-main disabled:opacity-30 transition-all"
+          className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-text-dim hover:text-text-main disabled:opacity-30 transition-all"
         >
-          <ChevronLeft className="w-4 h-4" /> Previous Step
+          <ChevronLeft className="w-4 h-4" /> Previous step
         </button>
         <button
           onClick={goNext}
           disabled={stepIndex === totalSteps - 1}
-          className="flex items-center gap-2 font-black text-xs uppercase tracking-widest text-text-dim hover:text-text-main disabled:opacity-30 transition-all"
+          className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-text-dim hover:text-text-main disabled:opacity-30 transition-all"
         >
-          Next Step <ChevronRight className="w-4 h-4" />
+          Next step <ChevronRight className="w-4 h-4" />
         </button>
       </div>
 
@@ -482,37 +502,35 @@ export default function LabDetail() {
         {showAiHelp && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.96, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="playful-card max-w-2xl w-full bg-surface border-none shadow-2xl p-10 space-y-8 relative overflow-hidden"
+              exit={{ scale: 0.96, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="max-w-2xl w-full bg-surface clay p-8 sm:p-10 space-y-8 relative"
             >
-              <div className="absolute top-0 right-0 p-8 opacity-5">
-                <Sparkles className="w-32 h-32 text-soft-orange" />
-              </div>
               <div className="flex items-center justify-between">
                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-soft-orange/10 rounded-2xl flex items-center justify-center text-soft-orange">
-                       <Brain className="w-6 h-6" />
+                    <div className="w-11 h-11 clay-flat flex items-center justify-center text-neon-cyan">
+                       <Brain className="w-5 h-5" />
                     </div>
                     <div>
-                       <h3 className="text-2xl font-black italic">AI Troubleshooting</h3>
-                       <p className="text-[10px] font-black uppercase tracking-widest text-text-dim">Analyzing your current configuration...</p>
+                       <span className="font-mono text-[10px] uppercase tracking-widest text-neon-cyan block mb-1">ai diagnostic</span>
+                       <h3 className="text-xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>Troubleshooting</h3>
                     </div>
                  </div>
-                 <button onClick={() => setShowAiHelp(false)} className="p-2 hover:bg-border rounded-full transition-all">
-                    <X className="w-6 h-6" />
+                 <button onClick={() => setShowAiHelp(false)} className="p-2 hover:bg-surface-2 transition-all">
+                    <X className="w-5 h-5" />
                  </button>
               </div>
               
-              <div className="p-6 bg-brand-bg rounded-[2rem] border-2 border-border min-h-[200px] max-h-[400px] overflow-y-auto">
+              <div className="p-6 bg-brand-bg clay-input rounded-xl min-h-[200px] max-h-[400px] overflow-y-auto">
                  {aiHelpLoading ? (
                    <div className="flex flex-col items-center justify-center h-full gap-4 py-12">
-                      <RefreshCw className="w-8 h-8 text-soft-orange animate-spin" />
-                      <p className="text-xs font-black uppercase tracking-widest text-text-dim animate-pulse">Running diagnostic check...</p>
+                      <RefreshCw className="w-6 h-6 text-neon-cyan animate-spin" />
+                      <p className="font-mono text-[10px] uppercase tracking-widest text-text-dim">Running diagnostic check…</p>
                    </div>
                  ) : (
-                   <div className="prose prose-sm text-text-main font-bold leading-relaxed">
+                   <div className="prose prose-sm text-text-main leading-relaxed text-sm">
                       {aiHelpContent?.split('\n').map((line, i) => <p key={i}>{line}</p>)}
                    </div>
                  )}
@@ -521,9 +539,9 @@ export default function LabDetail() {
               <div className="flex justify-end gap-4">
                  <button 
                    onClick={() => setShowAiHelp(false)}
-                   className="px-8 py-3 bg-text-main text-surface rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-all"
+                   className="btn-pill btn-neon-primary px-8 py-3"
                  >
-                   Got it, thanks!
+                   Got it
                  </button>
               </div>
             </motion.div>

@@ -27,8 +27,10 @@ import Terms from './pages/Terms';
 import Landing from './pages/Landing';
 import DeleteAccount from './pages/DeleteAccount';
 import PublicProfile from './pages/PublicProfile';
+import AdminPanel from './pages/AdminPanel';
 import AiSupportBot from './components/AiSupportBot';
 import SplashScreen from './components/common/SplashScreen';
+import PageFold from './components/common/PageFold';
 import ConsentModal from './components/ConsentModal';
 import { supabase } from './lib/supabase';
 import { cn, getObjectHash } from './lib/utils';
@@ -42,6 +44,38 @@ const iconMap: Record<string, any> = {
   Zap: Zap,
   Flame: Sparkles,
 };
+
+// Authenticated app routes, wrapped in the macOS-style fold transition.
+// Keyed by pathname so each navigation plays the close/open fold.
+function AppRoutesFolded() {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <PageFold key={location.pathname}>
+        <Routes location={location}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/roadmap" element={<Roadmap />} />
+          <Route path="/portfolio" element={<Portfolio />} />
+          <Route path="/labs" element={<LabList />} />
+          <Route path="/labs/:id" element={<LabDetail />} />
+          <Route path="/interviews" element={<MockInterviews />} />
+          <Route path="/certificates" element={<Certificates />} />
+          <Route path="/learning" element={<Learning />} />
+          <Route path="/video-lesson" element={<VideoLesson />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/jobs" element={<JobBoard />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/support" element={<Support />} />
+          <Route path="/p/:id" element={<PublicProfile />} />
+          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </PageFold>
+    </AnimatePresence>
+  );
+}
 
 export default function App() {
   const [session, setSession] = useState<any>(null);
@@ -100,10 +134,12 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Guaranteed splash screen dismissal after 2 seconds to ensure the app never hangs,
+  // while avoiding the blank screen bug by rendering the main skeleton under the fade.
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 1200);
+    }, 2000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -292,7 +328,7 @@ export default function App() {
     }
   };
 
-  if (loading && !showSplash) return null;
+  // Never return null here — the SplashScreen overlay handles the loading state visually.
 
   return (
     <>
@@ -319,30 +355,12 @@ export default function App() {
                       <Sidebar />
                       <div className="flex-1 flex flex-col overflow-hidden lg:ml-72">
                         <main id="main-content" className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto overflow-x-hidden main-content">
-                          <Routes>
-                            <Route path="/" element={<Dashboard />} />
-                            <Route path="/roadmap" element={<Roadmap />} />
-                            <Route path="/portfolio" element={<Portfolio />} />
-                            <Route path="/labs" element={<LabList />} />
-                            <Route path="/labs/:id" element={<LabDetail />} />
-                            <Route path="/interviews" element={<MockInterviews />} />
-                            <Route path="/certificates" element={<Certificates />} />
-                            <Route path="/learning" element={<Learning />} />
-                            <Route path="/video-lesson" element={<VideoLesson />} />
-                            <Route path="/leaderboard" element={<Leaderboard />} />
-                            <Route path="/jobs" element={<JobBoard />} />
-                            <Route path="/settings" element={<Settings />} />
-                            <Route path="/pricing" element={<Pricing />} />
-                            <Route path="/checkout" element={<Checkout />} />
-                            <Route path="/support" element={<Support />} />
-                            <Route path="/p/:id" element={<PublicProfile />} />
-                            <Route path="*" element={<Navigate to="/" />} />
-                          </Routes>
+                          <AppRoutesFolded />
                         </main>
                         <AiSupportBot />
                         <footer className="shrink-0 border-t border-border bg-surface/50 backdrop-blur-sm py-3 px-8">
                           <p className="text-center text-[9px] text-text-dim/50 font-bold tracking-widest">
-                            © {new Date().getFullYear()} Nagarjunareddy Annapureddy. All rights reserved.
+                            © {new Date().getFullYear()} DebugToDeploy | Nagarjunareddy. All rights reserved.
                           </p>
                         </footer>
                       </div>

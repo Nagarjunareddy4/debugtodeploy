@@ -3,6 +3,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { MessageSquare, X, Send, Heart, Sparkles, Star } from 'lucide-react';
 import { cn } from '../lib/utils';
 
+declare const __FORMSPREE_ID__: string;
+const FORMSPREE_ACTION = (typeof __FORMSPREE_ID__ !== 'undefined' && __FORMSPREE_ID__)
+  ? `https://formspree.io/f/${__FORMSPREE_ID__}`
+  : '';
+
 export default function FeedbackForm() {
   const [isOpen, setIsOpen] = useState(false);
   const [rating, setRating] = useState(0);
@@ -11,8 +16,6 @@ export default function FeedbackForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate API call
-    console.log('Feedback submitted:', { rating, comment });
     setSubmitted(true);
     setTimeout(() => {
       setSubmitted(false);
@@ -60,7 +63,7 @@ export default function FeedbackForm() {
                 </motion.div>
               ) : (
                 <form 
-                  action="https://formspree.io/f/nagarjunareddy9995@gmail.com" 
+                  action={FORMSPREE_ACTION} 
                   method="POST"
                   onSubmit={() => setSubmitted(true)}
                   className="space-y-6"

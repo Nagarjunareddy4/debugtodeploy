@@ -7,6 +7,8 @@ import { cn } from '../lib/utils';
 import { toast } from 'react-hot-toast';
 import ConsentCheckbox from '../components/ConsentCheckbox';
 import { saveUserConsent } from '../lib/consent';
+import { Logo, LogoFull } from '../components/ui/Logo';
+
 
 // Production-hardened authentication flow with real-time security validation
 export default function Auth() {
@@ -271,115 +273,70 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen w-full flex items-start justify-center bg-brand-bg relative overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8 py-10">
-      {/* Premium Ambient Background */}
+      {/* Flat editorial background — hairline grid, no blurred orbs */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            x: [0, 50, 0],
-            y: [0, 30, 0]
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-soft-blue/10 rounded-full blur-[120px]"
-        />
-        <motion.div
-          animate={{
-            scale: [1, 1.3, 1],
-            x: [0, -40, 0],
-            y: [0, -50, 0]
-          }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-          className="absolute -bottom-[10%] -right-[10%] w-[60%] h-[60%] bg-soft-purple/10 rounded-full blur-[120px]"
-        />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(147,197,253,0.04)_1px,transparent_1px)] bg-[length:20px_20px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--color-border)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-border)_1px,transparent_1px)] bg-[length:64px_64px] opacity-[0.35]" />
       </div>
 
       <motion.div
-        initial={{ opacity: 0, y: 40, scale: 0.95, filter: 'blur(10px)' }}
-        animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 w-full max-w-[calc(100vw-2rem)] xl:max-w-[70rem] min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-8 lg:gap-0 bg-white/90 dark:bg-[#0D172A]/70 backdrop-blur-2xl border border-slate-200/60 dark:border-white/10 shadow-[0_32px_128px_-16px_rgba(15,23,42,0.22)] rounded-[2rem] sm:rounded-[3rem] overflow-auto my-4 md:my-8"
+        initial={{ opacity: 0, y: 24, filter: 'blur(6px)' }}
+        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="relative z-10 w-full max-w-[calc(100vw-2rem)] xl:max-w-[70rem] min-h-[calc(100vh-4rem)] grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-8 lg:gap-0 bg-surface clay-flat overflow-auto my-4 md:my-8"
       >
         {/* Left Side: Branding & Features */}
-        <div className="hidden lg:flex flex-col justify-between p-16 bg-[#0B0F1A] text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-soft-blue/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
-          <div className="absolute bottom-0 left-0 w-80 h-80 bg-soft-purple/20 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
-
+        <div className="hidden lg:flex flex-col justify-between p-16 bg-[#0A0C10] text-white relative overflow-hidden">
           <div className="relative z-10">
-            <motion.div
-              whileHover={{ rotate: 10, scale: 1.1 }}
-              className="w-16 h-16 bg-white/5 backdrop-blur-lg rounded-2xl flex items-center justify-center mb-10 border border-white/10 shadow-2xl"
-            >
-              <Rocket className="w-8 h-8 text-soft-blue" />
-            </motion.div>
+            <Logo className="w-12 h-12 mb-10" />
 
-            <h1 className="text-6xl font-black tracking-tighter italic mb-8 leading-tight">
-              AI-Powered
-              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-soft-blue to-soft-purple mt-1">
-                DevOps Learning Platform.
-              </span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-neon-cyan)] flex items-center gap-2 mb-6">
+              <span className="w-1.5 h-1.5 bg-[var(--color-neon-cyan)]" /> clearance required
+            </span>
+
+            <h1 className="text-5xl font-bold tracking-tight mb-8 leading-[1.1]" style={{ fontFamily: 'var(--font-display)' }}>
+              Most platforms teach.<br />This one tests you.
             </h1>
-            <p className="text-white/60 font-bold text-lg max-w-sm leading-relaxed mb-16">
-              The only platform that combines <span className="text-white">AI-driven learning paths</span> with real-world cloud sandbox environments.
+            <p className="text-white/50 text-base max-w-sm leading-relaxed mb-16">
+              Real cloud sandboxes, AI-built roadmaps, and mock interviews graded against
+              actual hiring bars — not a course progress bar.
             </p>
 
-            <div className="space-y-8">
+            <div className="space-y-6">
               {[
-                { icon: Brain, text: "AI-Powered Personalized Roadmaps", color: "text-soft-blue", bg: "bg-soft-blue/10" },
-                { icon: Zap, text: "Instant Cloud Sandbox Environments", color: "text-soft-orange", bg: "bg-soft-orange/10" },
-                { icon: ShieldCheck, text: "Automated Mock Interviews", color: "text-soft-green", bg: "bg-soft-green/10" },
-                { icon: Sparkles, text: "Real-time Skill Readiness Scoring", color: "text-soft-purple", bg: "bg-soft-purple/10" }
+                { icon: Brain, text: "AI-built roadmaps, not generic syllabi" },
+                { icon: Zap, text: "Instant cloud sandbox environments" },
+                { icon: ShieldCheck, text: "AI-graded mock interviews" },
+                { icon: Sparkles, text: "Real-time readiness scoring" }
               ].map((feature, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, x: -20 }}
+                  initial={{ opacity: 0, x: -12 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 + (i * 0.1) }}
-                  className="flex items-center gap-5 group"
+                  transition={{ delay: 0.2 + (i * 0.07) }}
+                  className="flex items-center gap-4 group"
                 >
-                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border border-white/5 group-hover:border-white/20 transition-all group-hover:scale-110", feature.bg, feature.color)}>
-                    <feature.icon className="w-6 h-6" />
+                  <div className="w-9 h-9 border border-white/10 flex items-center justify-center text-[var(--color-neon-cyan)] group-hover:border-[var(--color-neon-cyan)]/50 transition-colors shrink-0">
+                    <feature.icon className="w-4 h-4" />
                   </div>
-                  <span className="font-bold text-base tracking-wide text-white/80 group-hover:text-white transition-colors">{feature.text}</span>
+                  <span className="text-sm text-white/70 group-hover:text-white transition-colors">{feature.text}</span>
                 </motion.div>
               ))}
             </div>
           </div>
 
-          <div className="relative z-10 pt-12 border-t border-white/5">
-            <div className="flex items-center gap-4">
-              <div className="flex -space-x-3">
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="w-8 h-8 rounded-full border-2 border-[#0B0F1A] bg-gray-800 flex items-center justify-center text-[8px] font-black">
-                    U{i}
-                  </div>
-                ))}
-              </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">
-                Join 5,000+ DevOps Engineers
-              </p>
-            </div>
+          <div className="relative z-10 pt-10 border-t border-white/10">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/40">
+              5,000+ engineers on the roster
+            </p>
           </div>
         </div>
 
         {/* Right Side: Auth Form */}
         <div className="p-6 sm:p-10 lg:p-16 flex flex-col justify-center">
-          <motion.div
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className="lg:hidden flex flex-col items-center mb-8 group cursor-pointer"
-          >
-            <motion.div
-              whileHover={{ rotate: 15, scale: 1.1, y: -5 }}
-              whileTap={{ scale: 0.9 }}
-              className="w-16 h-16 bg-soft-blue/10 rounded-2xl flex items-center justify-center mb-4 border border-soft-blue/20 shadow-lg shadow-soft-blue/10"
-            >
-              <Rocket className="w-8 h-8 text-soft-blue group-hover:text-soft-purple transition-colors" />
-            </motion.div>
-            <p className="text-3xl font-black tracking-tighter italic group-hover:scale-105 transition-transform duration-300">
-              Debug<span className="text-soft-blue group-hover:text-soft-purple transition-colors">To</span>Deploy
-            </p>
-          </motion.div>
+          <div className="lg:hidden flex flex-col items-center mb-8">
+            <LogoFull />
+          </div>
+
 
           <div className="mb-8 text-center lg:text-left relative">
             {(authMode === 'forgot' || authMode === 'verify') && (
@@ -388,22 +345,25 @@ export default function Auth() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 onClick={() => setAuthMode('login')}
-                className="absolute -top-12 left-0 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-text-dim hover:text-soft-blue transition-colors group"
+                className="absolute -top-12 left-0 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-text-dim hover:text-[var(--color-neon-cyan)] transition-colors group"
               >
-                <motion.span whileHover={{ x: -3 }}>←</motion.span> Back to Login
+                <motion.span whileHover={{ x: -3 }}>←</motion.span> Back to login
               </motion.button>
             )}
-            <h2 className="text-3xl font-black tracking-tight mb-2">
-              {authMode === 'login' ? "Welcome Back" : authMode === 'signup' ? "Start Journey" : authMode === 'forgot' ? "Reset Access" : "Verify Email"}
+            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-neon-cyan)] block mb-2">
+              {authMode === 'login' ? "incident-001 · access" : authMode === 'signup' ? "incident-001 · onboarding" : authMode === 'forgot' ? "incident-001 · recovery" : "incident-001 · pending"}
+            </span>
+            <h2 className="text-3xl font-bold tracking-tight mb-2" style={{ fontFamily: 'var(--font-display)' }}>
+              {authMode === 'login' ? "Welcome back" : authMode === 'signup' ? "Start your first incident" : authMode === 'forgot' ? "Reset access" : "Verify email"}
             </h2>
-            <p className="text-text-dim font-bold text-sm">
+            <p className="text-text-dim text-sm">
               {authMode === 'login'
-                ? "Continue your ascent to DevOps mastery."
+                ? "Pick up where you left off."
                 : authMode === 'signup'
-                  ? "Join the elite fleet of infrastructure architects."
+                  ? "Real labs, real failures, real proof of work."
                   : authMode === 'forgot'
-                    ? "We'll send a recovery beacon to your registered email."
-                    : "Check your inbox to activate your clearance."}
+                    ? "We'll send a recovery link to your registered email."
+                    : "Check your inbox to activate your account."}
             </p>
           </div>
 
@@ -413,11 +373,11 @@ export default function Auth() {
               animate={{ opacity: 1, scale: 1 }}
               className="text-center space-y-6 py-8"
             >
-              <div className="w-20 h-20 bg-soft-blue/10 rounded-full flex items-center justify-center mx-auto border border-soft-blue/20">
+              <div className="w-16 h-16 border border-border flex items-center justify-center mx-auto border border-soft-blue/20">
                 <ShieldCheck className="w-10 h-10 text-soft-blue" />
               </div>
               <div className="space-y-4">
-                <h3 className="text-xl font-black tracking-tight text-text-main">Action Required</h3>
+                <h3 className="text-xl font-bold tracking-tight text-text-main" style={{ fontFamily: 'var(--font-display)' }}>Check your inbox</h3>
                 <p className="text-text-dim text-sm font-bold leading-relaxed">
                   We've sent a verification link to <span className="text-soft-blue">{identifier || 'your email'}</span>.<br/>
                   Please click the link in the email to activate your account and gain access to the platform.
@@ -428,7 +388,7 @@ export default function Auth() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setAuthMode('login')}
-                className="w-full mt-6 bg-surface border border-border text-text-main flex items-center justify-center py-4 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-soft-blue/10 transition-colors"
+                className="w-full mt-6 bg-surface clay-sm text-text-main flex items-center justify-center py-4 font-black text-xs uppercase tracking-[0.2em] hover:bg-soft-blue/10 transition-colors"
               >
                 Back to Login
               </motion.button>
@@ -460,10 +420,10 @@ export default function Auth() {
                       onClick={() => signInWithSocial('google')}
                       disabled={loading}
                       className={cn(
-                        "flex items-center justify-center gap-3 px-6 py-4 border-2 rounded-3xl text-sm font-black uppercase tracking-widest transition-all hover-glow-blue",
+                        "flex items-center justify-center gap-3 px-6 py-4 clay-sm rounded-3xl text-sm font-black uppercase tracking-widest transition-all",
                         loading 
                           ? "opacity-50 cursor-not-allowed text-text-dim/30" 
-                          : "bg-surface border-border hover:border-soft-blue/30 cursor-pointer text-text-main"
+                          : "bg-surface cursor-pointer text-text-main"
                       )}
                     >
                       <Chrome className="w-5 h-5 text-soft-blue animate-pulse" /> Google
@@ -474,10 +434,10 @@ export default function Auth() {
                       onClick={() => signInWithSocial('github')}
                       disabled={loading}
                       className={cn(
-                        "flex items-center justify-center gap-3 px-6 py-4 border-2 rounded-3xl text-sm font-black uppercase tracking-widest transition-all hover-glow-purple",
+                        "flex items-center justify-center gap-3 px-6 py-4 clay-sm rounded-3xl text-sm font-black uppercase tracking-widest transition-all",
                         loading 
                           ? "opacity-50 cursor-not-allowed text-text-dim/30" 
-                          : "bg-surface border-border hover:border-soft-purple/30 cursor-pointer text-text-main"
+                          : "bg-surface cursor-pointer text-text-main"
                       )}
                     >
                       <Github className="w-5 h-5 text-soft-purple animate-pulse" /> GitHub
@@ -512,7 +472,7 @@ export default function Auth() {
                         <input
                           type="text"
                           required
-                          className="w-full bg-surface border-2 border-border rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm text-text-main"
+                          className="w-full bg-surface clay-input border-2 border-border rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm text-text-main"
                           placeholder="John Smith"
                           value={fullName}
                           onChange={(e) => setFullName(e.target.value)}
@@ -537,7 +497,7 @@ export default function Auth() {
                           type="text"
                           required
                           className={cn(
-                            "w-full bg-surface border-2 rounded-3xl px-8 py-4 outline-hidden transition-all font-mono font-bold text-sm text-text-main",
+                            "w-full bg-surface clay-input border-2 rounded-3xl px-8 py-4 outline-hidden transition-all font-mono font-bold text-sm text-text-main",
                             usernameStatus === 'available' ? "border-soft-green/50 focus:border-soft-green" : 
                             usernameStatus === 'taken' || usernameStatus === 'invalid' ? "border-soft-red/50 focus:border-soft-red" : 
                             "border-border focus:border-soft-blue"
@@ -572,7 +532,7 @@ export default function Auth() {
                     type={authMode === 'login' ? "text" : "email"}
                     required
                     className={cn(
-                      "w-full bg-surface border-2 rounded-3xl px-8 py-4 outline-hidden transition-all font-bold text-sm text-text-main",
+                      "w-full bg-surface clay-input border-2 rounded-3xl px-8 py-4 outline-hidden transition-all font-bold text-sm text-text-main",
                       authMode === 'signup' && identifier.includes('@') && (emailStatus === 'available' ? "border-soft-green/30" : emailStatus === 'taken' ? "border-soft-red/30" : "border-border"),
                       (authMode !== 'signup' || !identifier.includes('@')) && "border-border"
                     )}
@@ -640,7 +600,7 @@ export default function Auth() {
                         <input
                           type={showPassword ? "text" : "password"}
                           required
-                          className="w-full bg-surface border-2 border-border rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm text-text-main pr-14"
+                          className="w-full bg-surface clay-input border-2 border-border rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm text-text-main pr-14"
                           placeholder={authMode === 'login' ? "••••••••" : "Create Master Key"}
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
@@ -697,7 +657,7 @@ export default function Auth() {
                          type={showPassword ? "text" : "password"}
                          required
                          className={cn(
-                           "w-full bg-surface border-2 rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm text-text-main pr-14",
+                           "w-full bg-surface clay-input border-2 rounded-3xl px-8 py-4 outline-hidden focus:border-soft-blue/50 focus:bg-white/10 transition-all font-bold text-sm text-text-main pr-14",
                            confirmPassword && (password === confirmPassword ? "border-soft-green/30" : "border-soft-red/30")
                          )}
                          placeholder="••••••••"
@@ -738,7 +698,7 @@ export default function Auth() {
                     animate={{ opacity: 1, scale: 1 }}
                     className="space-y-4"
                   >
-                    <div className="flex items-center gap-3 p-5 bg-soft-red/10 border-2 border-soft-red/20 rounded-[2rem] text-soft-red font-bold text-xs">
+                    <div className="flex items-center gap-3 p-5 bg-soft-red/10 clay-flat text-soft-red font-bold text-xs">
                       <AlertCircle className="w-5 h-5 flex-shrink-0" />
                       <p className="leading-relaxed">{error}</p>
                     </div>
@@ -750,16 +710,16 @@ export default function Auth() {
                           setError(null);
                           setEmailNotRegistered(false);
                         }}
-                        className="w-full py-4 bg-soft-blue/10 border-2 border-soft-blue/20 rounded-[2rem] text-soft-blue font-black text-[10px] uppercase tracking-[0.2em] hover:bg-soft-blue/20 transition-all flex items-center justify-center gap-2"
+                        className="w-full py-4 bg-soft-blue/10 clay-sm text-soft-blue font-black text-[10px] uppercase tracking-[0.2em] hover:bg-soft-blue/20 transition-all flex items-center justify-center gap-2"
                       >
-                        <UserPlus className="w-4 h-4" /> Join the Squad Instead
+                        <UserPlus className="w-4 h-4" /> Create an account instead
                       </button>
                     )}
                   </motion.div>
                 )}
 
                 {message && (
-                  <div className="flex items-center gap-3 p-5 bg-soft-green/10 border-2 border-soft-green/20 rounded-[2rem] text-soft-green font-bold text-xs">
+                  <div className="flex items-center gap-3 p-5 bg-soft-green/10 clay-flat text-soft-green font-bold text-xs">
                     <ShieldCheck className="w-5 h-5 flex-shrink-0" />
                     <p className="leading-relaxed">{message}</p>
                   </div>
@@ -774,10 +734,10 @@ export default function Auth() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
                   className={cn(
-                    "w-full flex items-center justify-center gap-3 py-6 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all group relative overflow-hidden",
+                    "w-full flex items-center justify-center gap-3 py-6 rounded-2xl font-black text-sm uppercase tracking-[0.2em] transition-all group relative overflow-hidden",
                     loading || (authMode === 'signup' && !acceptedConsent)
-                      ? "bg-surface text-text-dim/30 cursor-not-allowed shadow-none border border-border"
-                      : "bg-text-main text-surface shadow-2xl shadow-soft-blue/20 hover:bg-soft-blue"
+                      ? "bg-surface text-text-dim/30 cursor-not-allowed shadow-none"
+                      : "bg-text-main text-surface shadow-[-6px_-6px_14px_rgba(255,255,255,0.06),8px_8px_20px_rgba(255,138,30,0.3)] hover:bg-soft-blue"
                   )}
                 >
                   <motion.div
@@ -786,9 +746,9 @@ export default function Auth() {
                   {loading ? (
                     <div className="w-6 h-6 border-4 border-surface/30 border-t-surface rounded-full animate-spin" />
                   ) : authMode === 'login' ? (
-                    <><LogIn className="w-5 h-5 group-hover:translate-x-1 transition-transform" /> START LEARNING</>
+                    <><LogIn className="w-5 h-5 group-hover:translate-x-1 transition-transform" /> Log in</>
                   ) : authMode === 'signup' ? (
-                    <><UserPlus className="w-5 h-5 group-hover:scale-110 transition-transform" /> JOIN THE SQUAD</>
+                    <><UserPlus className="w-5 h-5 group-hover:scale-110 transition-transform" /> Create account</>
                   ) : (
                     <><Sparkles className="w-5 h-5 group-hover:animate-pulse" /> SEND RECOVERY LINK</>
                   )}
@@ -798,7 +758,7 @@ export default function Auth() {
               <div className="mt-8 pt-6 border-t border-white/5 text-center lg:text-left space-y-4">
                 <p className="text-xs font-bold text-text-main">
                   <span className="text-text-dim">
-                    {authMode === 'login' ? "New to the fleet?" : authMode === 'signup' ? "Already an architect?" : "Remembered your key?"}
+                    {authMode === 'login' ? "New here?" : authMode === 'signup' ? "Already have an account?" : "Remembered your password?"}
                   </span>
                   <button
                     type="button"
@@ -825,7 +785,7 @@ export default function Auth() {
         className="fixed bottom-6 text-center space-y-1 z-10 hidden md:block"
       >
         <p className="text-[8px] text-text-dim/30 font-bold tracking-[0.4em] uppercase">
-          SECURE TRANSIT ACTIVE · © {new Date().getFullYear()} Nagarjuna Reddy Annapureddy · DEBUGTODEPLOY V1.0
+          © {new Date().getFullYear()} DebugToDeploy | Nagarjunareddy · DEBUGTODEPLOY V1.0
         </p>
       </motion.div>
     </div>

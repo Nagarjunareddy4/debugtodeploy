@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronRight, Star, Flame, Trophy, RefreshCw } from 'lucide-react';
+import { ChevronRight, Flame, Trophy, RefreshCw, Target } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getDailyQuestions, calculateDailyQuizXp, QuizQuestion } from '../../lib/quizData';
+import { updateQuizStreak } from '../../lib/quizNotifications';
+import { Notify } from '../../lib/notifications';
 import FlipCard from './FlipCard';
 import { toast } from 'react-hot-toast';
 
@@ -24,31 +26,30 @@ export default function DailyQuiz({ userId, onComplete }: DailyQuizProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasCompletedToday, setHasCompletedToday] = useState(false);
   const [dailyXpEarned, setDailyXpEarned] = useState(0);
+  const [streak, setStreak] = useState(0);
 
-  // Load quiz data
   useEffect(() => {
     const loadQuiz = async () => {
       try {
-        // Fetch AI-generated questions for today
         const dailyQuestions = await getDailyQuestions();
-        
+
         if (!dailyQuestions || dailyQuestions.length === 0) {
           toast.error('Failed to load quiz questions');
           setIsLoading(false);
           return;
         }
-        
+
         setQuestions(dailyQuestions);
         const today = new Date().toISOString().split('T')[0];
 
-        // 1. Check local storage first (fastest, no 404s)
+        let completedToday = false;
         const localCompletion = localStorage.getItem(`quiz_completed_${userId}_${today}`);
         if (localCompletion) {
           const parsed = JSON.parse(localCompletion);
           setHasCompletedToday(true);
           setDailyXpEarned(parsed.xpEarned);
+          completedToday = true;
         } else {
-          // 2. Try Supabase as backup (ignore errors if table missing)
           const { data: completions, error } = await supabase
             .from('quiz_completions')
             .select('*')
@@ -60,6 +61,23 @@ export default function DailyQuiz({ userId, onComplete }: DailyQuizProps) {
             setHasCompletedToday(true);
             setDailyXpEarned(completions.xp_earned);
             localStorage.setItem(`quiz_completed_${userId}_${today}`, JSON.stringify({ xpEarned: completions.xp_earned }));
+            completedToday = true;
+          }
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('quiz_streak')
+          .eq('id', userId)
+          .maybeSingle();
+        setStreak(profile?.quiz_streak || 0);
+
+        // Notify once per day that a fresh quiz is ready (only if not already done today)
+        if (!completedToday) {
+          const notifiedKey = `quiz_notified_${userId}_${today}`;
+          if (!localStorage.getItem(notifiedKey)) {
+            localStorage.setItem(notifiedKey, '1');
+            Notify.quizAvailable();
           }
         }
       } catch (err) {
@@ -75,7 +93,7 @@ export default function DailyQuiz({ userId, onComplete }: DailyQuizProps) {
 
   const handleAnswerSubmit = (selectedIndex: number, isCorrect: boolean) => {
     const newAnswer: QuizAnswer = {
-      questionId: questions[currentCardIndex].id,
+      questionId: questions[currentCardIndex].id!,
       selectedIndex,
       isCorrect
     };
@@ -83,17 +101,14 @@ export default function DailyQuiz({ userId, onComplete }: DailyQuizProps) {
   };
 
   const handleNextCard = async () => {
-    // Check if current card is answered
     if (answers.length <= currentCardIndex) {
       toast.error('Please answer the question first');
       return;
     }
 
-    // Move to next card or complete quiz
     if (currentCardIndex < questions.length - 1) {
       setCurrentCardIndex(currentCardIndex + 1);
     } else {
-      // Quiz completed!
       await completeQuiz();
     }
   };
@@ -111,12 +126,10 @@ export default function DailyQuiz({ userId, onComplete }: DailyQuizProps) {
 
       const today = new Date().toISOString().split('T')[0];
 
-      // Mark locally as completed immediately
       localStorage.setItem(`quiz_completed_${userId}_${today}`, JSON.stringify({ xpEarned: totalXpEarned }));
       setHasCompletedToday(true);
       setDailyXpEarned(totalXpEarned);
 
-      // Try to save quiz completion to Supabase (catch and ignore if table doesn't exist)
       try {
         const { error: insertError } = await supabase
           .from('quiz_completions')
@@ -133,7 +146,6 @@ export default function DailyQuiz({ userId, onComplete }: DailyQuizProps) {
         console.warn('quiz_completions table missing, using local storage.');
       }
 
-      // ALWAYS update user XP in profiles (this table exists)
       const { data: profile, error: fetchError } = await supabase
         .from('profiles')
         .select('xp')
@@ -142,16 +154,21 @@ export default function DailyQuiz({ userId, onComplete }: DailyQuizProps) {
 
       if (!fetchError) {
         const newXp = (profile?.xp || 0) + totalXpEarned;
-
         const { error: updateError } = await supabase
           .from('profiles')
           .update({ xp: newXp })
           .eq('id', userId);
-
         if (updateError) console.error('Failed to update XP:', updateError);
       }
 
-      toast.success(`Quiz Complete! +${totalXpEarned} XP earned!`);
+      // Real streak tracking — was previously dead code, now actually called
+      const newStreak = await updateQuizStreak(userId);
+      setStreak(newStreak);
+      if (newStreak > 0 && newStreak % 3 === 0) {
+        Notify.streak(newStreak);
+      }
+
+      toast.success(`Quiz complete — +${totalXpEarned} XP`);
       onComplete?.(totalXpEarned);
     } catch (err) {
       console.error('Error completing quiz:', err);
@@ -166,159 +183,87 @@ export default function DailyQuiz({ userId, onComplete }: DailyQuizProps) {
   };
 
   const canMoveToNextCard = answers.length > currentCardIndex;
-  const totalPossibleXp = calculateDailyQuizXp(questions);
 
-  // Loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[14rem] sm:min-h-96 w-full">
         <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl mx-auto animate-pulse" />
-          <p className="font-bold text-text-dim">Loading daily quiz...</p>
+          <div className="w-10 h-10 border border-neon-cyan mx-auto animate-pulse" />
+          <p className="font-mono text-[10px] uppercase tracking-widest text-text-dim">Loading daily quiz…</p>
         </div>
       </div>
     );
   }
 
-  // Completion state
+  // Just completed this session — show results
   if (hasCompletedToday && answers.length === questions.length) {
     const correctCount = answers.filter(a => a.isCorrect).length;
     const score = Math.round((correctCount / questions.length) * 100);
 
     return (
       <div className="w-full max-w-2xl mx-auto px-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center space-y-8 py-12"
-        >
-          {/* Celebration Animation */}
-          <motion.div
-            animate={{ scale: [1, 1.1, 1] }}
-            transition={{ duration: 0.6, repeat: 3 }}
-            className="inline-block"
-          >
-            <div className="w-24 h-24 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-3xl flex items-center justify-center mx-auto shadow-lg">
-              <Trophy className="w-12 h-12 text-white" />
-            </div>
-          </motion.div>
-
-          {/* Results */}
-          <div className="space-y-4">
-            <h2 className="text-5xl font-black">
-              <motion.span
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="block"
-              >
-                Quiz Complete! 🎉
-              </motion.span>
-            </h2>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className="grid grid-cols-3 gap-4 py-6"
-            >
-              <div className="bg-blue-500/10 backdrop-blur rounded-2xl p-4 border border-blue-300/30">
-                <p className="text-xs font-bold uppercase tracking-wider text-text-dim mb-1">Score</p>
-                <p className="text-3xl font-black text-blue-600">{score}%</p>
-              </div>
-              <div className="bg-emerald-500/10 backdrop-blur rounded-2xl p-4 border border-emerald-300/30">
-                <p className="text-xs font-bold uppercase tracking-wider text-text-dim mb-1">Correct</p>
-                <p className="text-3xl font-black text-emerald-600">{correctCount}/5</p>
-              </div>
-              <div className="bg-orange-500/10 backdrop-blur rounded-2xl p-4 border border-orange-300/30">
-                <Flame className="w-6 h-6 text-soft-orange mx-auto mb-1" />
-                <p className="text-3xl font-black text-soft-orange">{dailyXpEarned}</p>
-                <p className="text-xs font-bold text-text-dim">XP</p>
-              </div>
-            </motion.div>
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-8 py-10">
+          <div className="w-14 h-14 border border-neon-cyan flex items-center justify-center mx-auto text-neon-cyan">
+            <Trophy className="w-7 h-7" />
           </div>
 
-          {/* Message */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.7 }}
-            className="text-lg font-bold text-text-dim"
-          >
-            {score === 100 ? (
-              <p>Perfect score! You're a DevOps master! 👑</p>
-            ) : score >= 80 ? (
-              <p>Excellent work! Keep improving! 🚀</p>
-            ) : score >= 60 ? (
-              <p>Good effort! Come back tomorrow and try again! 💪</p>
-            ) : (
-              <p>Keep learning! DevOps mastery takes practice! 📚</p>
-            )}
-          </motion.div>
+          <div className="space-y-5">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-neon-cyan">quiz resolved</span>
+            <h2 className="text-3xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>Quiz complete</h2>
 
-          {/* Return Tomorrow Message */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.9 }}
-            className="bg-blue-500/10 backdrop-blur border border-blue-300/30 rounded-2xl p-6"
-          >
-            <p className="text-sm font-semibold text-text-dim mb-2">
-              New Questions Available Tomorrow! 📅
-            </p>
-            <p className="text-xs text-text-dim">
-              Check back tomorrow for 5 new DevOps questions to test your knowledge.
-            </p>
-          </motion.div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-surface p-4 clay-flat">
+                <p className="font-mono text-[9px] uppercase tracking-widest text-text-dim mb-1">Score</p>
+                <p className="text-2xl font-bold text-neon-cyan">{score}%</p>
+              </div>
+              <div className="bg-surface p-4 clay-flat">
+                <p className="font-mono text-[9px] uppercase tracking-widest text-text-dim mb-1">Correct</p>
+                <p className="text-2xl font-bold text-neon-green">{correctCount}/{questions.length}</p>
+              </div>
+              <div className="bg-surface p-4 clay-flat">
+                <p className="font-mono text-[9px] uppercase tracking-widest text-text-dim mb-1">XP</p>
+                <p className="text-2xl font-bold text-neon-cyan">{dailyXpEarned}</p>
+              </div>
+            </div>
+          </div>
 
-          {/* Action Buttons */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.1 }}
-            className="flex gap-4 pt-4"
-          >
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleRetakeQuiz}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2"
-            >
-              <RefreshCw className="w-5 h-5" />
-              Retake Quiz
-            </motion.button>
-          </motion.div>
+          <p className="text-text-dim text-sm">
+            {score === 100 ? 'Perfect score.' : score >= 80 ? 'Strong run.' : score >= 60 ? 'Solid effort — review the misses.' : 'Worth a re-read before tomorrow.'}
+          </p>
+
+          <div className="clay-flat p-5 text-left flex items-center gap-3">
+            <Target className="w-4 h-4 text-neon-cyan shrink-0" />
+            <p className="text-xs text-text-dim">New questions tomorrow. Streak: <span className="text-text-main font-medium">{streak} day{streak === 1 ? '' : 's'}</span></p>
+          </div>
+
+          <button onClick={handleRetakeQuiz} className="btn-pill btn-ghost px-6 py-3 inline-flex items-center gap-2 mx-auto">
+            <RefreshCw className="w-4 h-4" /> Retake quiz
+          </button>
         </motion.div>
       </div>
     );
   }
 
-  // Quiz in progress or already completed today
+  // Already completed today, page reloaded — collapsed status view
   if (hasCompletedToday) {
     return (
-      <div className="max-w-2xl mx-auto text-center py-12">
-        <div className="space-y-6">
-          <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-3xl flex items-center justify-center mx-auto">
-            <Trophy className="w-8 h-8 text-white" />
+      <div className="w-full max-w-2xl mx-auto text-center py-10">
+        <div className="space-y-5">
+          <div className="w-12 h-12 border border-neon-green flex items-center justify-center mx-auto text-neon-green">
+            <Trophy className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-2xl font-black mb-2">Quiz Already Completed Today</h3>
-            <p className="text-text-dim font-semibold">
-              You earned <span className="text-orange-500 font-black">+{dailyXpEarned} XP</span> today!
+            <h3 className="text-xl font-bold mb-1" style={{ fontFamily: 'var(--font-display)' }}>Today's quiz is done</h3>
+            <p className="text-text-dim text-sm">
+              You earned <span className="text-neon-cyan font-medium">+{dailyXpEarned} XP</span> today.
             </p>
           </div>
-          <p className="text-sm text-text-dim">
-            Come back tomorrow for 5 new DevOps questions!
+          <p className="font-mono text-[10px] uppercase tracking-widest text-text-dim flex items-center justify-center gap-2">
+            <Flame className="w-3.5 h-3.5 text-neon-cyan" /> {streak} day streak
           </p>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleRetakeQuiz}
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Retake Quiz
-          </motion.button>
+          <button onClick={handleRetakeQuiz} className="btn-pill btn-ghost px-6 py-3 inline-flex items-center gap-2">
+            <RefreshCw className="w-4 h-4" /> Retake quiz
+          </button>
         </div>
       </div>
     );
@@ -326,7 +271,7 @@ export default function DailyQuiz({ userId, onComplete }: DailyQuizProps) {
 
   // Active quiz
   return (
-    <div className="w-full py-4 sm:py-8 px-4 sm:px-0">
+    <div className="w-full max-w-2xl mx-auto py-4 sm:py-6 px-4 sm:px-0">
       <AnimatePresence mode="wait">
         <div key={`card-${currentCardIndex}`}>
           <FlipCard
@@ -339,48 +284,24 @@ export default function DailyQuiz({ userId, onComplete }: DailyQuizProps) {
         </div>
       </AnimatePresence>
 
-      {/* Navigation */}
-      <div className="flex items-center justify-between mt-8 sm:mt-12 px-2 sm:px-4">
-        <div className="text-center flex-1">
-          <p className="text-xs sm:text-sm font-bold text-text-dim uppercase tracking-wider">
-            Progress
-          </p>
-          <motion.div className="flex items-center justify-center gap-2 mt-1 sm:mt-2">
-            <Star className="w-4 h-4 sm:w-5 sm:h-5 text-soft-orange" />
-            <span className="font-black text-base sm:text-lg">
-              {answers.filter(a => a.isCorrect).length}/{questions.length} Correct
-            </span>
-          </motion.div>
+      <div className="flex items-center justify-between mt-8 px-1">
+        <div className="font-mono text-[10px] uppercase tracking-widest text-text-dim flex items-center gap-2">
+          <span className="text-neon-cyan">{answers.filter(a => a.isCorrect).length}/{questions.length}</span> correct
         </div>
 
-        {currentCardIndex < questions.length - 1 && (
-          <motion.button
-            whileHover={canMoveToNextCard ? { scale: 1.05 } : {}}
-            whileTap={canMoveToNextCard ? { scale: 0.95 } : {}}
+        {currentCardIndex < questions.length - 1 ? (
+          <button
             onClick={handleNextCard}
             disabled={!canMoveToNextCard}
-            className={`flex items-center gap-1 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-bold transition-all text-sm sm:text-base ${
-              canMoveToNextCard
-                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:shadow-lg'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
+            className="btn-pill btn-neon-primary flex items-center gap-2 px-5 py-2.5 disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            Next
-            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-          </motion.button>
-        )}
-
-        {currentCardIndex === questions.length - 1 && answers.length > currentCardIndex && (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleNextCard}
-            className="flex items-center gap-1 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-bold bg-gradient-to-r from-emerald-400 to-emerald-600 text-white hover:shadow-lg transition-all text-sm sm:text-base"
-          >
-            Finish
-            <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
-          </motion.button>
-        )}
+            Next <ChevronRight className="w-4 h-4" />
+          </button>
+        ) : canMoveToNextCard ? (
+          <button onClick={handleNextCard} className="btn-pill btn-neon-primary flex items-center gap-2 px-5 py-2.5">
+            Finish <Trophy className="w-4 h-4" />
+          </button>
+        ) : null}
       </div>
     </div>
   );

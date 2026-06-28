@@ -1,21 +1,31 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { 
-  Rocket, Brain, Zap, ShieldCheck, Terminal as TerminalIcon, 
-  Map, CheckCircle2, ChevronRight, Star, ArrowRight,
-  Sparkles, Cloud, Users, Award, Play, Github,
-  Facebook, Instagram, Twitter, Briefcase, Smartphone
+import {
+  ArrowRight, CheckCircle2, Star, ShieldCheck, Briefcase, Users, Brain,
+  Terminal as TerminalIcon, Smartphone, Facebook, Instagram, Twitter
 } from 'lucide-react';
 import LandingNavbar from '../components/layout/LandingNavbar';
 import AuthModal from '../components/layout/AuthModal';
 import { RoadmapBadge3D } from '../components/ui/RoadmapBadge3D';
 import { cn, useMeta } from '../lib/utils';
+import { Logo } from '../components/ui/Logo';
+import { fadeUp, fadeUpLarge, staggerContainer, clayHover, clayHoverSm } from '../lib/motion';
+
+const HERO_LOG: { text: string; cls?: string; delay: number }[] = [
+  { text: '$ kubectl get pods -n production', cls: 'ldg-log-dim', delay: 0 },
+  { text: 'nginx-deployment   0/1   CrashLoopBackOff   12m', cls: 'ldg-log-err', delay: 0.5 },
+  { text: '$ kubectl logs nginx-deployment-7f9 --previous', cls: 'ldg-log-dim', delay: 1.1 },
+  { text: 'Error: ImagePullBackOff -- tag "v2.3.1" not found', cls: 'ldg-log-err', delay: 1.6 },
+  { text: '$ you fix the manifest, push, redeploy', cls: 'ldg-log-dim', delay: 2.3 },
+  { text: 'rollout status: 1/1 Running', cls: 'ldg-log-ok', delay: 3.0 },
+  { text: 'DEPLOYED -- 0 incidents, 4m12s', cls: 'ldg-log-ok', delay: 3.5 },
+];
 
 export default function Landing({ session }: { session: any }) {
   useMeta(
-    'DebugToDeploy | Master DevOps & Cloud Engineering', 
-    'DebugToDeploy is the AI-powered career accelerator for DevOps engineers. Master Kubernetes, AWS, and Terraform with personalized roadmaps and live cloud labs.',
-    '/dashboard-mockup.png'
+    'DebugToDeploy | Practice production-grade DevOps, not slideshows',
+    'DebugToDeploy is where engineers practice fixing real Kubernetes, Terraform, and CI/CD failures -- then prove it with a portfolio that reads like an incident log, not a certificate wall.',
+    '/og-image.png'
   );
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -27,619 +37,462 @@ export default function Landing({ session }: { session: any }) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-brand-bg text-text-main overflow-x-hidden">
+    <div className="ldg-wrap ldg-grain min-h-screen w-full overflow-x-hidden relative">
+      {/* Ambient warmth — subtle radial glow, not a blob, just enough to avoid flatness */}
+      <div
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[700px] pointer-events-none opacity-60"
+        style={{ background: 'radial-gradient(ellipse at center, rgba(255,138,30,0.07) 0%, transparent 65%)' }}
+      />
       <LandingNavbar onAuthClick={() => openAuth('login')} session={session} />
-      
-      {/* Hero Section */}
-      <section className="relative w-full pt-32 pb-20 px-6 overflow-hidden flex justify-center">
-        {/* Animated Background Blobs */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-[10%] left-[10%] w-[40%] h-[40%] bg-soft-blue/5 rounded-full blur-[120px] animate-pulse" />
-          <div className="absolute bottom-[10%] right-[10%] w-[50%] h-[50%] bg-soft-purple/5 rounded-full blur-[120px] animate-pulse delay-700" />
-        </div>
 
-        <div className="max-w-7xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center w-full">
-          <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-soft-blue/10 border border-soft-blue/20 mb-8"
-            >
-              <Sparkles className="w-4 h-4 text-soft-blue" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-soft-blue">
-                The AI-Powered DevOps Career Accelerator
-              </span>
-            </motion.div>
+      {/* Hero: the incident log is the thesis */}
+      <section className="relative w-full pt-32 md:pt-40 pb-24 px-6 flex justify-center">
+        <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <motion.div initial="hidden" animate="visible" variants={staggerContainer(0.1)}>
+            <motion.span variants={fadeUp} className="ldg-eyebrow">incident-014 -- resolved by a learner, not a slideshow</motion.span>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-4xl sm:text-5xl md:text-7xl font-black italic tracking-tight mb-8 leading-[1.1] md:leading-[0.9]"
-            >
-              DebugToDeploy: <br className="hidden md:block" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-soft-blue to-soft-purple">
-                Accelerator
-              </span>
+            <motion.h1 variants={fadeUpLarge} className="ldg-display text-[2.6rem] sm:text-5xl md:text-6xl leading-[1.05] mt-6 mb-7">
+              Most DevOps courses<br />
+              teach you to <span className="text-[var(--ldg-text-dim)] line-through decoration-2">watch</span>.<br />
+              We hand you <span className="text-[var(--ldg-cyan)]">the pager.</span>
             </motion.h1>
 
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-lg text-text-dim font-bold max-w-xl mb-12 leading-relaxed"
-            >
-              Bridge the gap between theoretical knowledge and production expertise. 
-              Build real-world infrastructure, fix complex cluster issues, and showcase 
-              your verified skills with a professional engineering portfolio.
+            <motion.p variants={fadeUp} className="text-[var(--ldg-text-dim)] text-lg leading-relaxed max-w-lg mb-10">
+              No carousel modules, no badge confetti. DebugToDeploy drops you into broken
+              Kubernetes clusters, drifted Terraform state, and failing pipelines -- the same
+              shape of problems that show up in a 2am page. You fix the real thing.
             </motion.p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto"
-            >
-              <button
+            <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 mb-12">
+              <motion.button
+                {...clayHover}
                 onClick={() => openAuth('signup')}
-                className="btn-pill bg-text-main text-surface px-10 py-5 text-sm uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-soft-blue transition-colors group"
+                className="ldg-btn-primary px-8 py-4 flex items-center justify-center gap-2"
               >
-                Start Free Journey <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-              <a
-                href="#labs"
-                className="btn-pill bg-surface border-4 border-border px-10 py-5 text-sm uppercase tracking-widest flex items-center justify-center gap-2 hover:border-soft-blue transition-colors"
-              >
-                Explore Labs
-              </a>
+                Start your first incident <ArrowRight className="w-4 h-4" />
+              </motion.button>
+              <motion.a {...clayHover} href="#labs" className="ldg-btn-ghost px-8 py-4 flex items-center justify-center">
+                See a real lab
+              </motion.a>
             </motion.div>
 
-            {/* Social Proof */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className="mt-16 flex flex-col lg:flex-row items-center gap-4"
-            >
-              <div className="flex -space-x-3">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="w-10 h-10 rounded-full border-4 border-brand-bg bg-surface flex items-center justify-center text-[10px] font-black shadow-lg">
-                    U{i}
-                  </div>
-                ))}
+            <div className="flex items-center gap-4 ldg-mono text-[0.7rem] text-[var(--ldg-text-dim)] uppercase tracking-widest">
+              <span className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-[var(--ldg-ok)] rounded-full" /> 5,000+ engineers on the roster
+              </span>
+            </div>
+          </motion.div>
+
+          {/* Signature element: live incident-log terminal */}
+          <div className="relative">
+            <div className="ldg-panel relative">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--ldg-wire)]">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f56]" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#27c93f]" />
+                </div>
+                <span className="ldg-mono text-[0.65rem] text-[var(--ldg-text-dim)] uppercase tracking-widest">
+                  prod-cluster-01 / postmortem
+                </span>
+                <div className="w-10" />
               </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-dim">
-                Trusted by 5,000+ Engineers
-              </p>
-            </motion.div>
+              <div className="p-6 ldg-mono text-[0.8rem] leading-7">
+                {HERO_LOG.map((line, i) => (
+                  <motion.p
+                    key={i}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: line.delay, duration: 0.3 }}
+                    className={line.cls}
+                  >
+                    {line.text}
+                  </motion.p>
+                ))}
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 4.0 }}
+                  className="ldg-cursor"
+                />
+              </div>
+            </div>
+            <div className="absolute -bottom-6 -right-6 ldg-panel px-5 py-3 hidden sm:block">
+              <p className="ldg-mono text-[0.65rem] text-[var(--ldg-text-dim)] uppercase tracking-widest mb-1">time to first lab</p>
+              <p className="ldg-display text-xl text-[var(--ldg-cyan)]">0.2s boot</p>
+            </div>
           </div>
+        </div>
+      </section>
 
+      {/* How it works: a real sequence, so numbering earns its keep */}
+      <section id="flow" className="w-full py-20 px-6 flex justify-center">
+        <div className="max-w-7xl mx-auto w-full">
+          <span className="ldg-eyebrow">the loop</span>
+          <h2 className="ldg-display text-3xl md:text-4xl mt-4 mb-14 max-w-xl">
+            Every lab runs the same loop production runs on.
+          </h2>
           <motion.div
-            initial={{ opacity: 0, scale: 0.8, rotate: 5 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0 }}
-            transition={{ delay: 0.2, type: 'spring', damping: 15 }}
-            className="relative hidden lg:block"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-80px' }}
+            variants={staggerContainer(0.08)}
+            className="grid grid-cols-1 md:grid-cols-4 gap-5"
           >
-            <div className="absolute inset-0 bg-soft-blue/20 blur-[100px] rounded-full animate-pulse" />
-            <img 
-              src="/hero-3d.png" 
-              alt="DevOps 3D Illustration" 
-              className="relative z-10 w-full h-auto drop-shadow-3xl hover:scale-105 transition-transform duration-700"
-            />
+            {[
+              { step: '01', title: 'Break', desc: 'We hand you a cluster, pipeline, or stack that is already failing -- on purpose.' },
+              { step: '02', title: 'Debug', desc: 'Read logs, trace state, isolate root cause. No multiple-choice quiz to fall back on.' },
+              { step: '03', title: 'Deploy', desc: 'Ship the fix into the sandbox and watch it hold under the next check.' },
+              { step: '04', title: 'Log it', desc: 'Your fix becomes a portfolio entry -- timestamped, verifiable, not a participation badge.' },
+            ].map((s) => (
+              <motion.div key={s.step} variants={fadeUp} {...clayHover} className="ldg-card p-8">
+                <span className="ldg-mono text-[var(--ldg-cyan)] text-sm">{s.step}</span>
+                <h3 className="ldg-display text-xl mt-3 mb-2">{s.title}</h3>
+                <p className="text-[var(--ldg-text-dim)] text-sm leading-relaxed">{s.desc}</p>
+              </motion.div>
+            ))}
           </motion.div>
         </div>
       </section>
 
-      {/* App Download Section */}
-      <section className="w-full py-20 md:py-32 px-6 flex justify-center">
-        <div className="max-w-7xl mx-auto w-full">
-          <div className="playful-card border-4 border-soft-blue/30 bg-gradient-to-br from-soft-blue/10 to-soft-purple/10 p-12 md:p-16 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-soft-blue/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-            
-            <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-              <div className="space-y-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-soft-blue/20 flex items-center justify-center border-2 border-soft-blue">
-                    <Smartphone className="w-6 h-6 text-soft-blue" />
-                  </div>
-                  <span className="text-[11px] font-black uppercase tracking-widest bg-soft-blue/10 text-soft-blue px-3 py-1.5 rounded-full border border-soft-blue/20">Now Available</span>
-                </div>
-                
-                <h2 className="text-4xl md:text-5xl font-black italic tracking-tight leading-[1.1]">
-                  Take Your <span className="text-soft-blue">Training</span> <br /> On the Go
-                </h2>
-                
-                <p className="text-text-dim font-bold text-lg leading-relaxed max-w-xl">
-                  Master DevOps anywhere with our native mobile app. Practice lab exercises, track your progress, and prepare for interviews while you're commuting or in between meetings.
-                </p>
-
-                <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                  <button
-                    disabled
-                    onClick={() => window.open('https://play.google.com/store/apps/details?id=com.debugtodeploy', '_blank')}
-                    className="btn-pill bg-text-main text-surface px-8 py-4 text-sm uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed hover:disabled:bg-text-main transition-colors flex items-center justify-center gap-2 relative group"
-                    title="Coming soon - Testing phase"
-                  >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M3 3h18v18H3z" fill="none" stroke="currentColor" strokeWidth="2"/>
-                      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2"/>
-                    </svg>
-                    Android App
-                    {true && (
-                      <span className="absolute -top-1 -right-1 text-[8px] font-black uppercase bg-soft-orange text-white px-2 py-1 rounded-full tracking-wider animate-pulse">
-                        Beta
-                      </span>
-                    )}
-                  </button>
-                  
-                  <button
-                    disabled
-                    className="btn-pill bg-surface border-4 border-border px-8 py-4 text-sm uppercase tracking-widest disabled:opacity-40 cursor-not-allowed flex items-center justify-center gap-2"
-                    title="Coming soon"
-                  >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
-                      <path d="M6 4v4m12-4v4"/>
-                    </svg>
-                    iOS Coming Soon
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex justify-center items-center hidden md:block relative">
-                <div className="absolute inset-0 bg-soft-purple/20 blur-[80px] rounded-full" />
-                <motion.div
-                  animate={{ y: [0, -20, 0] }}
-                  transition={{ duration: 4, repeat: Infinity }}
-                  className="relative z-10 w-full"
-                >
-                  <div className="bg-surface border-4 border-border rounded-[40px] p-4 shadow-2xl max-w-sm mx-auto overflow-hidden">
-                    <div className="bg-gradient-to-b from-soft-blue to-soft-purple rounded-[36px] p-2 aspect-[9/16] flex items-center justify-center relative overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-b from-soft-blue/20 to-transparent" />
-                      <div className="relative z-10 w-full h-full bg-surface rounded-[32px] flex flex-col items-center justify-center p-4 space-y-6">
-                        <div className="w-24 h-24 rounded-2xl bg-soft-blue/10 border-2 border-soft-blue/30 flex items-center justify-center">
-                          <TerminalIcon className="w-12 h-12 text-soft-blue" />
-                        </div>
-                        <div className="text-center space-y-2">
-                          <h4 className="text-sm font-black italic">Cloud Labs</h4>
-                          <p className="text-[9px] font-bold text-text-dim">Practice in Real Environments</p>
-                        </div>
-                        <div className="flex gap-2">
-                          <div className="w-2 h-2 rounded-full bg-soft-green" />
-                          <div className="w-2 h-2 rounded-full bg-soft-blue" />
-                          <div className="w-2 h-2 rounded-full bg-soft-purple" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-
-      {/* Key Features Grid */}
-      <section id="features" className="w-full py-20 md:py-32 px-6 flex justify-center">
-        <div className="max-w-7xl mx-auto w-full">
-          <div className="text-center mb-20 space-y-4 px-4">
-            <h2 className="text-4xl md:text-7xl font-black italic tracking-tighter leading-[0.9]">Master the <span className="text-soft-blue underline decoration-4 underline-offset-8">Modern Stack</span></h2>
-            <p className="text-text-dim font-bold max-w-2xl mx-auto text-base md:text-lg">One platform. All the tools. Zero fluff. We focus on what matters most to hiring managers.</p>
-          </div>
-
-          <div className="flex overflow-x-auto gap-8 pb-12 pt-4 px-4 snap-x snap-mandatory no-scrollbar -mx-4 md:mx-0 md:px-0">
-            {[
-              {
-                icon: Briefcase,
-                title: "AI Job Board",
-                desc: "Real-time job opportunities matched to your roadmap goal and technical readiness score.",
-                color: "text-soft-blue",
-                bg: "bg-soft-blue/10"
-              },
-              {
-                icon: Users,
-                title: "Global Leaderboard",
-                desc: "Compete with engineers worldwide. Climb the ranks by completing labs and passing interviews.",
-                color: "text-soft-purple",
-                bg: "bg-soft-purple/10"
-              },
-              {
-                icon: Brain,
-                title: "Interview Analytics",
-                desc: "Deep AI analysis of your mock interview performance with personalized coaching insights.",
-                color: "text-soft-orange",
-                bg: "bg-soft-orange/10"
-              },
-              {
-                icon: TerminalIcon,
-                title: "Production Labs",
-                desc: "Don't just code. Solve production incidents in live cloud environments.",
-                color: "text-soft-green",
-                bg: "bg-soft-green/10"
-              },
-              {
-                icon: ShieldCheck,
-                title: "Verified Skills",
-                desc: "Prove your expertise with certificates backed by actual lab performance data.",
-                color: "text-soft-blue",
-                bg: "bg-soft-blue/10"
-              },
-              {
-                icon: Award,
-                title: "Elite Portfolio",
-                desc: "A public profile that speaks louder than a resume to hiring managers.",
-                color: "text-soft-green",
-                bg: "bg-soft-green/10"
-              }
-            ].map((feature, i) => (
-              <motion.div
-                key={i}
-                whileHover={{ y: -10 }}
-                className="flex-none w-[320px] md:w-[350px] snap-center playful-card flex flex-col items-start gap-6 border-4"
-              >
-                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border-2 border-current/20", feature.bg, feature.color)}>
-                  <feature.icon className="w-7 h-7" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-black italic mb-2">{feature.title}</h3>
-                  <p className="text-text-dim font-bold text-sm leading-relaxed">{feature.desc}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Hands-on Labs Highlight */}
-      <section id="labs" className="w-full py-20 md:py-32 px-6 bg-[#0B0F1A] text-white relative overflow-hidden flex justify-center">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-soft-blue/10 rounded-full blur-[150px] -translate-y-1/2 translate-x-1/2" />
-        
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20 items-center w-full">
-          <div className="space-y-8">
-            <div className="chip bg-soft-green/20 text-soft-green border border-soft-green/20">The Practice Arena</div>
-            <h2 className="text-5xl font-black italic tracking-tighter leading-[0.9]">Real Labs. <br/> Real <span className="text-soft-green">Infrastructure.</span></h2>
-            <p className="text-white/60 font-bold text-lg leading-relaxed">
-              No more theoretical slides. Jump into interactive terminals and fix actual 
-              Kubernetes crashes, Terraform drift, and CI/CD pipeline failures.
+      {/* Labs */}
+      <section id="labs" className="w-full py-24 px-6 flex justify-center">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center w-full">
+          <div>
+            <span className="ldg-eyebrow">the practice arena</span>
+            <h2 className="ldg-display text-3xl md:text-4xl mt-4 mb-6 leading-tight">
+              Real infrastructure.<br />Real failure states.
+            </h2>
+            <p className="text-[var(--ldg-text-dim)] text-lg leading-relaxed mb-8 max-w-md">
+              No theoretical slides. Interactive terminals running actual Kubernetes crashes,
+              Terraform drift, and CI/CD pipeline failures -- the kind that do not have a clean
+              textbook answer.
             </p>
-            <ul className="space-y-4">
-              {['AWS / Azure / GCP Sandboxes', 'Kubernetes Cluster Debugging', 'Terraform & IaC Challenges', 'Jenkins & GitHub Actions Labs'].map((item, i) => (
-                <li key={i} className="flex items-center gap-3 font-black text-xs uppercase tracking-widest text-white/80">
-                  <CheckCircle2 className="w-5 h-5 text-soft-green" /> {item}
+            <ul className="space-y-3 mb-10">
+              {['AWS / Azure / GCP sandboxes', 'Kubernetes cluster debugging', 'Terraform & IaC drift challenges', 'Jenkins & GitHub Actions labs'].map((item) => (
+                <li key={item} className="flex items-center gap-3 text-sm text-[var(--ldg-text)]">
+                  <CheckCircle2 className="w-4 h-4 text-[var(--ldg-ok)] shrink-0" /> {item}
                 </li>
               ))}
             </ul>
-            <button onClick={() => openAuth('signup')} className="btn-pill bg-white text-[#0B0F1A] px-10 py-5 text-sm uppercase tracking-widest hover:bg-soft-green transition-colors">
-              Access All Labs
+            <button onClick={() => openAuth('signup')} className="ldg-btn-primary px-8 py-4">
+              Access all labs
             </button>
           </div>
-          <div className="relative">
-             <div className="bg-surface/10 backdrop-blur-xl border-4 border-white/10 rounded-[2.5rem] p-4 shadow-2xl">
-                <div className="bg-[#1e1e1e] rounded-2xl overflow-hidden shadow-inner">
-                   <div className="flex items-center gap-2 px-4 py-3 bg-white/5 border-b border-white/5">
-                      <div className="w-3 h-3 rounded-full bg-[#ff5f56]" />
-                      <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
-                      <div className="w-3 h-3 rounded-full bg-[#27c93f]" />
-                      <span className="ml-4 text-[10px] font-mono text-white/40 uppercase tracking-widest">terminal — k8s-debug-01</span>
-                   </div>
-                   <div className="p-6 font-mono text-sm space-y-2">
-                      <p className="text-soft-green">$ kubectl get pods</p>
-                      <p className="text-white">NAME &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; READY &nbsp; STATUS &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RESTARTS &nbsp; AGE</p>
-                      <p className="text-white">nginx-deployment &nbsp; 0/1 &nbsp;&nbsp;&nbsp; CrashLoopBackOff &nbsp; 5 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 12m</p>
-                      <p className="text-soft-red mt-4">ERROR: ImagePullBackOff</p>
-                      <p className="text-white animate-pulse">_</p>
-                   </div>
-                </div>
-             </div>
-             {/* Floating badge */}
-             <div className="absolute -bottom-10 -left-10 playful-card bg-surface border-4 border-soft-blue rotate-[-5deg] p-4">
-                <div className="flex items-center gap-3">
-                    <Zap className="w-8 h-8 text-soft-orange" />
-                    <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-text-dim leading-none mb-1">Instant Access</p>
-                        <p className="text-lg font-black italic text-text-main">0.2s Boot Time</p>
-                    </div>
-                </div>
-             </div>
+
+          <div className="ldg-panel">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--ldg-wire)]">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f56]" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#27c93f]" />
+              </div>
+              <span className="ldg-mono text-[0.65rem] text-[var(--ldg-text-dim)] uppercase tracking-widest">terminal -- k8s-debug-01</span>
+              <div className="w-10" />
+            </div>
+            <div className="p-6 ldg-mono text-sm space-y-3">
+              <p className="ldg-log-dim">$ kubectl get pods</p>
+              <p className="text-[var(--ldg-text-dim)] text-xs">NAME                READY   STATUS              RESTARTS   AGE</p>
+              <p className="text-[var(--ldg-text)] text-xs">nginx-deployment    0/1     CrashLoopBackOff    5          12m</p>
+              <p className="ldg-log-err">ERROR: ImagePullBackOff</p>
+              <p className="ldg-cursor" />
+            </div>
           </div>
         </div>
       </section>
 
-      {/* 3D Achievement Showcase */}
-      <section className="w-full py-20 md:py-32 px-6 flex justify-center bg-brand-bg overflow-hidden">
-        <div className="max-w-7xl mx-auto w-full text-center">
-          <div className="mb-20 space-y-4">
-            <h2 className="text-4xl md:text-7xl font-black italic tracking-tighter leading-[0.9]">
-              Earn <span className="text-soft-orange">Verified</span> <br/> 3D Achievements
+      {/* App download */}
+      <section className="w-full py-24 px-6 flex justify-center">
+        <div className="max-w-7xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+          <div>
+            <span className="ldg-eyebrow">mobile -- beta</span>
+            <h2 className="ldg-display text-3xl md:text-4xl mt-4 mb-6 leading-tight">
+              The pager fits<br />in your pocket.
             </h2>
-            <p className="text-text-dim font-bold max-w-2xl mx-auto">
-              Every milestone in your AI roadmap translates into a high-quality 3D trophy. 
-              Showcase your technical depth with a portfolio that actually looks the part.
+            <p className="text-[var(--ldg-text-dim)] text-lg leading-relaxed mb-8 max-w-md">
+              Run lab exercises, track your fix history, and warm up for interviews from the
+              native app -- built for the commute, not the classroom.
             </p>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button onClick={() => openAuth('signup')} className="ldg-btn-primary px-8 py-4 flex items-center gap-2">
+                <Smartphone className="w-4 h-4" /> Get the app beta
+              </button>
+              <button disabled className="ldg-btn-ghost px-8 py-4 opacity-40 cursor-not-allowed">
+                iOS -- coming soon
+              </button>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <div className="ldg-panel w-full max-w-[280px] aspect-[9/18.5] flex flex-col items-center justify-center gap-6 p-6">
+              <Logo className="w-14 h-14" />
+              <div className="text-center">
+                <h4 className="ldg-display text-base mb-1">Cloud sandboxes</h4>
+                <p className="ldg-mono text-[0.65rem] text-[var(--ldg-text-dim)] uppercase tracking-widest">in your pocket</p>
+              </div>
+              <div className="flex gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--ldg-ok)]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--ldg-cyan)]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--ldg-text-dim)]" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section id="features" className="w-full py-24 px-6 flex justify-center">
+        <div className="max-w-7xl mx-auto w-full">
+          <div className="max-w-2xl mb-16">
+            <span className="ldg-eyebrow">what's under the hood</span>
+            <h2 className="ldg-display text-3xl md:text-4xl mt-4">
+              One platform. The tools hiring managers actually check for.
+            </h2>
           </div>
 
-          <div className="flex overflow-x-auto gap-8 pb-12 pt-4 px-4 snap-x snap-mandatory no-scrollbar -mx-4 md:mx-0 md:px-0">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-80px' }}
+            variants={staggerContainer(0.06)}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
+          >
             {[
-              { name: 'Docker Pilot', icon: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Whale/3D/whale_3d.png', color: 'bg-soft-blue/10' },
-              { name: 'K8s Healer', icon: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Steering%20Wheel/3D/steering_wheel_3d.png', color: 'bg-soft-green/10' },
-              { name: 'SRE Master', icon: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Rocket/3D/rocket_3d.png', color: 'bg-soft-purple/10' },
-              { name: 'Cloud Architect', icon: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cloud/3D/cloud_3d.png', color: 'bg-soft-orange/10' },
-              { name: 'Git Guru', icon: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Link/3D/link_3d.png', color: 'bg-soft-blue/10' },
-              { name: 'SRE Monitor', icon: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bar%20Chart/3D/bar_chart_3d.png', color: 'bg-soft-green/10' }
-            ].map((badge, i) => (
+              { icon: Briefcase, title: 'AI job board', desc: 'Live roles matched to your roadmap goal and technical readiness score.' },
+              { icon: Users, title: 'Global leaderboard', desc: 'Compete with engineers worldwide by completing labs and clearing interviews.' },
+              { icon: Brain, title: 'Interview analytics', desc: 'AI breakdown of your mock interview performance with concrete coaching notes.' },
+              { icon: TerminalIcon, title: 'Production labs', desc: 'Sandboxes that fail the way real infrastructure fails -- not staged demos.' },
+              { icon: ShieldCheck, title: 'Verified portfolio', desc: 'Every completed fix becomes a timestamped, shareable record of real work.' },
+              { icon: Star, title: 'AI roadmaps', desc: 'A path built from your experience level and target role, not a generic syllabus.' },
+            ].map((f) => (
+              <motion.div key={f.title} variants={fadeUp} {...clayHover} className="ldg-card p-8">
+                <f.icon className="w-5 h-5 text-[var(--ldg-cyan)] mb-5" />
+                <h3 className="ldg-display text-lg mb-2">{f.title}</h3>
+                <p className="text-[var(--ldg-text-dim)] text-sm leading-relaxed">{f.desc}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Achievement badges */}
+      <section className="w-full py-24 px-6 flex justify-center">
+        <div className="max-w-7xl mx-auto w-full">
+          <div className="max-w-2xl mb-16">
+            <span className="ldg-eyebrow">proof of work</span>
+            <h2 className="ldg-display text-3xl md:text-4xl mt-4">
+              Milestones that look like what you actually built.
+            </h2>
+          </div>
+          <div className="flex overflow-x-auto gap-6 pb-6 -mx-6 px-6 no-scrollbar snap-x snap-mandatory">
+            {['Docker Pilot', 'K8s Healer', 'SRE Master', 'Cloud Architect', 'Git Guru', 'SRE Monitor'].map((name, i) => (
               <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
+                key={name}
+                initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
+                transition={{ delay: i * 0.06, duration: 0.4 }}
                 viewport={{ once: true }}
-                whileHover={{ y: -10, rotateY: 10, rotateX: -10 }}
-                className="flex-none w-[280px] md:w-[320px] snap-center playful-card flex flex-col items-center gap-6 p-10 border-4 relative overflow-hidden group cursor-pointer"
+                whileHover={{ y: -5 }}
+                className="ldg-card flex-none w-[240px] snap-center flex flex-col items-center gap-5 p-8"
               >
-                <div className={cn("w-32 h-32 rounded-3xl flex items-center justify-center relative z-10", badge.color)}>
-                  <RoadmapBadge3D 
-                    stageName={badge.name} 
-                    earned={true} 
-                    size="lg" 
-                    showGlow={true}
-                  />
+                <div className="w-24 h-24 flex items-center justify-center">
+                  <RoadmapBadge3D stageName={name} earned size="md" showGlow={false} />
                 </div>
-                <div>
-                  <p className="text-xs font-black uppercase tracking-widest text-text-dim mb-1">Badge Unlocked</p>
-                  <h3 className="text-xl font-black italic">{badge.name}</h3>
+                <div className="text-center">
+                  <p className="ldg-mono text-[0.6rem] text-[var(--ldg-text-dim)] uppercase tracking-widest mb-1">unlocked</p>
+                  <h3 className="ldg-display text-base">{name}</h3>
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Pricing Comparison */}
-      <section id="pricing" className="w-full py-20 md:py-32 px-6 flex justify-center">
-        <div className="max-w-7xl mx-auto w-full">
-          <div className="text-center mb-20 space-y-4">
-            <h2 className="text-4xl md:text-6xl font-black italic tracking-tighter">Choose Your <span className="text-soft-purple">Clearance</span></h2>
-            <p className="text-text-dim font-bold">Invest in your career. Upgrade anytime.</p>
+      {/* Pricing */}
+      <section id="pricing" className="w-full py-24 px-6 flex justify-center">
+        <div className="max-w-5xl mx-auto w-full">
+          <div className="max-w-2xl mb-16">
+            <span className="ldg-eyebrow">clearance levels</span>
+            <h2 className="ldg-display text-3xl md:text-4xl mt-4">Start free. Upgrade when the labs aren't enough.</h2>
           </div>
 
-          <div className="flex flex-col items-center gap-16 max-w-5xl mx-auto">
-            {/* Pricing Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 w-full">
-            {/* Free Tier */}
-            <div className="playful-card border-4 flex flex-col items-center text-center p-12">
-              <div className="mb-8">
-                <h3 className="text-2xl font-black italic mb-2">Free Fleet</h3>
-                <p className="text-text-dim font-bold text-sm">The foundation for your engineering journey.</p>
-              </div>
-              <div className="text-4xl font-black italic mb-8">$0 <span className="text-sm font-bold text-text-dim not-italic uppercase tracking-widest ml-2">/ month</span></div>
-              <ul className="space-y-4 mb-12 flex-1 w-full">
-                {[
-                  '1 AI Roadmap / week',
-                  '2 AI Assistant searches / day',
-                  'Basic Cloud Labs access',
-                  'Community Support',
-                  'Standard Portfolio'
-                ].map((item, i) => (
-                  <li key={i} className="flex items-center justify-center gap-3 text-sm font-bold text-text-main">
-                    <CheckCircle2 className="w-5 h-5 text-soft-green shrink-0" /> {item}
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-80px' }}
+            variants={staggerContainer(0.1)}
+            className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10"
+          >
+            <motion.div variants={fadeUp} className="ldg-card p-10 flex flex-col">
+              <h3 className="ldg-display text-xl mb-2">Free Fleet</h3>
+              <p className="text-[var(--ldg-text-dim)] text-sm mb-8">The foundation for your engineering journey.</p>
+              <div className="ldg-display text-4xl mb-8">$0<span className="ldg-mono text-xs text-[var(--ldg-text-dim)] ml-2 uppercase tracking-widest">/ month</span></div>
+              <ul className="space-y-3 mb-10 flex-1">
+                {['1 AI roadmap / week', '2 AI assistant searches / day', 'Basic cloud labs access', 'Community support', 'Standard portfolio'].map((item) => (
+                  <li key={item} className="flex items-center gap-3 text-sm">
+                    <CheckCircle2 className="w-4 h-4 text-[var(--ldg-ok)] shrink-0" /> {item}
                   </li>
                 ))}
               </ul>
-              <button onClick={() => openAuth('signup')} className="btn-pill border-4 border-border text-text-main py-4 px-8 uppercase tracking-widest text-xs hover:border-soft-blue transition-colors w-full">
-                Get Started Free
-              </button>
-            </div>
+              <button onClick={() => openAuth('signup')} className="ldg-btn-ghost w-full py-4">Get started free</button>
+            </motion.div>
 
-              {/* Pro Tier */}
-              <div className="playful-card border-4 border-soft-purple relative overflow-hidden bg-soft-purple/5 shadow-2xl shadow-soft-purple/10 p-12 flex flex-col items-center text-center">
-                <div className="absolute top-6 right-6">
-                   <div className="chip bg-soft-purple text-[#0F172A] shadow-lg shadow-soft-purple/20">Fleet Captain</div>
-                </div>
-                <div className="mb-8">
-                  <h3 className="text-2xl font-black italic mb-2">Fleet Captain (Pro)</h3>
-                  <p className="text-text-dim font-bold text-sm">Full-throttle engineering with unlimited AI power.</p>
-                </div>
-                <div className="flex items-baseline justify-center gap-2 mb-8">
-                  <span className="text-5xl font-black italic">$6</span>
-                  <span className="text-xs font-bold text-text-dim uppercase tracking-[0.2em]">/ month</span>
-                </div>
-                <ul className="space-y-4 mb-12 flex-1 w-full">
-                  {[
-                    'Unlimited Interactive Cloud Sandbox',
-                    'AI Portfolio & Resume Builder',
-                    'Unlimited AI Mock Interviews',
-                    'Unlimited AI Roadmaps',
-                    'Unlimited AI Assistant Search',
-                    'PDF Resume Export & Sharing',
-                    'Early Access to Beta Features'
-                  ].map((item, i) => (
-                    <li key={i} className="flex items-center justify-center gap-3 text-sm font-bold text-text-main">
-                      <CheckCircle2 className="w-5 h-5 text-soft-purple shrink-0" /> {item}
-                    </li>
-                  ))}
-                </ul>
-                <button onClick={() => openAuth('signup')} className="btn-pill bg-text-main text-surface py-5 px-8 uppercase tracking-widest text-xs hover:bg-soft-purple transition-colors shadow-2xl shadow-soft-purple/20 w-full">
-                  Command the Fleet
-                </button>
-              </div>
-            </div>
+            <motion.div variants={fadeUp} className="ldg-card p-10 flex flex-col relative" style={{ borderColor: 'rgba(255,157,61,0.5)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 18px 50px -12px rgba(255,138,30,0.45)' }}>
+              <span className="absolute top-6 right-6 ldg-mono text-[0.6rem] uppercase tracking-widest text-[var(--ldg-amber)] border border-[var(--ldg-amber)] rounded-full px-2.5 py-1">Fleet captain</span>
+              <h3 className="ldg-display text-xl mb-2">Pro</h3>
+              <p className="text-[var(--ldg-text-dim)] text-sm mb-8">Full-throttle engineering with unlimited AI.</p>
+              <div className="ldg-display text-4xl mb-8 text-[var(--ldg-amber)]">$6<span className="ldg-mono text-xs text-[var(--ldg-text-dim)] ml-2 uppercase tracking-widest">/ month</span></div>
+              <ul className="space-y-3 mb-10 flex-1">
+                {['Unlimited interactive cloud sandbox', 'AI portfolio & resume builder', 'Unlimited AI mock interviews', 'Unlimited AI roadmaps', 'Unlimited AI assistant search', 'PDF resume export & sharing', 'Early access to beta features'].map((item) => (
+                  <li key={item} className="flex items-center gap-3 text-sm">
+                    <CheckCircle2 className="w-4 h-4 text-[var(--ldg-amber)] shrink-0" /> {item}
+                  </li>
+                ))}
+              </ul>
+              <button onClick={() => openAuth('signup')} className="ldg-btn-primary w-full py-4">Command the fleet</button>
+            </motion.div>
+          </motion.div>
 
-            {/* Refund Policy / Trust Badge */}
-            <div className="flex items-center gap-4 px-8 py-4 bg-surface border-2 border-border rounded-full">
-               <ShieldCheck className="w-6 h-6 text-soft-green" />
-               <p className="text-[10px] font-black uppercase tracking-widest text-text-dim">14-Day Money Back Guarantee • Secure Payment Processing</p>
-            </div>
-          </div>
+          {/* <div className="flex items-center gap-3 ldg-panel px-6 py-4 w-fit">
+            <ShieldCheck className="w-4 h-4 text-[var(--ldg-ok)]" />
+            <p className="ldg-mono text-[0.65rem] uppercase tracking-widest text-[var(--ldg-text-dim)]">14-day money back -- secure payment processing</p>
+          </div> */}
         </div>
       </section>
 
       {/* Testimonials */}
-      <section className="w-full py-20 md:py-32 px-6 bg-surface/30 border-y border-border flex justify-center">
-        <div className="max-w-7xl mx-auto w-full">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            {[
-              {
-                name: "Alex Rivera",
-                role: "Cloud Engineer @ Vercel",
-                text: "The labs on DebugToDeploy are unlike anything else. It's actually hard, which is why it works.",
-                avatar: "AR"
-              },
-              {
-                name: "Sarah Chen",
-                role: "Junior SRE",
-                text: "The AI Roadmap gave me a clear path when I was overwhelmed. 3 months later, I got my first offer.",
-                avatar: "SC"
-              },
-              {
-                name: "Marcus Thorne",
-                role: "Platform Lead",
-                text: "We use this to vet new hires. If they can finish the Kubernetes labs, we know they're legit.",
-                avatar: "MT"
-              }
-            ].map((t, i) => (
-              <div key={i} className="space-y-6 flex flex-col items-center text-center group">
-                <div className="flex gap-1 group-hover:scale-110 transition-transform">
-                  {[1, 2, 3, 4, 5].map(s => <Star key={s} className="w-4 h-4 fill-soft-orange text-soft-orange" />)}
-                </div>
-                <p className="text-xl font-bold italic leading-relaxed">"{t.text}"</p>
-                  <div className="flex items-center justify-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-soft-blue/20 flex items-center justify-center font-black text-soft-blue">{t.avatar}</div>
-                    <div className="text-left">
-                      <p className="font-black italic text-sm">{t.name}</p>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-text-dim">{t.role}</p>
-                    </div>
-                  </div>
+      <section className="w-full py-24 px-6 flex justify-center">
+        <div className="max-w-7xl mx-auto w-full grid grid-cols-1 md:grid-cols-3 gap-12">
+          {[
+            { name: 'Alex Rivera', role: 'Cloud Engineer @ Vercel', text: 'The labs are unlike anything else. It is actually hard, which is why it works.' },
+            { name: 'Sarah Chen', role: 'Junior SRE', text: 'The AI roadmap gave me a clear path when I was overwhelmed. Three months later, I had an offer.' },
+            { name: 'Marcus Thorne', role: 'Platform Lead', text: 'We use it to vet new hires. If they can finish the Kubernetes labs, we know they are legit.' },
+          ].map((t) => (
+            <div key={t.name} className="space-y-5">
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((s) => <Star key={s} className="w-3.5 h-3.5 fill-[var(--ldg-amber)] text-[var(--ldg-amber)]" />)}
               </div>
-            ))}
-          </div>
+              <p className="text-lg leading-relaxed">"{t.text}"</p>
+              <div>
+                <p className="ldg-mono text-sm">{t.name}</p>
+                <p className="ldg-mono text-[0.65rem] text-[var(--ldg-text-dim)] uppercase tracking-widest">{t.role}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section id="faq" className="w-full py-20 md:py-32 px-6 flex justify-center">
-        <div className="max-w-7xl mx-auto w-full">
-          <h2 className="text-4xl font-black italic tracking-tighter mb-16 text-center">Frequently Asked <span className="text-soft-orange">Questions</span></h2>
-          <div className="space-y-4">
+      {/* FAQ */}
+      <section id="faq" className="w-full py-24 px-6 flex justify-center">
+        <div className="max-w-5xl mx-auto w-full">
+          <span className="ldg-eyebrow">read before you ask support</span>
+          <h2 className="ldg-display text-3xl md:text-4xl mt-4 mb-14">Frequently asked</h2>
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-80px' }}
+            variants={staggerContainer(0.07)}
+            className="grid grid-cols-1 md:grid-cols-2 gap-5"
+          >
             {[
-              { q: "Is the sandbox really free?", a: "Yes! Every user gets access to a limited number of cloud lab environments every month. Pro users get unlimited access." },
-              { q: "How accurate is the AI roadmap?", a: "Our AI is trained on thousands of DevOps job descriptions and career paths. It updates weekly to reflect industry trends." },
-              { q: "Do I need a credit card to start?", a: "No. You can start generating roadmaps and exploring labs with just an email." },
-              { q: "What certifications do I get?", a: "You get milestones certificates that you can share on LinkedIn. These are proof of your practical lab completions." }
-            ].map((item, i) => (
-              <div key={i} className="playful-card border-4 flex flex-col items-center text-center p-8">
-                <h4 className="text-lg font-black italic mb-4 flex items-center gap-3 justify-center">
-                    <div className="w-2 h-2 rounded-full bg-soft-orange" /> {item.q}
-                </h4>
-                <p className="text-text-dim font-bold text-sm">{item.a}</p>
-              </div>
+              { q: 'Is the sandbox really free?', a: 'Yes. Every user gets a limited number of cloud lab environments each month. Pro users get unlimited access.' },
+              { q: 'How accurate is the AI roadmap?', a: 'Trained on thousands of DevOps job descriptions and career paths, and updated weekly against industry trends.' },
+              { q: 'Do I need a credit card to start?', a: 'No. You can start generating roadmaps and exploring labs with just an email.' },
+              { q: 'What certifications do I get?', a: 'Milestone certificates you can share on LinkedIn -- proof of practical lab completions, not attendance.' },
+            ].map((item) => (
+              <motion.div key={item.q} variants={fadeUp} className="ldg-card p-8">
+                <h4 className="ldg-display text-base mb-3">{item.q}</h4>
+                <p className="text-[var(--ldg-text-dim)] text-sm leading-relaxed">{item.a}</p>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Final CTA */}
-      <section className="w-full py-40 px-6 relative overflow-hidden flex justify-center">
-        <div className="absolute inset-0 bg-text-main" />
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_50%_50%,rgba(147,197,253,0.5)_1px,transparent_1px)] bg-[length:40px_40px]" />
-        
-        <div className="max-w-4xl mx-auto relative z-10 text-center space-y-12 w-full">
-          <h2 className="text-5xl md:text-7xl font-black italic tracking-tighter text-surface leading-[0.9]">Ready to Become an <br /> <span className="text-soft-blue">Architect?</span></h2>
-          <p className="text-surface/60 font-bold text-xl max-w-xl mx-auto">Join the 5,000+ engineers who are building the future of infrastructure.</p>
-          <div className="flex flex-col sm:flex-row justify-center gap-6">
-            <button onClick={() => openAuth('signup')} className="btn-pill bg-soft-blue text-[#0F172A] px-12 py-6 text-base uppercase tracking-widest hover:bg-white transition-colors">
-              Start Free Journey
+      <section className="w-full py-32 px-6 flex justify-center">
+        <div className="max-w-3xl mx-auto text-center">
+          <span className="ldg-eyebrow">status: accepting new engineers</span>
+          <h2 className="ldg-display text-4xl md:text-6xl mt-6 mb-8 leading-tight">
+            Stop watching tutorials.<br />Start carrying the pager.
+          </h2>
+          <p className="text-[var(--ldg-text-dim)] text-lg mb-10">
+            Join 5,000+ engineers building a portfolio that has actually been tested.
+          </p>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <button onClick={() => openAuth('signup')} className="ldg-btn-primary px-10 py-5">
+              Start your first incident
             </button>
-            <button onClick={() => openAuth('login')} className="btn-pill bg-transparent border-4 border-surface/20 text-surface px-12 py-6 text-base uppercase tracking-widest hover:border-surface transition-colors">
-              Login to Account
+            <button onClick={() => openAuth('login')} className="ldg-btn-ghost px-10 py-5">
+              Log in
             </button>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="w-full py-20 px-6 border-t border-border flex justify-center">
+      <footer className="w-full py-16 px-6 border-t border-[var(--ldg-wire)] flex justify-center">
         <div className="max-w-7xl mx-auto w-full">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-20">
-          <div className="col-span-1 md:col-span-2 space-y-6">
-            <div className="flex items-center gap-3">
-              <img src="/logo.jpg" alt="DebugToDeploy" className="w-10 h-10 rounded-xl object-contain mix-blend-screen" />
-              <span className="text-xl font-black italic tracking-tighter">Debug<span className="text-soft-blue">To</span>Deploy</span>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+            <div className="col-span-1 md:col-span-2 space-y-4">
+              <div className="flex items-center gap-2.5">
+                <Logo className="w-8 h-8" />
+                <span className="ldg-mono text-sm font-semibold">debug<span className="text-[#00D4FF]">→</span>deploy</span>
+              </div>
+              <p className="text-[var(--ldg-text-dim)] text-sm max-w-sm">
+                A practice ground for engineers who would rather fix something real than watch another slide.
+              </p>
             </div>
-            <p className="text-text-dim font-bold max-w-sm">The AI-Powered career accelerator for modern infrastructure engineers.</p>
-          </div>
-          <div>
-            <h4 className="font-black text-xs uppercase tracking-widest mb-6">Platform</h4>
-            <ul className="space-y-4 text-sm font-bold text-text-dim">
-              <li><a href="#features" className="hover:text-soft-blue">Features</a></li>
-              <li><a href="#labs" className="hover:text-soft-blue">Cloud Labs</a></li>
-              <li><a href="#pricing" className="hover:text-soft-blue">Pricing</a></li>
-              <li><a href="/roadmap" className="hover:text-soft-blue">Roadmaps</a></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-black text-xs uppercase tracking-widest mb-6">Legal</h4>
-            <ul className="space-y-4 text-sm font-bold text-text-dim">
-              <li><a href="/privacy" className="hover:text-soft-blue">Privacy Policy</a></li>
-              <li><a href="/terms" className="hover:text-soft-blue">Terms of Service</a></li>
-              <li><a href="/support" className="hover:text-soft-blue">Support</a></li>
-            </ul>
-          </div>
-          </div>
-          <div className="flex flex-col md:flex-row justify-between items-center gap-10 pt-10 border-t border-border">
-            <div className="flex flex-col items-center md:items-start gap-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim text-center md:text-left">© {new Date().getFullYear()} DebugToDeploy. Developed by Nagarjuna Reddy Annapureddy.</p>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-text-dim">All Rights Reserved.</p>
+            <div>
+              <h4 className="ldg-mono text-[0.65rem] uppercase tracking-widest mb-5 text-[var(--ldg-text-dim)]">Platform</h4>
+              <ul className="space-y-3 text-sm">
+                <li><a href="#features" className="hover:text-[var(--ldg-cyan)] transition-colors">Features</a></li>
+                <li><a href="#labs" className="hover:text-[var(--ldg-cyan)] transition-colors">Cloud labs</a></li>
+                <li><a href="#pricing" className="hover:text-[var(--ldg-cyan)] transition-colors">Pricing</a></li>
+                <li><a href="/roadmap" className="hover:text-[var(--ldg-cyan)] transition-colors">Roadmaps</a></li>
+              </ul>
             </div>
-            <div className="flex items-center gap-6">
-               {[
-                 { icon: Facebook, link: "https://www.facebook.com/profile.php?id=61589307951543", color: "bg-blue-600 text-white", label: "Facebook" },
-                 { icon: Twitter, link: "https://x.com/DebugToDeploy", color: "bg-text-main text-surface", label: "Twitter" },
-                 { icon: Instagram, link: "https://www.instagram.com/debugtodeploy?igsh=MTlxcmoyNG9obWN1OA==", color: "bg-pink-600 text-white", label: "Instagram" }
-               ].map((social, i) => (
-                 <motion.a
-                   key={i}
-                   href={social.link}
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   whileHover={{ 
-                     y: -8, 
-                     rotateX: -15, 
-                     rotateY: 15,
-                     scale: 1.1,
-                     boxShadow: "0 20px 40px rgba(0,0,0,0.3)"
-                   }}
-                   whileTap={{ scale: 0.9, rotateX: 0, rotateY: 0 }}
-                   className={cn(
-                     "w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all border-2 border-white/10 relative group",
-                     social.color
-                   )}
-                   style={{ transformStyle: 'preserve-3d' }}
-                 >
-                   <social.icon className="w-5 h-5 relative z-10" />
-                   <div className="absolute inset-0 rounded-2xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                 </motion.a>
-               ))}
-               
-               <div className="w-px h-8 bg-border mx-4" />
+            <div>
+              <h4 className="ldg-mono text-[0.65rem] uppercase tracking-widest mb-5 text-[var(--ldg-text-dim)]">Legal</h4>
+              <ul className="space-y-3 text-sm">
+                <li><a href="/privacy" className="hover:text-[var(--ldg-cyan)] transition-colors">Privacy policy</a></li>
+                <li><a href="/terms" className="hover:text-[var(--ldg-cyan)] transition-colors">Terms of service</a></li>
+                <li><a href="/support" className="hover:text-[var(--ldg-cyan)] transition-colors">Support</a></li>
+              </ul>
+            </div>
+          </div>
 
-               <button 
-                 onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} 
-                 className="text-[10px] font-black uppercase tracking-widest text-soft-blue hover:underline whitespace-nowrap"
-               >
-                 Back to Top
-               </button>
+          <div className="flex flex-col md:flex-row justify-between items-center gap-8 pt-8 border-t border-[var(--ldg-wire)]">
+            <p className="ldg-mono text-[0.6rem] uppercase tracking-widest text-[var(--ldg-text-dim)]">
+              (c) {new Date().getFullYear()} DebugToDeploy -- Nagarjunareddy. All rights reserved.
+            </p>
+            <div className="flex items-center gap-5">
+              {[
+                { icon: Facebook, link: 'https://www.facebook.com/profile.php?id=61589307951543', label: 'Facebook' },
+                { icon: Twitter, link: 'https://x.com/DebugToDeploy', label: 'Twitter' },
+                { icon: Instagram, link: 'https://www.instagram.com/debugtodeploy?igsh=MTlxcmoyNG9obWN1OA==', label: 'Instagram' },
+              ].map((s) => (
+                <a
+                  key={s.label}
+                  href={s.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-9 h-9 ldg-hairline border flex items-center justify-center hover:border-[var(--ldg-cyan)] hover:text-[var(--ldg-cyan)] transition-colors"
+                >
+                  <s.icon className="w-4 h-4" />
+                </a>
+              ))}
+              <button
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                className="ldg-mono text-[0.65rem] uppercase tracking-widest text-[var(--ldg-cyan)] hover:underline ml-2"
+              >
+                Back to top
+              </button>
             </div>
           </div>
         </div>
       </footer>
 
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)} 
-        initialMode={authMode}
-      />
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} initialMode={authMode} />
     </div>
   );
 }

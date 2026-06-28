@@ -5,6 +5,7 @@ import { Flame, Trophy, Zap, Users, Search, Sparkles, Star, ArrowRight, Brain, L
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Joyride, Step } from 'react-joyride';
 import { supabase } from '../lib/supabase';
+import { Notify } from '../lib/notifications';
 import { trackEvent } from '../lib/analytics';
 import { isLimitReached, incrementUsage, getRemainingUsage, getLimitMessage } from '../lib/usageLimit';
 import { cn, usePageTitle } from '../lib/utils';
@@ -162,6 +163,11 @@ export default function Dashboard() {
               .eq('id', user.id);
             prof.streak = newStreak;
             prof.last_active_date = today;
+
+            // Notify at meaningful streak milestones, not every single day
+            if (newStreak > 1 && newStreak % 3 === 0) {
+              Notify.streak(newStreak);
+            }
           }
         } catch (streakErr) {
           console.warn('Streak update skipped (columns may not exist yet):', streakErr);
@@ -390,15 +396,20 @@ export default function Dashboard() {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2
+        staggerChildren: 0.08,
+        delayChildren: 0.05,
       }
     }
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100 } as const }
+    hidden: { opacity: 0, y: 24, filter: 'blur(4px)' },
+    visible: {
+      opacity: 1,
+      y: 0,
+      filter: 'blur(0px)',
+      transition: { type: 'spring' as const, stiffness: 280, damping: 24, mass: 0.7 }
+    }
   };
 
   return (
@@ -506,298 +517,307 @@ export default function Dashboard() {
       </AnimatePresence>
 
       <motion.div variants={itemVariants} className="flex flex-col lg:flex-row gap-8 items-start justify-between">
-        <header className="space-y-2">
-          <h2 className="text-5xl font-black tracking-tighter flex items-center gap-3">
+        <header className="space-y-3">
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight flex items-center gap-3" style={{ fontFamily: 'var(--font-display)' }}>
             <span>
-              {isNewUser ? 'Welcome' : greeting}, <span className="text-transparent bg-clip-text bg-linear-to-r from-soft-blue via-soft-purple to-soft-orange">{isNewUser ? displayName : firstName}</span>!
-            </span>
-            <motion.span 
-              animate={{ rotate: [0, 10, -10, 0] }}
-              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-              className="text-4xl filter drop-shadow-sm select-none"
-            >
-              {isNewUser ? '🚀' : greetingIcon}
-            </motion.span>
-          </h2>
-          <p className="text-text-dim font-bold uppercase tracking-widest text-xs flex flex-wrap items-center gap-2 mt-2">
-            <Star className="w-4 h-4 text-soft-orange fill-soft-orange" /> Profile readiness: {profile?.readiness_score || 0}%
-            {profile?.is_deactivated ? (
-              <span className="ml-2 text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full text-[9px]">
-                DEACTIVATED · Features Locked
+              {isNewUser ? 'Welcome' : greeting},{' '}
+              <span className="text-neon-cyan" style={{ textShadow: '0 0 30px rgba(255,157,61,0.5)' }}>
+                {isNewUser ? displayName : firstName}
               </span>
+            </span>
+          </h2>
+          <p className="text-text-dim font-mono text-xs uppercase tracking-widest flex flex-wrap items-center gap-2">
+            <Star className="w-3.5 h-3.5 text-neon-cyan" /> Readiness: {profile?.readiness_score || 0}%
+            {profile?.is_deactivated ? (
+              <span className="text-red-400 border border-red-400/30 bg-red-400/10 px-2 py-0.5 rounded-full text-[8px]">DEACTIVATED</span>
             ) : !isPro ? (
-              <span className="ml-2 text-soft-orange bg-soft-orange/10 px-2 py-0.5 rounded-full text-[9px]">
-                FREE · {searchesLeft} AI search{searchesLeft !== 1 ? 'es' : ''} left today
+              <span className="text-neon-cyan border border-neon-cyan/30 bg-neon-cyan/10 px-2 py-0.5 rounded-full text-[8px]">
+                FREE · {searchesLeft} search{searchesLeft !== 1 ? 'es' : ''} left
               </span>
             ) : (
-              <span className="ml-2 text-soft-blue bg-soft-blue/10 px-2 py-0.5 rounded-full text-[9px]">
-                PRO · Unlimited searches
+              <span className="text-neon-green border border-neon-green/30 bg-neon-green/10 px-2 py-0.5 rounded-full text-[8px]">
+                PRO · Unlimited
               </span>
             )}
           </p>
         </header>
 
         <form onSubmit={handleAiSearch} className="w-full lg:max-w-xl relative group tour-step-search">
-          <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none text-text-dim group-focus-within:text-soft-blue transition-colors">
-            {isSearching ? <Sparkles className="w-5 h-5 animate-spin" /> : profile?.is_deactivated ? <Lock className="w-5 h-5 text-red-400" /> : <Search className="w-5 h-5" />}
+          <div className="absolute inset-0 rounded-2xl bg-neon-cyan/5 opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none" style={{ boxShadow: '0 0 0 1px rgba(255,157,61,0.3), 0 8px 32px -8px rgba(255,138,30,0.2)' }} />
+          <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-text-dim group-focus-within:text-neon-cyan transition-colors">
+            {isSearching ? <Sparkles className="w-4 h-4 animate-spin" /> : profile?.is_deactivated ? <Lock className="w-4 h-4 text-red-400" /> : <Search className="w-4 h-4" />}
           </div>
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             disabled={profile?.is_deactivated}
-            placeholder={profile?.is_deactivated ? "Account deactivated. Activate to use AI Search." : "Ask AI anything about DevOps..."}
+            placeholder={profile?.is_deactivated ? "Account deactivated." : "Ask AI anything about DevOps..."}
             className={cn(
-              "w-full bg-surface border-4 border-border rounded-[2.5rem] pl-16 pr-24 py-5 font-bold outline-hidden transition-all shadow-xl group-hover:shadow-2xl",
-              profile?.is_deactivated ? "cursor-not-allowed opacity-60" : "focus:border-soft-blue"
+              "w-full bg-surface/60 backdrop-blur-xl border border-white/8 rounded-2xl pl-13 pr-24 py-4 font-medium text-sm outline-none transition-all",
+              profile?.is_deactivated ? "cursor-not-allowed opacity-60" : "focus:border-neon-cyan/40"
             )}
           />
-          <button
+          <motion.button
             type="submit"
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
             disabled={isSearching || profile?.is_deactivated || (!isPro && searchesLeft === 0)}
-            className="absolute right-3 top-3 bottom-3 px-6 bg-text-main text-surface rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform disabled:opacity-40"
+            className="absolute right-2.5 top-2.5 bottom-2.5 px-5 btn-pill btn-neon-primary text-xs disabled:opacity-40"
           >
-            {profile?.is_deactivated || (!isPro && searchesLeft === 0) ? <Lock className="w-4 h-4" /> : 'Search'}
-          </button>
+            {profile?.is_deactivated || (!isPro && searchesLeft === 0) ? <Lock className="w-3.5 h-3.5" /> : 'Ask'}
+          </motion.button>
         </form>
       </motion.div>
 
       <AnimatePresence>
         {aiResponse && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="playful-card bg-text-main text-surface border-none shadow-2xl relative overflow-hidden"
+            initial={{ opacity: 0, y: -12, filter: 'blur(4px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, y: -8, filter: 'blur(2px)' }}
+            transition={{ type: 'spring', stiffness: 300, damping: 26 }}
+            className="glass-panel p-7 relative overflow-hidden"
           >
-            <div className="absolute top-0 right-0 p-8 opacity-10">
-              <Sparkles className="w-24 h-24" />
-            </div>
+            <div className="absolute inset-0 rounded-xl opacity-30 pointer-events-none" style={{ background: 'radial-gradient(ellipse at top left, rgba(255,157,61,0.08), transparent 60%)' }} />
             <div className="relative z-10 space-y-4">
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-surface/60">
+              <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-neon-cyan">
                 <Brain className="w-4 h-4" /> AI DevOps Insight
               </div>
-              <p className="text-lg font-bold leading-relaxed max-w-4xl">{aiResponse}</p>
-              <button onClick={() => setAiResponse(null)} className="text-[10px] font-black uppercase tracking-widest border-b-2 border-surface/20 pb-0.5 hover:border-surface transition-colors">Dismiss</button>
+              <p className="text-base leading-relaxed max-w-4xl">{aiResponse}</p>
+              <button onClick={() => setAiResponse(null)} className="font-mono text-[10px] uppercase tracking-widest text-text-dim hover:text-neon-cyan transition-colors">Dismiss</button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Hero banner — dynamic next lab */}
-      <motion.section 
-        variants={itemVariants} 
-        className="flex flex-col md:flex-row items-center justify-between gap-8 glass-panel rounded-[2rem] md:rounded-[4rem] p-6 md:p-12 text-text-main overflow-hidden relative shadow-2xl group animate-float"
+      <motion.section
+        variants={itemVariants}
+        className="glass-panel p-8 md:p-12 text-text-main overflow-hidden relative"
       >
-        <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-soft-blue/15 rounded-full blur-3xl -translate-y-1/4 translate-x-1/4 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-soft-purple/15 rounded-full blur-3xl translate-y-1/4 -translate-x-1/4 pointer-events-none" />
-        
-        <div className="z-10 space-y-6 max-w-lg">
-           {profileLoading ? (
-             <div className="space-y-4 animate-pulse">
-               <div className="h-8 w-32 bg-border rounded-2xl" />
-               <div className="h-16 w-72 bg-border rounded-2xl" />
-               <div className="h-12 w-48 bg-border rounded-full" />
-             </div>
-           ) : (
-             <>
-               <div className="flex items-center gap-3">
-                 <span className="text-[10px] font-black uppercase tracking-widest bg-soft-blue/10 text-soft-blue px-4 py-2 rounded-full border border-soft-blue/20">
-                   {profile?.labs_completed || 0} / {(profile?.generated_labs || defaultLabs).length} Labs Complete
-                 </span>
-                 {nextLab === null && (
-                   <span className="text-[10px] font-black uppercase tracking-widest bg-soft-green/20 text-soft-green px-4 py-2 rounded-full border border-soft-green/30">
-                     🎉 All Done!
-                   </span>
-                 )}
-               </div>
- 
-               <h1 className="text-5xl font-black tracking-tighter leading-[1.1]">
-                {nextLab === null ? (
-                  <>All Labs<br /><span className="underline decoration-soft-blue/30 italic">Complete! 🎉</span></>
-                ) : (
-                  <>Next up:<br /><span className="underline decoration-soft-blue/30 italic">{nextLab?.title || 'Loading...'}</span></>
-                )}
-              </h1>
-
-              <div className="w-full max-w-xs">
-                <div className="h-2 bg-border rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-soft-blue rounded-full transition-all duration-700"
-                    style={{ width: `${((profile?.labs_completed || 0) / (profile?.generated_labs || defaultLabs).length) * 100}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-4 items-center tour-step-lab">
-                <button
-                  onClick={handleStartLab}
-                  disabled={nextLab === null || profile?.is_deactivated}
-                  className="px-10 py-4 bg-text-main text-surface rounded-full font-black shadow-xl hover:scale-105 transition-all text-base active:scale-95 shadow-soft-blue/30 disabled:opacity-50 disabled:cursor-not-allowed magnetic-float flex items-center gap-2"
-                >
-                  {profile?.is_deactivated ? (
-                    <><Lock className="w-4 h-4" /> Locked</>
-                  ) : nextLab === null ? (
-                    'Labs Complete ✓'
-                  ) : (
-                    'Start Lab'
-                  )}
-                </button>
-                <div className={cn(
-                  "flex items-center gap-2 bg-brand-bg/50 border-2 p-1 rounded-full pl-6 transition-all",
-                  isPro ? "border-border" : "border-soft-blue/20 opacity-75 grayscale group/pro"
-                )}>
-                  <input 
-                    value={quickGoal}
-                    onChange={(e) => setQuickGoal(e.target.value)}
-                    disabled={!isPro || isUpdatingGoal}
-                    placeholder={isPro ? "New Goal? (e.g. SRE)" : "Pro Only Goal Update"}
-                    className="bg-transparent border-none font-bold text-xs outline-hidden w-full min-w-[140px] disabled:cursor-not-allowed"
-                  />
-                  <button
-                    onClick={handleQuickGoalUpdate}
-                    disabled={!isPro || isUpdatingGoal || !quickGoal.trim()}
-                    className={cn(
-                      "p-3 rounded-full transition-all disabled:opacity-50 relative",
-                      isPro ? "bg-soft-blue text-white hover:scale-110" : "bg-border text-text-dim cursor-not-allowed overflow-hidden"
-                    )}
-                  >
-                    {!isPro && (
-                      <div className="absolute inset-0 bg-soft-blue opacity-0 group-hover/pro:opacity-20 transition-opacity" />
-                    )}
-                    {isUpdatingGoal ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : !isPro ? (
-                      <Lock className="w-4 h-4 group-hover/pro:text-soft-blue transition-colors" />
-                    ) : (
-                      <ArrowRight className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
+        {/* Ambient glow behind the card */}
+        <div className="absolute inset-0 pointer-events-none rounded-xl overflow-hidden">
+          <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-25" style={{ background: 'radial-gradient(circle, rgba(255,157,61,0.3), transparent 70%)' }} />
         </div>
-        <div className="relative w-72 h-72 hidden lg:flex items-center justify-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 40, repeat: Infinity, ease: 'linear' }}
-            className="absolute inset-0 border-4 border-dashed border-border rounded-full"
-          />
-          {nextLab === null ? (
-            <Trophy className="w-32 h-32 text-soft-blue/20 group-hover:scale-110 transition-transform duration-500" />
-          ) : (
-            <Zap className="w-32 h-32 text-soft-blue/20 group-hover:scale-110 transition-transform duration-500" />
-          )}
+
+        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
+          <div className="space-y-6 max-w-lg">
+            {profileLoading ? (
+              <div className="space-y-4 animate-pulse">
+                <div className="h-5 w-32 bg-white/5 rounded-xl" />
+                <div className="h-14 w-72 bg-white/5 rounded-xl" />
+                <div className="h-10 w-40 bg-white/5 rounded-2xl" />
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="font-mono text-[9px] uppercase tracking-widest border border-neon-cyan/30 text-neon-cyan bg-neon-cyan/8 px-3 py-1.5 rounded-full">
+                    {profile?.labs_completed || 0} / {(profile?.generated_labs || defaultLabs).length} labs
+                  </span>
+                  {nextLab === null && (
+                    <span className="font-mono text-[9px] uppercase tracking-widest border border-neon-green/30 text-neon-green bg-neon-green/8 px-3 py-1.5 rounded-full">
+                      All complete
+                    </span>
+                  )}
+                </div>
+
+                <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.1]" style={{ fontFamily: 'var(--font-display)' }}>
+                  {nextLab === null ? (
+                    <>All labs<br /><span className="text-neon-cyan" style={{ textShadow: '0 0 30px rgba(255,157,61,0.4)' }}>complete</span></>
+                  ) : (
+                    <>Next up:<br /><span className="text-neon-cyan" style={{ textShadow: '0 0 30px rgba(255,157,61,0.4)' }}>{nextLab?.title || 'Loading...'}</span></>
+                  )}
+                </h1>
+
+                <div className="w-full max-w-xs space-y-1.5">
+                  <div className="flex justify-between font-mono text-[9px] uppercase tracking-widest text-text-dim">
+                    <span>Progress</span>
+                    <span>{Math.round(((profile?.labs_completed || 0) / (profile?.generated_labs || defaultLabs).length) * 100)}%</span>
+                  </div>
+                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${((profile?.labs_completed || 0) / (profile?.generated_labs || defaultLabs).length) * 100}%` }}
+                      transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
+                      className="h-full rounded-full"
+                      style={{ background: 'linear-gradient(90deg, #00D4FF, #00FF88)', boxShadow: '0 0 8px rgba(0,212,255,0.4)' }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-3 items-center tour-step-lab">
+                  <motion.button
+                    whileHover={{ scale: 1.04, y: -2 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={handleStartLab}
+                    disabled={nextLab === null || profile?.is_deactivated}
+                    className="btn-pill btn-neon-primary px-8 py-3.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {profile?.is_deactivated ? (<><Lock className="w-4 h-4" /> Locked</>) : nextLab === null ? 'Labs complete ✓' : 'Start lab →'}
+                  </motion.button>
+
+                  <div className={cn(
+                    "flex items-center gap-2 glass-panel p-1.5 rounded-2xl pl-4 transition-all",
+                    !isPro && "opacity-60 grayscale"
+                  )}>
+                    <input
+                      value={quickGoal}
+                      onChange={(e) => setQuickGoal(e.target.value)}
+                      disabled={!isPro || isUpdatingGoal}
+                      placeholder={isPro ? "New goal?" : "Pro only"}
+                      className="bg-transparent border-none font-mono text-xs outline-none w-full min-w-[120px] disabled:cursor-not-allowed"
+                    />
+                    <motion.button
+                      whileHover={isPro ? { scale: 1.08 } : {}}
+                      whileTap={isPro ? { scale: 0.94 } : {}}
+                      onClick={handleQuickGoalUpdate}
+                      disabled={!isPro || isUpdatingGoal || !quickGoal.trim()}
+                      className="p-2.5 rounded-xl btn-neon-primary disabled:opacity-40"
+                    >
+                      {isUpdatingGoal ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : !isPro ? <Lock className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                    </motion.button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="hidden lg:flex w-56 h-56 items-center justify-center relative">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
+              className="absolute inset-0 rounded-full border border-neon-cyan/15 border-dashed"
+            />
+            <motion.div
+              animate={{ rotate: -360 }}
+              transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+              className="absolute inset-6 rounded-full border border-neon-cyan/8 border-dashed"
+            />
+            {nextLab === null
+              ? <Trophy className="w-20 h-20 text-neon-cyan/40" style={{ filter: 'drop-shadow(0 0 16px rgba(255,157,61,0.4))' }} />
+              : <Zap className="w-20 h-20 text-neon-cyan/40" style={{ filter: 'drop-shadow(0 0 16px rgba(255,157,61,0.4))' }} />
+            }
+          </div>
         </div>
       </motion.section>
 
       {/* Personalized Growth Section */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* AI Insights Card */}
-        <div className="playful-card bg-surface border-4 border-soft-blue/20 hover-glow-blue flex flex-col gap-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-6 opacity-5">
-            <Brain className="w-20 h-20 text-soft-blue" />
-          </div>
+        <motion.div
+          whileHover={{ y: -5 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+          className="glass-card p-7 flex flex-col gap-6 relative overflow-hidden cursor-pointer"
+          onClick={() => navigate('/roadmap')}
+        >
+          <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-20 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(255,157,61,0.5), transparent 70%)' }} />
           <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-xl bg-soft-blue/10 flex items-center justify-center text-soft-blue">
-                <Sparkles className="w-5 h-5" />
-             </div>
-             <div>
-                <h3 className="font-black italic text-xl">AI Insights</h3>
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-dim">Personalized for your progress</p>
-             </div>
+            <div className="w-10 h-10 rounded-xl border border-neon-cyan/25 bg-neon-cyan/8 flex items-center justify-center text-neon-cyan">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg" style={{ fontFamily: 'var(--font-display)' }}>AI Insights</h3>
+              <p className="font-mono text-[9px] uppercase tracking-widest text-text-dim">Personalized for your progress</p>
+            </div>
           </div>
           <div className="space-y-4 flex-1">
-             <div className="p-4 bg-brand-bg rounded-2xl border border-border">
-                <p className="text-sm font-bold leading-relaxed">
-                  {profile?.readiness_score < 30 
-                    ? "You're just starting! Focus on completing the 'Foundations' stage of your roadmap to build a solid base."
-                    : profile?.readiness_score < 70
-                    ? "Great progress! Your K8s skills are growing. Try the 'Network Policy' lab next to boost your score."
-                    : "You're reaching expert levels. Focus on Mock Interviews now to polish your technical communication."}
-                </p>
-             </div>
-             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-soft-blue">
-                <Check className="w-3 h-3" /> Readiness increased by 5% this week
-             </div>
+            <div className="p-4 bg-white/3 rounded-xl border border-white/6">
+              <p className="text-sm leading-relaxed text-text-dim">
+                {(profile?.readiness_score || 0) < 30
+                  ? "Focus on completing the Foundations stage of your roadmap to build a solid base."
+                  : (profile?.readiness_score || 0) < 70
+                  ? "Your K8s skills are growing. Try the Network Policy lab next to boost your score."
+                  : "You're reaching expert levels. Focus on Mock Interviews now to polish your technical communication."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-neon-cyan">
+              <Check className="w-3 h-3" /> Readiness +5% this week
+            </div>
           </div>
-          <button onClick={() => navigate('/roadmap')} className="text-[10px] font-black uppercase tracking-widest text-soft-blue hover:underline text-left">View Roadmap Details →</button>
-        </div>
+          <span className="font-mono text-[10px] uppercase tracking-widest text-neon-cyan group-hover:underline">View roadmap →</span>
+        </motion.div>
 
         {/* Recommended Certifications */}
-        <div className="playful-card bg-surface border-4 border-soft-purple/20 hover-glow-purple flex flex-col gap-6">
-           <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-xl bg-soft-purple/10 flex items-center justify-center text-soft-purple">
-                <Trophy className="w-5 h-5" />
-             </div>
-             <div>
-                <h3 className="font-black italic text-xl">Recommended Certs</h3>
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-dim">Based on your current path</p>
-             </div>
+        <motion.div
+          whileHover={{ y: -5 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+          className="glass-card p-7 flex flex-col gap-6 relative overflow-hidden"
+        >
+          <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-15 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(79,209,181,0.5), transparent 70%)' }} />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl border border-neon-green/25 bg-neon-green/8 flex items-center justify-center text-neon-green">
+              <Trophy className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg" style={{ fontFamily: 'var(--font-display)' }}>Recommended Certs</h3>
+              <p className="font-mono text-[9px] uppercase tracking-widest text-text-dim">Based on your current path</p>
+            </div>
           </div>
           <div className="space-y-3 flex-1">
-             {[
-               { name: 'CKAD (Certified Kubernetes Application Developer)', focus: 'K8s', match: '95% Match' },
-               { name: 'AWS Certified DevOps Engineer', focus: 'Cloud', match: '80% Match' }
-             ].map((cert, i) => (
-               <div key={i} className="flex items-center justify-between p-3 bg-brand-bg rounded-xl border border-border">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-black truncate">{cert.name}</p>
-                    <p className="text-[9px] font-bold text-text-dim uppercase">{cert.focus}</p>
-                  </div>
-                  <span className="shrink-0 text-[8px] font-black uppercase bg-soft-purple/10 text-soft-purple px-2 py-1 rounded-md">{cert.match}</span>
-               </div>
-             ))}
-          </div>
-          <button onClick={() => navigate('/certificates')} className="text-[10px] font-black uppercase tracking-widest text-soft-purple hover:underline text-left">Explore Certificates →</button>
-        </div>
-      </motion.div>
+            {[
+              { name: 'CKAD', full: 'Certified Kubernetes Application Developer', focus: 'K8s', match: '95%' },
+              { name: 'CKA', full: 'Certified Kubernetes Administrator', focus: 'K8s', match: '88%' },
+              { name: 'AWS DevOps Pro', full: 'AWS Certified DevOps Engineer', focus: 'Cloud', match: '80%' },
+            ].map((cert, i) => (
+              <motion.div
+                key={i}
+                whileHover={{ x: 4 }}
+                transition={{ type: 'spring', stiffness: 400 }}
+                className="flex items-center justify-between p-3.5 bg-white/3 rounded-xl border border-white/6 hover:border-neon-cyan/25 transition-colors cursor-pointer"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{cert.name}</p>
+                  <p className="font-mono text-[9px] text-text-dim uppercase tracking-widest">{cert.focus}</p>
+                </div>
+                <span className="shrink-0 font-mono text-[8px] uppercase tracking-widest border border-neon-green/30 text-neon-green bg-neon-green/8 px-2 py-1 rounded-full ml-3">{cert.match}</span>
+              </motion.div>
+            ))}
 
-      
+          </div>
+          <button onClick={() => navigate('/certificates')} className="font-mono text-[10px] uppercase tracking-widest text-neon-green hover:underline text-left">Explore certificates →</button>
+        </motion.div>
+      </motion.div>
 
       {/* Daily DevOps Quiz Section */}
       {showQuizSection && (
         <motion.div variants={itemVariants} className="w-full">
-          <div className="playful-card bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-blue-500/10 border-4 border-blue-300/30 backdrop-blur-sm shadow-2xl space-y-8 relative overflow-hidden">
-            {/* Decorative background */}
-            <div className="absolute top-0 right-0 w-72 h-72 bg-blue-400/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-400/5 rounded-full blur-3xl pointer-events-none" />
-
+          <div className="glass-panel p-7 space-y-8 relative overflow-hidden">
+            <div className="absolute -top-20 -right-20 w-60 h-60 rounded-full opacity-10 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(255,157,61,0.6), transparent 70%)' }} />
             {/* Header */}
-            <div className="relative z-10 flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center justify-between flex-wrap gap-4 relative z-10">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white shadow-lg">
-                  <BookOpen className="w-6 h-6" />
+                <div className="w-11 h-11 rounded-xl border border-neon-cyan/25 bg-neon-cyan/8 flex items-center justify-center text-neon-cyan">
+                  <BookOpen className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black italic">Daily DevOps Quiz</h3>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-text-dim">5 questions • AI-Generated • Random daily</p>
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-neon-cyan block mb-0.5">daily briefing</span>
+                  <h3 className="text-xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>DevOps quiz</h3>
                 </div>
               </div>
 
               {/* Quick Stats */}
               {quizStats && (
-                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-4">
+                <div className="flex items-center gap-5">
                   <div className="text-center">
-                    <p className="text-xl font-black text-soft-blue">{quizStats.totalQuizzesCompleted}</p>
-                    <p className="text-[8px] font-bold uppercase text-text-dim">Completed</p>
+                    <p className="text-lg font-bold text-neon-cyan">{quizStats.totalQuizzesCompleted}</p>
+                    <p className="font-mono text-[8px] uppercase tracking-widest text-text-dim">Completed</p>
                   </div>
-                  <div className="w-px h-10 bg-border" />
+                  <div className="w-px h-9 bg-border" />
                   <div className="text-center">
-                    <p className="text-xl font-black text-soft-green">{quizStats.currentStreak}</p>
-                    <p className="text-[8px] font-bold uppercase text-text-dim">Streak 🔥</p>
+                    <p className="text-lg font-bold text-neon-green">{quizStats.currentStreak}</p>
+                    <p className="font-mono text-[8px] uppercase tracking-widest text-text-dim">Streak</p>
                   </div>
-                  <div className="w-px h-10 bg-border" />
+                  <div className="w-px h-9 bg-border" />
                   <div className="text-center">
-                    <p className="text-xl font-black text-soft-orange">{quizStats.totalXpEarned}</p>
-                    <p className="text-[8px] font-bold uppercase text-text-dim">Total XP</p>
+                    <p className="text-lg font-bold text-neon-cyan">{quizStats.totalXpEarned}</p>
+                    <p className="font-mono text-[8px] uppercase tracking-widest text-text-dim">Total XP</p>
                   </div>
-                </motion.div>
+                </div>
               )}
             </div>
 
             {/* Quiz Component or Status */}
-            <div className="relative z-10">
+            <div>
               {profile?.id && (
                 <DailyQuiz 
                   userId={profile.id} 
@@ -914,9 +934,9 @@ export default function Dashboard() {
          </div>
       </motion.div>
 
-      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
          {/* Weekly Goal Tracker */}
-         <div className="playful-card bg-surface text-text-main border-4 border-soft-blue/20 dark:border-soft-blue/10 shadow-2xl flex flex-col gap-8 relative overflow-hidden group">
+         <motion.div whileHover={{ y: -5 }} transition={{ type: "spring", stiffness: 280, damping: 22 }} className="glass-card p-7 flex flex-col gap-6 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
                <Zap className="w-24 h-24 text-soft-blue" />
             </div>
@@ -958,15 +978,12 @@ export default function Dashboard() {
                   </p>
                </div>
             </div>
-         </div>
+         </motion.div>
 
          {/* Refer & Earn Card */}
-         <div className="playful-card bg-surface border-4 border-dashed border-soft-blue/30 flex flex-col items-center text-center p-8 space-y-6 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 transition-transform">
-               <Users className="w-20 h-20 text-soft-blue" />
-            </div>
-            <div className="w-16 h-16 bg-soft-blue/10 rounded-full flex items-center justify-center text-soft-blue mb-2">
-               <Users className="w-8 h-8" />
+         <motion.div whileHover={{ y: -5 }} transition={{ type: "spring", stiffness: 280, damping: 22 }} className="glass-card p-7 flex flex-col items-center text-center space-y-5 relative overflow-hidden">
+            <div className="w-14 h-14 rounded-xl border border-neon-green/25 bg-neon-green/8 flex items-center justify-center text-neon-green">
+               <Users className="w-7 h-7" />
             </div>
             <div className="space-y-2">
                <h3 className="text-xl font-black italic">Refer & Earn Pro</h3>
@@ -1001,7 +1018,7 @@ export default function Dashboard() {
                   <p className="text-[8px] font-black uppercase text-text-dim">Goal</p>
                </div>
             </div>
-         </div>
+         </motion.div>
       </motion.div>
 
       <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-8">

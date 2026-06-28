@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Rocket, Menu, X, Github, ChevronRight } from 'lucide-react';
+import { Menu, X, ArrowRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface LandingNavbarProps {
@@ -13,43 +13,47 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll);
+    const handleScroll = () => setIsScrolled(window.scrollY > 30);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const navLinks = [
-    { name: 'Features', href: '#features' },
     { name: 'Labs', href: '#labs' },
+    { name: 'How it works', href: '#flow' },
     { name: 'Pricing', href: '#pricing' },
     { name: 'FAQ', href: '#faq' },
   ];
 
   return (
-    <nav
+    <motion.nav
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-500 px-6 py-4",
-        isScrolled 
-          ? "glass-panel py-3" 
-          : "bg-transparent"
+        'fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-6',
+        isScrolled ? 'ldg-panel border-b py-3' : 'bg-transparent py-5 border-b border-transparent'
       )}
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo */}
-        <div className="flex items-center gap-3 group cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-          <img src="/logo.jpg" alt="DebugToDeploy" className="w-10 h-10 rounded-xl object-contain mix-blend-screen group-hover:scale-110 transition-transform duration-500" />
-          <span className="text-xl font-black italic tracking-tighter hidden sm:block bg-clip-text text-transparent bg-linear-to-r from-text-main to-soft-blue">
-            Debug<span className="text-soft-blue">To</span>Deploy
+        <div
+          className="flex items-center gap-2.5 cursor-pointer"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        >
+          <img src="/favicon.svg" alt="DebugToDeploy" className="w-8 h-8 rounded-md object-cover" />
+          <span className="ldg-mono text-sm font-semibold tracking-tight hidden sm:block">
+            debug<span className="text-[#00D4FF]">→</span>deploy
           </span>
         </div>
 
-        {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-8">
+        {/* Desktop Nav Links */}
+        <div className="hidden md:flex items-center gap-1">
           {navLinks.map((link) => (
             <a
               key={link.name}
               href={link.href}
-              className="text-sm font-bold text-text-dim hover:text-text-main hover:-translate-y-0.5 transition-all duration-300"
+              className="ldg-mono px-4 py-2 text-[0.78rem] text-[var(--ldg-text-dim)] hover:text-[var(--ldg-text)] transition-colors"
             >
               {link.name}
             </a>
@@ -57,38 +61,39 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
         </div>
 
         {/* Desktop CTAs */}
-        <div className="hidden md:flex items-center gap-4">
-          <a
-            href="https://github.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-2 text-text-dim hover:text-text-main hover:scale-110 transition-all duration-300"
-          >
-            <Github className="w-5 h-5" />
-          </a>
+        <div className="hidden md:flex items-center gap-3">
           {session ? (
-            <a
-              href="/dashboard"
-              className="btn-pill bg-soft-blue text-[#0F172A] flex items-center gap-2 text-xs uppercase tracking-widest font-black hover:bg-soft-purple transition-colors shadow-lg shadow-soft-blue/30"
-            >
-              Go to Dashboard <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+            <a href="/dashboard" className="ldg-btn-primary flex items-center gap-2 px-5 py-2.5">
+              Dashboard <ArrowRight className="w-3.5 h-3.5" />
             </a>
           ) : (
-            <button
-              onClick={onAuthClick}
-              className="btn-pill bg-soft-blue text-[#0F172A] text-xs uppercase tracking-widest font-black hover:bg-soft-purple transition-colors whitespace-nowrap shadow-lg shadow-soft-blue/30"
-            >
-              Start Free Journey
-            </button>
+            <>
+              <button onClick={onAuthClick} className="ldg-mono text-[0.78rem] text-[var(--ldg-text-dim)] hover:text-[var(--ldg-text)] px-3 transition-colors">
+                Log in
+              </button>
+              <button onClick={onAuthClick} className="ldg-btn-primary px-5 py-2.5">
+                Start debugging
+              </button>
+            </>
           )}
         </div>
 
         {/* Mobile Menu Toggle */}
         <button
-          className="md:hidden p-2 text-text-main"
+          className="md:hidden p-2 ldg-hairline border rounded-sm text-[var(--ldg-text)]"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         >
-          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          <AnimatePresence mode="wait">
+            {mobileMenuOpen ? (
+              <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}>
+                <X className="w-5 h-5" />
+              </motion.span>
+            ) : (
+              <motion.span key="menu" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}>
+                <Menu className="w-5 h-5" />
+              </motion.span>
+            )}
+          </AnimatePresence>
         </button>
       </div>
 
@@ -99,36 +104,31 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-surface border-b border-border overflow-hidden"
+            transition={{ duration: 0.25 }}
+            className="md:hidden mt-3 ldg-panel overflow-hidden"
           >
-            <div className="flex flex-col p-6 gap-4">
+            <div className="flex flex-col p-4 gap-1">
               {navLinks.map((link) => (
                 <a
                   key={link.name}
                   href={link.href}
-                  className="text-lg font-bold text-text-dim"
+                  className="ldg-mono px-3 py-3 text-sm text-[var(--ldg-text-dim)] hover:text-[var(--ldg-text)] transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {link.name}
                 </a>
               ))}
-              <div className="pt-4 border-t border-border flex flex-col gap-4">
+              <div className="pt-3 mt-2 border-t border-[var(--ldg-wire)]">
                 {session ? (
-                   <a
-                   href="/dashboard"
-                   className="btn-pill bg-text-main text-surface text-center text-xs uppercase tracking-widest"
-                 >
-                   Go to Dashboard
-                 </a>
+                  <a href="/dashboard" className="ldg-btn-primary w-full flex items-center justify-center gap-2 py-3">
+                    Go to dashboard
+                  </a>
                 ) : (
                   <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      onAuthClick();
-                    }}
-                    className="btn-pill bg-text-main text-surface text-xs uppercase tracking-widest"
+                    onClick={() => { setMobileMenuOpen(false); onAuthClick(); }}
+                    className="ldg-btn-primary w-full py-3"
                   >
-                    Start Free
+                    Start debugging
                   </button>
                 )}
               </div>
@@ -136,6 +136,6 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
           </motion.div>
         )}
       </AnimatePresence>
-    </nav>
+    </motion.nav>
   );
 }

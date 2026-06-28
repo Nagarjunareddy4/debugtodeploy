@@ -9,8 +9,8 @@ export default async function handler(req, res) {
 
   const token = authHeader.replace('Bearer ', '');
   const supabase = createClient(
-    process.env.VITE_SUPABASE_URL,
-    process.env.VITE_SUPABASE_ANON_KEY
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY
   );
 
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   });
 
   const supabaseAdmin = createClient(
-    process.env.VITE_SUPABASE_URL,
+    process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
