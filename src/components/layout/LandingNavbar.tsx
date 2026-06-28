@@ -37,7 +37,7 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo */}
-        <div
+        <motion.div
           className="flex items-center gap-2.5 cursor-pointer"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         >
@@ -50,7 +50,7 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
         {/* Desktop Nav Links */}
         <div className="hidden md:flex items-center gap-1">
           {navLinks.map((link) => (
-            <a
+            <motion.a
               key={link.name}
               href={link.href}
               className="ldg-mono px-4 py-2 text-[0.78rem] text-[var(--ldg-text-dim)] hover:text-[var(--ldg-text)] transition-colors"
@@ -80,7 +80,7 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
         </div>
 
         {/* Mobile Menu Toggle */}
-        <button
+        <motion.button
           className="md:hidden p-2 ldg-hairline border rounded-sm text-[var(--ldg-text)]"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           whileTap={{ scale: 0.93 }}
@@ -96,7 +96,7 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
               </motion.span>
             )}
           </AnimatePresence>
-        </button>
+        </motion.button>
       </div>
 
       {/* Mobile Menu */}
@@ -111,7 +111,7 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
           >
             <div className="flex flex-col p-4 gap-1">
               {navLinks.map((link) => (
-                <a
+                <motion.a
                   key={link.name}
                   href={link.href}
                   className="ldg-mono px-3 py-3 text-sm text-[var(--ldg-text-dim)] hover:text-[var(--ldg-text)] transition-colors"
