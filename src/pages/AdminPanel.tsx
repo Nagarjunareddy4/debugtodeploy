@@ -41,7 +41,11 @@ interface LogEntry {
   message: string;
 }
 
-const ADMIN_EMAILS = ['arjunreddyannapureddy@gmail.com'];
+declare const __ADMIN_EMAILS__: string[];
+
+const ADMIN_EMAILS: string[] = (typeof __ADMIN_EMAILS__ !== 'undefined' && __ADMIN_EMAILS__.length > 0)
+  ? __ADMIN_EMAILS__
+  : [];
 
 // ── Stat Card ─────────────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, delta, color }: {

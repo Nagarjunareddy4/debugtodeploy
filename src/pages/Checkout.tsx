@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ShieldCheck,
@@ -23,6 +24,10 @@ import {
 } from 'lucide-react';
 import { cn, usePageTitle } from '../lib/utils';
 import { supabase } from '../lib/supabase';
+import { Notify } from '../lib/notifications';
+
+// Build-time constant injected by vite.config.ts — never appears in import.meta.env
+declare const __RAZORPAY_KEY_ID__: string;
 
 interface PaymentMethod {
   id: string;
@@ -136,7 +141,7 @@ export default function Checkout() {
       }
 
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        key: __RAZORPAY_KEY_ID__,
         subscription_id: subscriptionData.razorpay_subscription_id,
         name: 'DebugToDeploy',
         description: `Subscribe to ${planName}`,
@@ -160,6 +165,7 @@ export default function Checkout() {
 
             if (verifyData.status === 'ok') {
               setPaymentStatus('success');
+              Notify.proUpgrade();
               setTimeout(() => {
                 navigate('/dashboard', { state: { paymentSuccess: true } });
               }, 3000);
@@ -213,7 +219,7 @@ export default function Checkout() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-10 pb-24 px-6">
+    <div className="max-w-4xl mx-auto space-y-6 pb-24 px-4 sm:px-6 pt-4">
       <AnimatePresence>
         {(paymentStatus === 'success' || paymentStatus === 'failed') && (
           <PaymentOverlay
@@ -232,66 +238,67 @@ export default function Checkout() {
         )}
       </AnimatePresence>
 
+      {/* Header */}
       <header className="flex items-center justify-between">
         <button
           onClick={() => navigate('/pricing')}
-          className="flex items-center gap-2 text-text-dim hover:text-text-main font-black uppercase tracking-widest text-xs transition-all"
+          className="flex items-center gap-2 text-text-dim hover:text-text-main font-black uppercase tracking-widest text-xs transition-all rounded-full px-3 py-1.5 hover:bg-surface"
         >
           <ArrowLeft className="w-4 h-4" /> Back to Plans
         </button>
-        <div className="flex items-center gap-2 bg-soft-blue/10 px-4 py-2 rounded-full border border-soft-blue/20">
+        <div className="flex items-center gap-2 bg-soft-blue/10 px-3 py-1.5 rounded-full border border-soft-blue/20">
           <Lock className="w-3 h-3 text-soft-blue" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-soft-blue">Secure 256-bit SSL</span>
+          <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-soft-blue">Secure 256-bit SSL</span>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-12 items-start">
         {/* Left: Payment Selection */}
-        <div className="lg:col-span-3 space-y-8">
-          <div className="space-y-2">
-            <h2 className="text-4xl font-black tracking-tighter italic">Secure Checkout</h2>
+        <div className="lg:col-span-3 space-y-6">
+          <div className="space-y-1">
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tighter italic">Secure Checkout</h2>
             <p className="text-text-dim font-bold uppercase tracking-widest text-xs">Choose your preferred payment arsenal</p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {paymentMethods.map((method) => (
               <motion.div
                 key={method.id}
-                whileHover={{ scale: 1.02, x: 5 }}
+                whileHover={{ scale: 1.01, x: 3 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setSelectedMethod(method.id)}
                 className={cn(
-                  "playful-card p-6 cursor-pointer border-2 transition-all flex items-center gap-6 group",
+                  "playful-card p-4 sm:p-6 cursor-pointer border-2 transition-all flex items-center gap-4 sm:gap-6 group rounded-2xl",
                   selectedMethod === method.id
                     ? `bg-surface border-${method.color} shadow-2xl ring-4 ring-${method.color}/10`
                     : "bg-surface/50 border-border hover:border-text-main/20"
                 )}
               >
                 <div className={cn(
-                  "w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-lg",
+                  "w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all shadow-lg shrink-0",
                   selectedMethod === method.id
                     ? `bg-${method.color} text-white scale-110`
                     : "bg-brand-bg text-text-dim group-hover:text-text-main"
                 )}>
-                  <method.icon className="w-6 h-6" />
+                  <method.icon className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-black text-lg tracking-tight">{method.name}</h3>
-                  <p className="text-xs font-bold text-text-dim">{method.description}</p>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-black text-base sm:text-lg tracking-tight">{method.name}</h3>
+                  <p className="text-xs font-bold text-text-dim truncate">{method.description}</p>
                 </div>
                 <div className={cn(
-                  "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+                  "w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0",
                   selectedMethod === method.id
                     ? `border-${method.color} bg-${method.color}`
                     : "border-border"
                 )}>
-                  {selectedMethod === method.id && <CheckCircle2 className="w-4 h-4 text-white" />}
+                  {selectedMethod === method.id && <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-white" />}
                 </div>
               </motion.div>
             ))}
           </div>
 
-          {/* Conditional Input UI based on selection */}
+          {/* Conditional Input UI */}
           <AnimatePresence mode="wait">
             {selectedMethod === 'upi' && (
               <motion.div
@@ -299,40 +306,35 @@ export default function Checkout() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="playful-card p-8 bg-brand-bg/50 border-2 border-border border-dashed space-y-6"
+                className="playful-card p-5 sm:p-8 bg-brand-bg/50 border-2 border-border border-dashed space-y-5 rounded-2xl"
               >
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center flex-wrap gap-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-text-dim">Enter UPI ID</label>
                     <span className="text-[9px] font-bold text-soft-purple">Direct App Redirect Available</span>
                   </div>
                   <input
                     type="text"
                     placeholder="username@okaxis"
-                    className="w-full bg-surface border-4 border-border rounded-2xl px-6 py-4 font-black outline-none focus:border-soft-purple transition-all shadow-inner placeholder:opacity-30"
+                    className="w-full bg-surface border-2 border-border rounded-full px-5 py-3.5 font-black outline-none focus:border-soft-purple transition-all shadow-inner placeholder:opacity-30 text-sm"
                   />
                 </div>
-                <div className="flex items-center gap-6 justify-center pt-4">
-                  {/* UPI Logo */}
+                <div className="flex items-center gap-4 justify-center pt-2 flex-wrap">
                   <div className="bg-white px-3 py-1.5 rounded-lg flex items-center justify-center shadow-sm border border-border/50">
-                    <svg viewBox="0 0 100 24" className="h-5 object-contain fill-[#5F259F]">
+                    <svg viewBox="0 0 100 24" className="h-4 object-contain fill-[#5F259F]">
                       <path d="M12.4 2.1l-4.4 19.8h-4.2l4.4-19.8h4.2zm6.6 0l-4.4 19.8h-4.2l4.4-19.8h4.2zm6.6 0l-4.4 19.8h-4.2l4.4-19.8h4.2zm30 0c-3.5 0-6.1 2.3-6.1 5.8 0 4.1 3.5 6 6.5 6 1.4 0 2.2-.2 2.2-.2v4c-.8.1-1.6.2-2.5.2-3.8 0-6.6-1.5-6.6-5.8 0-5.8 4.3-10.2 10.2-10.2 2 0 3.6.4 4.5.8l-1.4 3.4c-.8-.4-2-.8-3.3-.8h-3.5zm11.4 0h4.2l-4.4 19.8h-4.2l4.4-19.8zm11.2 0h4.2l-4.4 19.8h-4.2l4.4-19.8z" />
                     </svg>
                     <span className="text-[10px] font-black ml-1 text-[#5F259F]">UPI</span>
                   </div>
-
-                  {/* GPay Logo */}
                   <div className="bg-white px-3 py-1.5 rounded-lg flex items-center justify-center shadow-sm border border-border/50">
-                    <svg viewBox="0 0 40 16" className="h-5 object-contain">
+                    <svg viewBox="0 0 40 16" className="h-4 object-contain">
                       <path fill="#4285F4" d="M5.5 8.1v2.3h3.5c-.1 1-.5 1.7-1 2.2-.6.6-1.5.9-2.5.9-2.2 0-3.9-1.8-3.9-4s1.7-4 3.9-4c1.1 0 1.9.4 2.6 1l1.6-1.6C8.7 1.9 7.2 1.1 5.5 1.1 2.5 1.1 0 3.6 0 6.6s2.5 5.5 5.5 5.5c1.6 0 2.8-.5 3.7-1.5.9-.9 1.2-2.3 1.2-3.4 0-.3 0-.6-.1-.9h-4.8z" />
                       <path fill="#34A853" d="M14.6 4.3h-1.1v7.3h1.1V4.3z" />
                     </svg>
                     <span className="text-[10px] font-black ml-1 text-slate-900">GPay</span>
                   </div>
-
-                  {/* PhonePe Logo */}
                   <div className="bg-white px-3 py-1.5 rounded-lg flex items-center justify-center shadow-sm border border-border/50">
-                    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-[#5F259F]">
+                    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-[#5F259F]">
                       <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 22C6.486 22 2 17.514 2 12S6.486 2 12 2s10 4.486 10 10-4.486 10-10 10zm-1-15h2v6h-2zm0 8h2v2h-2z" />
                     </svg>
                     <span className="text-[10px] font-black ml-1 text-[#5F259F]">PhonePe</span>
@@ -347,35 +349,35 @@ export default function Checkout() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="playful-card p-8 bg-brand-bg/50 border-2 border-border border-dashed space-y-6"
+                className="playful-card p-5 sm:p-8 bg-brand-bg/50 border-2 border-border border-dashed space-y-5 rounded-2xl"
               >
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <label className="text-[10px] font-black uppercase tracking-widest text-text-dim">Card Number</label>
                   <div className="relative">
                     <input
                       type="text"
                       placeholder="0000 0000 0000 0000"
-                      className="w-full bg-surface border-4 border-border rounded-2xl px-6 py-4 font-black outline-none focus:border-soft-blue transition-all shadow-inner placeholder:opacity-30"
+                      className="w-full bg-surface border-2 border-border rounded-full px-5 py-3.5 font-black outline-none focus:border-soft-blue transition-all shadow-inner placeholder:opacity-30 text-sm"
                     />
-                    <CreditCard className="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 text-text-dim opacity-30" />
+                    <CreditCard className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim opacity-30" />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-3">
                     <label className="text-[10px] font-black uppercase tracking-widest text-text-dim">Expiry Date</label>
                     <input
                       type="text"
                       placeholder="MM / YY"
-                      className="w-full bg-surface border-4 border-border rounded-2xl px-6 py-4 font-black outline-none focus:border-soft-blue transition-all shadow-inner placeholder:opacity-30"
+                      className="w-full bg-surface border-2 border-border rounded-full px-5 py-3.5 font-black outline-none focus:border-soft-blue transition-all shadow-inner placeholder:opacity-30 text-sm"
                     />
                   </div>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <label className="text-[10px] font-black uppercase tracking-widest text-text-dim">CVV</label>
                     <input
                       type="password"
                       placeholder="***"
                       maxLength={3}
-                      className="w-full bg-surface border-4 border-border rounded-2xl px-6 py-4 font-black outline-none focus:border-soft-blue transition-all shadow-inner placeholder:opacity-30"
+                      className="w-full bg-surface border-2 border-border rounded-full px-5 py-3.5 font-black outline-none focus:border-soft-blue transition-all shadow-inner placeholder:opacity-30 text-sm"
                     />
                   </div>
                 </div>
@@ -388,12 +390,12 @@ export default function Checkout() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="playful-card p-8 bg-brand-bg/50 border-2 border-border border-dashed space-y-6"
+                className="playful-card p-5 sm:p-8 bg-brand-bg/50 border-2 border-border border-dashed space-y-5 rounded-2xl"
               >
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <label className="text-[10px] font-black uppercase tracking-widest text-text-dim">Select Your Bank</label>
                   <select
-                    className="w-full bg-surface border-4 border-border rounded-2xl px-6 py-4 font-black outline-none focus:border-soft-green transition-all shadow-inner appearance-none cursor-pointer"
+                    className="w-full bg-surface border-2 border-border rounded-full px-5 py-3.5 font-black outline-none focus:border-soft-green transition-all shadow-inner appearance-none cursor-pointer text-sm"
                   >
                     <option value="">Choose a bank...</option>
                     <option value="hdfc">HDFC Bank</option>
@@ -410,8 +412,8 @@ export default function Checkout() {
             )}
           </AnimatePresence>
 
-          {/* Cancellation notice — replacing the misleading autopay panel */}
-          <div className="flex items-center gap-3 px-2">
+          {/* Cancellation notice */}
+          <div className="flex items-center gap-3 px-1">
             <ShieldCheck className="w-4 h-4 text-soft-green shrink-0" />
             <p className="text-[10px] font-bold text-text-dim leading-relaxed">
               This plan renews automatically. You can <span className="text-text-main font-black">cancel anytime</span> from your account Settings with no extra charges.
@@ -419,41 +421,57 @@ export default function Checkout() {
           </div>
         </div>
 
-        {/* Right: Order Summary */}
-        <div className="lg:col-span-2">
-          <div className="playful-card p-10 bg-text-main text-surface border-none shadow-3xl sticky top-8 space-y-8 overflow-hidden relative">
-            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-              <Zap className="w-32 h-32" />
+        {/* Right: Order Summary — redesigned for dark mode */}
+        <div className="lg:col-span-2 order-first lg:order-last">
+          <div className="relative rounded-3xl overflow-hidden border border-soft-blue/20 shadow-2xl shadow-soft-blue/10 sticky lg:top-8">
+            {/* Background gradient */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#0a0f1e] via-[#0d1224] to-[#080c18]" />
+            {/* Glow layer */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(0,212,255,0.18),transparent)]" />
+            {/* Animated border glow */}
+            <div className="absolute inset-0 rounded-3xl ring-1 ring-inset ring-soft-blue/15 pointer-events-none" />
+            {/* Decorative icon */}
+            <div className="absolute top-0 right-0 p-6 opacity-[0.06] pointer-events-none">
+              <Zap className="w-28 h-28 text-soft-blue" />
             </div>
 
-            <div className="relative z-10 space-y-6">
-              <h3 className="text-2xl font-black tracking-tighter italic">Order Summary</h3>
+            <div className="relative z-10 p-6 sm:p-8 space-y-6">
+              {/* Title */}
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-soft-blue/15 border border-soft-blue/30 flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-soft-blue" />
+                </div>
+                <h3 className="text-lg font-black tracking-tight text-white">Order Summary</h3>
+              </div>
 
-              <div className="space-y-4 pt-4 border-t border-surface/10">
-                <div className="flex justify-between items-center">
+              {/* Plan details */}
+              <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
+                <div className="flex justify-between items-start gap-3">
                   <div className="space-y-1">
-                    <p className="font-black text-sm">{planName}</p>
-                    <p className="text-[10px] font-bold text-surface/60 uppercase tracking-widest">{period === 'month' ? 'Monthly' : 'Yearly'} Billing</p>
+                    <p className="font-black text-sm text-white">{planName}</p>
+                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">{period === 'month' ? 'Monthly' : 'Yearly'} Billing</p>
                   </div>
-                  <span className="font-black text-lg">${amount}</span>
+                  <span className="font-black text-lg text-soft-blue shrink-0">${amount}</span>
                 </div>
-
-                <div className="flex justify-between items-center pt-4 border-t border-surface/10">
-                  <span className="text-sm font-bold text-surface/60">Subtotal</span>
-                  <span className="font-black">${amount}</span>
+                <div className="h-px bg-white/10" />
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-white/50">Subtotal</span>
+                  <span className="font-black text-white text-sm">${amount}</span>
                 </div>
+              </div>
 
-                <div className="pt-6 border-t-4 border-surface/10 space-y-2">
-                  <div className="flex justify-between items-end">
-                    <span className="text-sm font-black uppercase tracking-widest text-surface/60">Total Amount</span>
-                    <div className="text-right">
-                      <p className="text-4xl font-black tracking-tighter">${amount}</p>
-                      <p className="text-xs font-bold text-soft-blue">Approx. ₹{amountINR}</p>
-                    </div>
+              {/* Total */}
+              <div className="rounded-2xl bg-soft-blue/10 border border-soft-blue/25 p-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-black uppercase tracking-widest text-white/60">Total Due</span>
+                  <div className="text-right">
+                    <p className="text-3xl font-black tracking-tighter text-white">${amount}</p>
+                    <p className="text-xs font-bold text-soft-blue mt-0.5">≈ ₹{amountINR}</p>
                   </div>
                 </div>
               </div>
-              {/* Dynamic Payment Status Feedback */}
+
+              {/* Payment Status Feedback */}
               <AnimatePresence>
                 {paymentStatus !== 'idle' && (
                   <motion.div
@@ -461,56 +479,57 @@ export default function Checkout() {
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                     className={cn(
-                      "mb-6 p-4 rounded-2xl border flex items-start gap-3 overflow-hidden",
-                      paymentStatus === 'processing' && "bg-soft-blue/5 border-soft-blue/20 text-soft-blue",
-                      paymentStatus === 'success' && "bg-soft-green/5 border-soft-green/20 text-soft-green",
-                      paymentStatus === 'failed' && "bg-soft-red/5 border-soft-red/20 text-soft-red"
+                      "p-3 rounded-2xl border flex items-start gap-3 overflow-hidden",
+                      paymentStatus === 'processing' && "bg-soft-blue/10 border-soft-blue/30 text-soft-blue",
+                      paymentStatus === 'success' && "bg-soft-green/10 border-soft-green/30 text-soft-green",
+                      paymentStatus === 'failed' && "bg-soft-red/10 border-soft-red/30 text-soft-red"
                     )}
                   >
-                    {paymentStatus === 'processing' && <Loader2 className="w-4 h-4 mt-0.5 animate-spin" />}
-                    {paymentStatus === 'success' && <CheckCircle2 className="w-4 h-4 mt-0.5" />}
-                    {paymentStatus === 'failed' && <XCircle className="w-4 h-4 mt-0.5" />}
-
-                    <div className="flex-1">
+                    {paymentStatus === 'processing' && <Loader2 className="w-4 h-4 mt-0.5 animate-spin shrink-0" />}
+                    {paymentStatus === 'success' && <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />}
+                    {paymentStatus === 'failed' && <XCircle className="w-4 h-4 mt-0.5 shrink-0" />}
+                    <div className="flex-1 min-w-0">
                       <p className="text-[10px] font-black uppercase tracking-widest">
                         {paymentStatus === 'processing' && "Processing Link..."}
                         {paymentStatus === 'success' && "Handshake Verified!"}
                         {paymentStatus === 'failed' && "Transmission Interrupted"}
                       </p>
-                      <p className="text-[9px] font-bold opacity-80 leading-tight">
+                      <p className="text-[9px] font-bold opacity-80 leading-tight mt-0.5">
                         {paymentStatus === 'processing' && "Opening secure payment gateway."}
-                        {paymentStatus === 'success' && "Redirecting to your new Command Center..."}
-                        {paymentStatus === 'failed' && (errorMessage || "The payment was cancelled or declined. Please retry.")}
+                        {paymentStatus === 'success' && "Redirecting to your Command Center..."}
+                        {paymentStatus === 'failed' && (errorMessage || "Payment cancelled or declined. Please retry.")}
                       </p>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
+              {/* Pay Button */}
               <button
                 onClick={handlePay}
                 disabled={loading || paymentStatus === 'success'}
-                className="w-full py-6 bg-surface text-text-main rounded-3xl font-black uppercase tracking-[0.2em] text-sm flex items-center justify-center gap-3 shadow-2xl hover:scale-[1.03] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed group overflow-hidden"
+                className="w-full py-4 sm:py-5 bg-gradient-to-r from-soft-blue to-soft-purple text-white rounded-full font-black uppercase tracking-[0.15em] text-sm flex items-center justify-center gap-3 shadow-lg shadow-soft-blue/25 hover:shadow-soft-blue/40 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
               >
                 {loading ? (
                   <RefreshCw className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    <ShieldCheck className="w-5 h-5 text-soft-blue group-hover:animate-pulse" />
+                    <ShieldCheck className="w-5 h-5 group-hover:animate-pulse" />
                     {paymentStatus === 'failed' ? "Retry Payment" : "Pay Now"}
                   </>
                 )}
-                <div className="absolute inset-0 bg-soft-blue/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
               </button>
 
+              {/* Trust badges */}
               <div className="text-center space-y-2">
-                <p className="text-[9px] font-bold text-surface/40 uppercase tracking-widest">
+                <p className="text-[9px] font-bold text-white/25 uppercase tracking-widest">
                   Secure checkout handled by Razorpay
                 </p>
                 <div className="flex justify-center gap-4 opacity-20">
-                  <CreditCard className="w-4 h-4" />
-                  <Smartphone className="w-4 h-4" />
-                  <Building2 className="w-4 h-4" />
+                  <CreditCard className="w-4 h-4 text-white" />
+                  <Smartphone className="w-4 h-4 text-white" />
+                  <Building2 className="w-4 h-4 text-white" />
                 </div>
               </div>
             </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, X, ChevronRight, Zap } from 'lucide-react';
+import { Menu, X, ArrowRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface LandingNavbarProps {
@@ -19,8 +19,8 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
   }, []);
 
   const navLinks = [
-    { name: 'Features', href: '#features' },
     { name: 'Labs', href: '#labs' },
+    { name: 'How it works', href: '#flow' },
     { name: 'Pricing', href: '#pricing' },
     { name: 'FAQ', href: '#faq' },
   ];
@@ -31,50 +31,29 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-500 px-6",
-        isScrolled
-          ? "glass-panel py-3 border-b border-white/5"
-          : "bg-transparent py-5"
+        'fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-6',
+        isScrolled ? 'ldg-panel border-b py-3' : 'bg-transparent py-5 border-b border-transparent'
       )}
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo */}
         <motion.div
-          className="flex items-center gap-3 cursor-pointer group"
+          className="flex items-center gap-2.5 cursor-pointer"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
         >
-          <img
-            src="/favicon.svg"
-            alt="DebugToDeploy"
-            className="w-10 h-10 rounded-xl object-cover logo-icon"
-          />
-          <span className="text-lg font-black tracking-tighter hidden sm:block uppercase">
-            <span
-              style={{
-                background: 'linear-gradient(135deg, #00D4FF 0%, #00FF88 50%, #00D4FF 100%)',
-                backgroundSize: '200% 100%',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-            >
-              Debug<span>To</span>Deploy
-            </span>
+          <img src="/favicon.svg" alt="DebugToDeploy" className="w-8 h-8 rounded-md object-cover" />
+          <span className="ldg-mono text-sm font-semibold tracking-tight hidden sm:block">
+            debug<span className="text-[#00D4FF]">→</span>deploy
           </span>
         </motion.div>
 
         {/* Desktop Nav Links */}
         <div className="hidden md:flex items-center gap-1">
-          {navLinks.map((link, i) => (
+          {navLinks.map((link) => (
             <motion.a
               key={link.name}
               href={link.href}
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + i * 0.05 }}
-              className="px-4 py-2 rounded-xl text-sm font-bold text-text-dim hover:text-text-main transition-all duration-300 relative group"
+              className="ldg-mono px-4 py-2 text-[0.78rem] text-[var(--ldg-text-dim)] hover:text-[var(--ldg-text)] transition-colors"
             >
               <span className="relative z-10">{link.name}</span>
               <span className="absolute inset-0 rounded-xl bg-gradient-to-br from-neon-cyan/0 to-neon-green/0 group-hover:from-neon-cyan/8 group-hover:to-neon-green/5 transition-all duration-300" />
@@ -85,33 +64,24 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
         {/* Desktop CTAs */}
         <div className="hidden md:flex items-center gap-3">
           {session ? (
-            <motion.a
-              href="/dashboard"
-              whileHover={{ scale: 1.03, y: -1 }}
-              whileTap={{ scale: 0.97 }}
-              className="btn-pill btn-neon-primary flex items-center gap-2 text-xs"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              Dashboard <ChevronRight className="w-3.5 h-3.5" />
-            </motion.a>
+            <a href="/dashboard" className="ldg-btn-primary flex items-center gap-2 px-5 py-2.5">
+              Dashboard <ArrowRight className="w-3.5 h-3.5" />
+            </a>
           ) : (
-            <motion.button
-              onClick={onAuthClick}
-              whileHover={{ scale: 1.03, y: -1 }}
-              whileTap={{ scale: 0.97 }}
-              className="btn-pill btn-neon-primary text-xs"
-            >
-              Start Free Journey
-            </motion.button>
+            <>
+              <button onClick={onAuthClick} className="ldg-mono text-[0.78rem] text-[var(--ldg-text-dim)] hover:text-[var(--ldg-text)] px-3 transition-colors">
+                Log in
+              </button>
+              <button onClick={onAuthClick} className="ldg-btn-primary px-5 py-2.5">
+                Start debugging
+              </button>
+            </>
           )}
         </div>
 
         {/* Mobile Menu Toggle */}
         <motion.button
-          className={cn(
-            "md:hidden p-2.5 rounded-xl transition-all",
-            "glass-button text-text-main"
-          )}
+          className="md:hidden p-2 ldg-hairline border rounded-sm text-[var(--ldg-text)]"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           whileTap={{ scale: 0.93 }}
         >
@@ -133,40 +103,34 @@ export default function LandingNavbar({ onAuthClick, session }: LandingNavbarPro
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, height: 0, y: -10 }}
-            animate={{ opacity: 1, height: 'auto', y: 0 }}
-            exit={{ opacity: 0, height: 0, y: -10 }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="md:hidden mt-3 rounded-2xl overflow-hidden glass-panel border border-white/5"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25 }}
+            className="md:hidden mt-3 ldg-panel overflow-hidden"
           >
             <div className="flex flex-col p-4 gap-1">
-              {navLinks.map((link, i) => (
+              {navLinks.map((link) => (
                 <motion.a
                   key={link.name}
                   href={link.href}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="px-4 py-3 rounded-xl text-base font-bold text-text-dim hover:text-text-main hover:bg-neon-cyan/8 transition-all"
+                  className="ldg-mono px-3 py-3 text-sm text-[var(--ldg-text-dim)] hover:text-[var(--ldg-text)] transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {link.name}
                 </motion.a>
               ))}
-              <div className="pt-3 mt-2 border-t border-white/5">
+              <div className="pt-3 mt-2 border-t border-[var(--ldg-wire)]">
                 {session ? (
-                  <a
-                    href="/dashboard"
-                    className="btn-pill btn-neon-primary w-full text-center text-xs"
-                  >
-                    Go to Dashboard
+                  <a href="/dashboard" className="ldg-btn-primary w-full flex items-center justify-center gap-2 py-3">
+                    Go to dashboard
                   </a>
                 ) : (
                   <button
                     onClick={() => { setMobileMenuOpen(false); onAuthClick(); }}
-                    className="btn-pill btn-neon-primary w-full text-xs"
+                    className="ldg-btn-primary w-full py-3"
                   >
-                    Start Free Journey
+                    Start debugging
                   </button>
                 )}
               </div>

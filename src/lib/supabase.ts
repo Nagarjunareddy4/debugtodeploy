@@ -1,14 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
-const getEnv = (key: string) => {
-  return (import.meta as any).env?.[key] || process.env[key] || '';
-};
+// These are build-time constants injected by vite.config.ts via `define`.
+// They are NOT accessible through import.meta.env and are NOT prefixed with
+// VITE_, so they won't be trivially discoverable as named env vars in the bundle.
+declare const __SUPABASE_URL__: string;
+declare const __SUPABASE_ANON_KEY__: string;
 
-const supabaseUrl = getEnv('NEXT_PUBLIC_SUPABASE_URL') || getEnv('VITE_SUPABASE_URL');
-const supabaseAnonKey = getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY') || getEnv('VITE_SUPABASE_ANON_KEY');
+const supabaseUrl: string = __SUPABASE_URL__;
+const supabaseAnonKey: string = __SUPABASE_ANON_KEY__;
 
 if (!supabaseUrl || supabaseUrl === 'https://your-project.supabase.co') {
-  console.warn('Supabase URL is missing. Please configure NEXT_PUBLIC_SUPABASE_URL in the Secrets panel.');
+  console.warn('Supabase URL is missing. Please configure SUPABASE_URL in your .env file.');
 }
 
 export const supabase = createClient(

@@ -8,6 +8,9 @@ import Cropper from 'react-easy-crop';
 import getCroppedImg from '../lib/cropImage';
 import { Avatar } from '../components/ui/Avatar';
 
+declare const __CONTACT_EMAIL__: string;
+const CONTACT_EMAIL = typeof __CONTACT_EMAIL__ !== 'undefined' ? __CONTACT_EMAIL__ : 'support@debugtodeploy.com';
+
 export default function Settings() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -816,10 +819,10 @@ export default function Settings() {
                     Send a request from your registered email to:
                   </p>
                   <a 
-                    href="mailto:debugtodeploy@gmail.com?subject=Account Deletion Request"
+                    href={`mailto:${CONTACT_EMAIL}?subject=Account Deletion Request`}
                     className="text-sm font-black text-soft-blue hover:underline mt-1 block"
                   >
-                    debugtodeploy@gmail.com
+                    {CONTACT_EMAIL}
                   </a>
                 </div>
 

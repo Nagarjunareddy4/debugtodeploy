@@ -54,7 +54,7 @@ export default async function handler(req, res) {
     // Parse body after verification
     const event = JSON.parse(rawBody);
     const supabaseAdmin = createClient(
-      process.env.VITE_SUPABASE_URL,
+      process.env.SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 

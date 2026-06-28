@@ -33,12 +33,15 @@ import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { LogoFull } from '../ui/Logo';
 import { Avatar } from '../ui/Avatar';
+import { PlanBadge } from '../ui/PlanBadge';
+import NotificationBell from '../notifications/NotificationBell';
 
 type ThemeMode = 'system' | 'light' | 'dark';
 
 function useTheme() {
   const [mode, setMode] = useState<ThemeMode>(() => {
-    return (localStorage.getItem('theme') as ThemeMode) || 'system';
+    // Default to 'dark'; only override if user has explicitly saved a preference
+    return (localStorage.getItem('theme') as ThemeMode) || 'dark';
   });
 
   useEffect(() => {
@@ -174,12 +177,18 @@ export default function Sidebar() {
 
   return (
     <>
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-4 right-4 z-[70] p-3 bg-text-main text-surface rounded-full shadow-2xl transition-all active:scale-95"
-      >
-        {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-      </button>
+      {/* Mobile Notification & Menu Controls */}
+      <div className="lg:hidden fixed top-4 right-4 z-[70] flex items-center gap-2">
+        <NotificationBell />
+        <button 
+          onClick={() => setIsOpen(!isOpen)}
+          className="p-2.5 bg-text-main text-surface transition-all active:scale-95 flex items-center justify-center h-10 w-10 shadow-lg"
+          style={{ borderRadius: '0.5rem' }}
+          aria-label="Menu"
+        >
+          {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </div>
 
       {isOpen && (
         <div 
@@ -189,14 +198,14 @@ export default function Sidebar() {
       )}
 
       <aside className={cn(
-        "fixed inset-y-0 left-0 top-0 z-[60] w-72 glass-panel flex flex-col transition-all duration-500 ease-in-out overflow-hidden border-r",
+        "fixed inset-y-0 left-0 top-0 z-[60] w-72 glass-panel rounded-none border-r flex flex-col transition-all duration-500 ease-in-out overflow-hidden",
         !isOpen && "-translate-x-full lg:translate-x-0 shadow-none",
         isOpen && "translate-x-0 shadow-2xl lg:shadow-none",
         "lg:fixed lg:h-screen"
       )}>
-        {/* Header - Logo (Fixed) — long-press 800ms to open hidden admin gate */}
+        {/* Header - Logo & Notification Bell — long-press 800ms to open hidden admin gate */}
         <div
-          className="flex-shrink-0 p-8 pb-4 select-none"
+          className="flex-shrink-0 p-8 pb-4 select-none flex items-center justify-between gap-3"
           onMouseDown={() => {
             longPressTimer.current = setTimeout(() => {
               setAdminPass('');
@@ -215,7 +224,12 @@ export default function Sidebar() {
           }}
           onTouchEnd={() => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }}
         >
-          <LogoFull />
+          <div onClick={() => { setIsOpen(false); navigate('/'); }} className="cursor-pointer">
+            <LogoFull />
+          </div>
+          <div className="hidden lg:block shrink-0">
+            <NotificationBell />
+          </div>
         </div>
 
         {/* Scrollable Content */}
@@ -257,7 +271,7 @@ export default function Sidebar() {
                       {item.label}
                       {isDisabled && <span className="text-[8px] bg-red-500/10 text-red-500 px-1 rounded-xs">Locked</span>}
                       {(item as any).badge && !isDisabled && (
-                        <span className="text-[7px] bg-soft-orange/20 text-soft-orange border border-soft-orange/30 px-1.5 py-0.5 rounded-full font-black tracking-widest animate-pulse">
+                        <span className="text-[7px] bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30 px-1.5 py-0.5 font-mono font-bold tracking-widest">
                           {(item as any).badge}
                         </span>
                       )}
@@ -270,47 +284,45 @@ export default function Sidebar() {
 
             {profile && profile.subscription_status !== 'pro' && !profile.is_deactivated && (
               <div className="px-2 mt-8">
-                <div 
-                  className="relative overflow-hidden rounded-3xl p-6 border-2 border-soft-orange/30 group cursor-pointer transition-all hover:border-soft-orange" 
+                <div
+                  className="relative p-5 clay-sm cursor-pointer group"
                   onClick={() => {
                     navigate('/pricing');
                     setIsOpen(false);
                   }}
                 >
-                  <div className="absolute inset-0 bg-linear-to-br from-soft-orange/10 to-soft-purple/10 group-hover:opacity-100 opacity-50 transition-opacity" />
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-soft-orange/20 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform" />
-                  
-                  <div className="relative z-10 flex flex-col items-center text-center space-y-3">
-                    <div className="w-10 h-10 rounded-full bg-soft-orange/20 flex items-center justify-center text-soft-orange group-hover:scale-110 transition-transform">
-                      <Star className="w-5 h-5 fill-soft-orange" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-black uppercase tracking-widest text-text-main">Unlock Pro</h4>
-                      <p className="text-[9px] font-bold text-text-dim mt-1 leading-relaxed">Unlimited AI, premium labs, & portfolio sharing.</p>
-                    </div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-text-dim">Clearance level</span>
+                    <PlanBadge status={profile.subscription_status} />
                   </div>
+                  <h4 className="text-sm font-bold text-text-main mb-1">Unlock the full toolchain</h4>
+                  <p className="text-[11px] text-text-dim leading-relaxed mb-4">
+                    Unlimited sandboxes, AI mock interviews, and a shareable portfolio.
+                  </p>
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-neon-cyan group-hover:underline">
+                    Upgrade →
+                  </span>
                 </div>
               </div>
             )}
 
-            {/* Android App Button - Only on desktop for logged-in users */}
+            {/* Mobile app cross-link — disabled until app ships */}
             {profile && (
-              <div className="flex justify-center">
-                <motion.div
-                  className="hidden lg:flex relative group"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
+              <div className="px-2">
+                <div
+                  className="flex items-center gap-3 px-3 py-3 clay-sm opacity-40 cursor-not-allowed select-none"
+                  title="Coming soon"
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-soft-orange/20 border-2 border-soft-orange/30 flex items-center justify-center group-hover:border-soft-orange transition-all cursor-not-allowed opacity-50">
-                    <Smartphone className="w-6 h-6 text-soft-orange" />
+                  <Smartphone className="w-4 h-4 text-text-dim shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-mono text-[9px] uppercase tracking-widest text-text-main">Get the app</p>
+                    <p className="text-[10px] text-text-dim truncate">Coming soon</p>
                   </div>
-                  <span className="absolute -top-2 -right-2 text-[8px] font-black uppercase bg-soft-orange text-white px-1.5 py-0.5 rounded-full tracking-wider animate-pulse">App</span>
-                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-surface border-2 border-border rounded-lg px-2 py-1 text-[10px] font-bold text-text-dim whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                    Android App (Testing)
-                  </div>
-                </motion.div>
+                  <span className="ml-auto font-mono text-[7px] uppercase tracking-widest text-text-dim border border-border px-1.5 py-0.5">Soon</span>
+                </div>
               </div>
             )}
+
 
             {/* Social Media Links */}
             <div className="flex items-center justify-center gap-6 py-4">
@@ -377,40 +389,32 @@ export default function Sidebar() {
           </div>
 
           {showUserDetails && profile && (
-            <div className="absolute bottom-full mb-3 left-0 right-0 bg-surface border-2 border-border rounded-3xl p-6 shadow-2xl z-50 space-y-4">
+            <div className="absolute bottom-full mb-3 left-0 right-0 bg-surface clay-flat p-6 z-50 space-y-4">
               <div className="flex items-center gap-4">
                 <Avatar 
                   url={profile.avatar_url ? `${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}` : undefined}
-                  className="w-14 h-14 rounded-full border-2 border-soft-blue"
+                  className="w-14 h-14 rounded-full border border-border"
                 />
                 <div className="min-w-0">
-                  <p className="font-black text-sm truncate">{displayName}</p>
-                  <p className="text-[10px] font-bold text-soft-blue uppercase tracking-widest flex items-center gap-2">
-                    {profile.subscription_status === 'pro' ? (
-                      <span className="text-soft-orange flex items-center gap-1">
-                        <Star className="w-3 h-3 fill-soft-orange" /> PRO
-                      </span>
-                    ) : (
-                      'DevOps Lvl ' + (profile.level || 1)
-                    )}
-                  </p>
+                  <p className="font-bold text-sm truncate">{displayName}</p>
+                  <div className="mt-1"><PlanBadge status={profile.subscription_status} size="md" /></div>
                 </div>
               </div>
-              <div className="space-y-2 text-[11px] font-bold text-text-dim">
+              <div className="space-y-2 text-[11px] font-medium text-text-dim font-mono">
                 <div className="flex items-center gap-2">
                   <Mail className="w-3 h-3 flex-shrink-0" />
                   <span className="truncate">{profile.email}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Star className="w-3 h-3 text-soft-orange" />
+                  <Star className="w-3 h-3 text-neon-cyan" />
                   <span>Readiness: {profile.readiness_score || 0}%</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Flame className="w-3 h-3 text-soft-orange" />
+                  <Flame className="w-3 h-3 text-neon-cyan" />
                   <span>{profile.streak || 0} Day Streak</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Trophy className="w-3 h-3 text-soft-green" />
+                  <Trophy className="w-3 h-3 text-neon-green" />
                   <span>{profile.labs_completed || 0} Labs Completed</span>
                 </div>
               </div>
@@ -418,7 +422,7 @@ export default function Sidebar() {
                 <NavLink
                   to="/settings"
                   onClick={() => { setShowUserDetails(false); setIsOpen(false); }}
-                  className="text-[10px] font-black uppercase tracking-widest text-soft-blue hover:underline"
+                  className="text-[10px] font-bold uppercase tracking-widest text-neon-cyan hover:underline font-mono"
                 >
                   Edit Profile →
                 </NavLink>
@@ -429,28 +433,27 @@ export default function Sidebar() {
           <button
             onClick={() => setShowUserDetails(!showUserDetails)}
             className={cn(
-              "nav-pill group border-2 border-border/40 hover:border-text-main/20 transition-all w-full text-left",
-              showUserDetails && "nav-pill-active border-transparent shadow-lg"
+              "nav-pill group w-full text-left",
+              showUserDetails && "nav-pill-active"
             )}
           >
             <Avatar 
               url={profile?.avatar_url ? `${profile.avatar_url}${profile.avatar_url.includes('?') ? '&' : '?'}t=${Date.now()}` : undefined}
-              className="w-7 h-7 rounded-full border-2 border-surface shadow-sm"
+              className="w-7 h-7 rounded-full border border-border"
             />
-            <div className="flex flex-col min-w-0">
-              <span className="text-[10px] font-black uppercase tracking-widest leading-none truncate flex items-center gap-2">
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="text-[10px] font-bold uppercase tracking-widest leading-none truncate flex items-center gap-2">
                 {displayNameShort}
                 {profile?.is_deactivated && <span className="bg-red-500 text-white text-[6px] px-1 rounded-xs animate-pulse">DEACTIVATED</span>}
               </span>
-              <span className="text-[8px] font-black text-soft-blue mt-1 uppercase">
-                {profile?.subscription_status === 'pro' ? '⭐ PRO MEMBER' : `DevOps Lvl ${profile?.level || 1}`}
-              </span>
+              <span className="text-[8px] text-text-dim mt-1">Lvl {profile?.level || 1}</span>
             </div>
+            <PlanBadge status={profile?.subscription_status} />
           </button>
 
           <button 
             onClick={handleLogout}
-            className="nav-pill text-red-500 hover:bg-red-500/10 hover:border-red-500/20 border-2 border-transparent w-full"
+            className="nav-pill text-red-500 hover:bg-red-500/10 w-full"
           >
             <LogOut className="w-5 h-5" />
             <span className="font-black text-sm uppercase tracking-widest">Logout</span>
